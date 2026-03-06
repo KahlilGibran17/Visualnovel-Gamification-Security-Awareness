@@ -1,13 +1,14 @@
 import { useGame } from '../contexts/GameContext.jsx'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import { Trophy, BookOpen, User, Home, ShieldAlert, LogOut, Settings } from 'lucide-react'
+import { Trophy, BookOpen, User, Home, ShieldAlert, LogOut, Settings, GraduationCap, Gamepad2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AvatarDisplay from './AvatarDisplay.jsx'
 
 const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: Home },
-    { path: '/chapters', label: 'Chapters', icon: BookOpen },
+    { path: '/elearning', label: 'E-Learning', icon: GraduationCap },
+    { path: '/chapters', label: 'Play Game', icon: Gamepad2 },
     { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
     { path: '/profile', label: 'Profile', icon: User },
 ]

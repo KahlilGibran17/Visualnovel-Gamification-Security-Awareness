@@ -4,9 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Home, Volume2, VolumeX, SkipForward, RotateCcw, Star, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useGame } from '../contexts/GameContext.jsx'
-import chapter1 from '../data/chapters/chapter1.json'
-
-const CHAPTERS_DATA = { 1: chapter1 }
 
 // Scene background styles
 const BACKGROUNDS = {
@@ -39,6 +36,8 @@ const BACKGROUNDS = {
 
 // Character sprites
 function CharacterSprite({ character, expression, position }) {
+    const { CHARACTERS } = useGame()
+
     const SPRITES = {
         player: { base: '🧑‍💻', expressions: { happy: '😊', shocked: '😱', worried: '😟', proud: '💪', normal: '🧑‍💻' } },
         akebot: { base: '🤖', expressions: { happy: '🤖✨', worried: '🤖⚠️', proud: '🤖🎉', shocked: '🤖😱', normal: '🤖' } },
@@ -46,8 +45,12 @@ function CharacterSprite({ character, expression, position }) {
         manager: { base: '👔', expressions: { happy: '😄', worried: '😟', shocked: '😱', normal: '👔' } },
     }
 
+    const customChar = CHARACTERS?.find(c => c.key_name === character)
+    const customExpr = customChar?.expressions?.find(e => e.expression_name === expression)
+
     const sprite = SPRITES[character] || SPRITES.player
-    const expr = sprite.expressions[expression] || sprite.base
+    const exprEmoji = customExpr?.emoji || (customChar ? customChar.emoji : (sprite.expressions[expression] || sprite.base))
+    const imgUrl = customExpr?.image_url
 
     const charColors = {
         player: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30',
@@ -55,6 +58,8 @@ function CharacterSprite({ character, expression, position }) {
         villain: 'from-red-900/40 to-purple-900/30 border-red-600/30',
         manager: 'from-green-500/20 to-emerald-500/20 border-green-500/30',
     }
+
+    const colorClass = charColors[character] || (customChar ? 'from-purple-500/20 to-fuchsia-500/20 border-purple-500/30' : charColors.player)
 
     return (
         <motion.div
@@ -65,15 +70,20 @@ function CharacterSprite({ character, expression, position }) {
             transition={{ type: 'spring', stiffness: 200, damping: 20 }}
         >
             <motion.div
-                className={`w-28 h-36 md:w-36 md:h-48 rounded-2xl border bg-gradient-to-b ${charColors[character] || charColors.player} flex flex-col items-center justify-center gap-2 relative overflow-hidden`}
+                className={`w-28 h-36 md:w-36 md:h-48 rounded-2xl border bg-gradient-to-b ${colorClass} flex flex-col items-center justify-center gap-2 relative overflow-hidden`}
                 animate={{ y: [0, -5, 0] }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             >
                 {/* CRT scanlines overlay */}
-                <div className="absolute inset-0 scanlines opacity-30 pointer-events-none" />
+                <div className="absolute inset-0 scanlines opacity-30 pointer-events-none z-10" />
 
-                <span className="text-5xl md:text-7xl select-none">{expr.split('')[0]}</span>
-                {character === 'villain' && (
+                {imgUrl ? (
+                    <img src={imgUrl} alt={expression} className="w-full h-full object-cover rounded-xl" />
+                ) : (
+                    <span className="text-5xl md:text-7xl select-none relative z-10">{exprEmoji?.split('')[0] || '👤'}</span>
+                )}
+
+                {character === 'villain' && !imgUrl && (
                     <motion.div
                         className="absolute inset-0 bg-red-500/5"
                         animate={{ opacity: [0, 0.3, 0] }}
@@ -234,11 +244,11 @@ function TimerRing({ seconds, total }) {
 export default function VNEnginePage() {
     const { chapterId } = useParams()
     const { user } = useAuth()
-    const { awardXP, completeChapter } = useGame()
+    const { awardXP, completeChapter, CHAPTERS, BACKGROUNDS: globalBackgrounds } = useGame()
     const navigate = useNavigate()
 
-    const chapterData = CHAPTERS_DATA[parseInt(chapterId)]
-    const [sceneId, setSceneId] = useState(chapterData?.scenes[0]?.id || null)
+    const chapterData = CHAPTERS.find(c => c.id === parseInt(chapterId))
+    const [sceneId, setSceneId] = useState(null)
     const [choiceResult, setChoiceResult] = useState(null) // { correct, consequence, lesson, xp }
     const [timer, setTimer] = useState(null)
     const [timerTotal, setTimerTotal] = useState(15)
@@ -248,7 +258,13 @@ export default function VNEnginePage() {
     const [showHud, setShowHud] = useState(true)
     const [gameOver, setGameOver] = useState(false)
 
-    const currentScene = chapterData?.scenes.find(s => s.id === sceneId)
+    useEffect(() => {
+        if (!sceneId && chapterData?.scenes?.length > 0) {
+            setSceneId(chapterData.scenes[0].id)
+        }
+    }, [chapterData, sceneId])
+
+    const currentScene = chapterData?.scenes?.find(s => s.id === sceneId)
     const playerName = user?.name?.split(' ')[0] || 'Recruit'
 
     const getText = (text) => text?.replace(/\{\{playerName\}\}/g, playerName) || ''
@@ -339,14 +355,21 @@ export default function VNEnginePage() {
         )
     }
 
-    const bg = BACKGROUNDS[currentScene?.background] || BACKGROUNDS.office
+    const localBg = BACKGROUNDS[currentScene?.background] || BACKGROUNDS.office
+    const customBg = globalBackgrounds?.find(b => b.key_name === currentScene?.background)
+
+    const bgLabel = customBg ? customBg.name : localBg.label
+    const bgGradient = customBg ? '' : localBg.gradient
+    const bgStyle = customBg && customBg.image_url
+        ? { backgroundImage: `url(${customBg.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+        : { background: localBg.pattern }
 
     return (
         <div className="fixed inset-0 bg-dark overflow-hidden flex flex-col">
             {/* Background */}
             <div
-                className={`absolute inset-0 bg-gradient-to-b ${bg.gradient} transition-all duration-1000`}
-                style={{ background: bg.pattern }}
+                className={`absolute inset-0 transition-all duration-1000 ${bgGradient ? `bg-gradient-to-b ${bgGradient}` : ''}`}
+                style={bgStyle}
             />
 
             {/* Scanline overlay */}
@@ -375,7 +398,7 @@ export default function VNEnginePage() {
                         </div>
                         {/* Location */}
                         <div className="hidden md:block text-xs text-white/40">
-                            {bg.label}
+                            {bgLabel}
                         </div>
                         {/* XP counter */}
                         <div className="flex items-center gap-1.5 bg-accent/20 border border-accent/30 rounded-full px-3 py-1">

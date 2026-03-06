@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import CharacterSetupPage from './pages/CharacterSetupPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ChapterSelectPage from './pages/ChapterSelectPage.jsx'
+import ELearningPage from './pages/ELearningPage.jsx'
 import VNEnginePage from './pages/VNEnginePage.jsx'
 import ChapterResultPage from './pages/ChapterResultPage.jsx'
 import LeaderboardPage from './pages/LeaderboardPage.jsx'
@@ -15,7 +16,9 @@ import ProfilePage from './pages/ProfilePage.jsx'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
 import AdminContentPage from './pages/admin/AdminContentPage.jsx'
+import AdminCMSPage from './pages/admin/AdminCMSPage.jsx'
 import AdminReportsPage from './pages/admin/AdminReportsPage.jsx'
+import AdminELearningPage from './pages/admin/AdminELearningPage.jsx'
 
 export default function App() {
     return (
@@ -41,6 +44,11 @@ export default function App() {
                             <Route path="/chapters" element={
                                 <ProtectedRoute roles={['employee', 'manager', 'admin']}>
                                     <ChapterSelectPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/elearning" element={
+                                <ProtectedRoute roles={['employee', 'manager', 'admin']}>
+                                    <ELearningPage />
                                 </ProtectedRoute>
                             } />
                             <Route path="/play/:chapterId" element={
@@ -77,7 +85,12 @@ export default function App() {
                             } />
                             <Route path="/admin/content" element={
                                 <ProtectedRoute roles={['admin']}>
-                                    <AdminContentPage />
+                                    <AdminCMSPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/admin/elearning" element={
+                                <ProtectedRoute roles={['admin']}>
+                                    <AdminELearningPage />
                                 </ProtectedRoute>
                             } />
                             <Route path="/admin/reports" element={

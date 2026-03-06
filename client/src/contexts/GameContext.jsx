@@ -4,17 +4,17 @@ import axios from 'axios'
 
 const GameContext = createContext(null)
 
-// Chapter definitions
-export const CHAPTERS = [
-    { id: 1, title: 'First Day', subtitle: 'Phishing Email', icon: '📧', location: 'Office Lobby', unlockAt: 0 },
-    { id: 2, title: 'The Open Desk', subtitle: 'Clean Desk Policy', icon: '🗂️', location: 'Workstation', unlockAt: 1 },
-    { id: 3, title: 'Stranger in the Elevator', subtitle: 'Social Engineering', icon: '🛗', location: 'Elevator', unlockAt: 2 },
-    { id: 4, title: 'Change Your Password', subtitle: 'Password Security', icon: '🔐', location: 'IT Room', unlockAt: 3 },
-    { id: 5, title: 'Incident!', subtitle: 'Incident Reporting', icon: '🚨', location: 'Server Room', unlockAt: 4 },
-    { id: 6, title: 'Showdown with Ph1sh', subtitle: 'FINALE', icon: '⚔️', location: 'Data Center', unlockAt: 5 },
+// Fallback data
+const FALLBACK_CHAPTERS = [
+    { id: 1, title: 'First Day', subtitle: 'Phishing Email', icon: '📧', location: 'Office Lobby', unlockAt: 0, scenes: [] },
+    { id: 2, title: 'The Open Desk', subtitle: 'Clean Desk Policy', icon: '🗂️', location: 'Workstation', unlockAt: 1, scenes: [] },
+    { id: 3, title: 'Stranger in the Elevator', subtitle: 'Social Engineering', icon: '🛗', location: 'Elevator', unlockAt: 2, scenes: [] },
+    { id: 4, title: 'Change Your Password', subtitle: 'Password Security', icon: '🔐', location: 'IT Room', unlockAt: 3, scenes: [] },
+    { id: 5, title: 'Incident!', subtitle: 'Incident Reporting', icon: '🚨', location: 'Server Room', unlockAt: 4, scenes: [] },
+    { id: 6, title: 'Showdown with Ph1sh', subtitle: 'FINALE', icon: '⚔️', location: 'Data Center', unlockAt: 5, scenes: [] },
 ]
 
-export const LEVELS = [
+const FALLBACK_LEVELS = [
     { level: 1, title: 'Rookie', xpRequired: 0, color: '#94a3b8', icon: '🛡️' },
     { level: 2, title: 'Aware', xpRequired: 500, color: '#60a5fa', icon: '👁️' },
     { level: 3, title: 'Guardian', xpRequired: 1500, color: '#a78bfa', icon: '🛡️' },
@@ -22,15 +22,15 @@ export const LEVELS = [
     { level: 5, title: 'Cyber Hero', xpRequired: 6000, color: '#E63946', icon: '🦸' },
 ]
 
-export const BADGES = [
-    { id: 'phishing-hunter', name: 'Phishing Hunter', icon: '🎣', desc: 'Complete Chapter 1 with perfect score', color: '#E63946' },
-    { id: 'tidy-desk', name: 'Tidy Desk', icon: '🗂️', desc: 'Complete Chapter 2', color: '#3b82f6' },
-    { id: 'social-shield', name: 'Social Shield', icon: '🛡️', desc: 'Complete Chapter 3', color: '#8b5cf6' },
-    { id: 'password-master', name: 'Password Master', icon: '🔐', desc: 'Complete Chapter 4 without mistakes', color: '#22c55e' },
-    { id: 'first-responder', name: 'First Responder', icon: '🚨', desc: 'Complete Chapter 5', color: '#f97316' },
-    { id: 'cyber-hero', name: 'Cyber Hero', icon: '🦸', desc: 'Complete all chapters with good endings', color: '#FFD60A' },
-    { id: '7-day-streak', name: '7-Day Streak', icon: '🔥', desc: 'Log in 7 consecutive days', color: '#ef4444' },
-    { id: 'speed-runner', name: 'Speed Runner', icon: '⚡', desc: 'Complete a chapter in record time', color: '#06b6d4' },
+const FALLBACK_BADGES = [
+    { id: 'phishing-hunter', badge_key: 'phishing-hunter', name: 'Phishing Hunter', icon: '🎣', desc: 'Complete Chapter 1 with perfect score', color: '#E63946' },
+    { id: 'tidy-desk', badge_key: 'tidy-desk', name: 'Tidy Desk', icon: '🗂️', desc: 'Complete Chapter 2', color: '#3b82f6' },
+    { id: 'social-shield', badge_key: 'social-shield', name: 'Social Shield', icon: '🛡️', desc: 'Complete Chapter 3', color: '#8b5cf6' },
+    { id: 'password-master', badge_key: 'password-master', name: 'Password Master', icon: '🔐', desc: 'Complete Chapter 4 without mistakes', color: '#22c55e' },
+    { id: 'first-responder', badge_key: 'first-responder', name: 'First Responder', icon: '🚨', desc: 'Complete Chapter 5', color: '#f97316' },
+    { id: 'cyber-hero', badge_key: 'cyber-hero', name: 'Cyber Hero', icon: '🦸', desc: 'Complete all chapters with good endings', color: '#FFD60A' },
+    { id: '7-day-streak', badge_key: '7-day-streak', name: '7-Day Streak', icon: '🔥', desc: 'Log in 7 consecutive days', color: '#ef4444' },
+    { id: 'speed-runner', badge_key: 'speed-runner', name: 'Speed Runner', icon: '⚡', desc: 'Complete a chapter in record time', color: '#06b6d4' },
 ]
 
 // Demo data for leaderboard
@@ -72,8 +72,45 @@ export function GameProvider({ children }) {
     const [leaderboard, setLeaderboard] = useState(DEMO_LEADERBOARD)
     const [xpPopups, setXpPopups] = useState([])
 
+    const [chapters, setChapters] = useState(FALLBACK_CHAPTERS)
+    const [levels, setLevels] = useState(FALLBACK_LEVELS)
+    const [badges, setBadges] = useState(FALLBACK_BADGES)
+    const [backgrounds, setBackgrounds] = useState([])
+    const [characters, setCharacters] = useState([])
+
     useEffect(() => {
+        const fetchContent = async () => {
+            try {
+                const [cRes, lRes, bRes, bgRes, charRes] = await Promise.all([
+                    axios.get('/api/content/chapters'),
+                    axios.get('/api/content/levels'),
+                    axios.get('/api/content/badges'),
+                    axios.get('/api/cms/backgrounds').catch(() => ({ data: [] })),
+                    axios.get('/api/cms/characters').catch(() => ({ data: [] }))
+                ])
+                if (Array.isArray(cRes.data) && cRes.data.length > 0) {
+                    setChapters(cRes.data)
+                }
+                if (Array.isArray(lRes.data) && lRes.data.length > 0) {
+                    setLevels(lRes.data.map(l => ({ level: l.level, title: l.title, xpRequired: l.xp_required, color: l.color, icon: l.icon })))
+                }
+                if (Array.isArray(bRes.data) && bRes.data.length > 0) {
+                    setBadges(bRes.data)
+                }
+                if (bgRes?.data && Array.isArray(bgRes.data)) {
+                    setBackgrounds(bgRes.data)
+                }
+                if (charRes?.data && Array.isArray(charRes.data)) {
+                    setCharacters(charRes.data)
+                }
+            } catch (err) {
+                console.warn('Using fallback content (auth may not be ready):', err.message)
+            }
+        }
+
+        // Only fetch content when user is authenticated (token available via axios defaults)
         if (user) {
+            fetchContent()
             loadProgress()
         }
     }, [user?.id])
@@ -96,8 +133,8 @@ export function GameProvider({ children }) {
     }
 
     const getLevelFromXP = (xp) => {
-        let lvl = LEVELS[0]
-        for (const l of LEVELS) {
+        let lvl = levels[0] || FALLBACK_LEVELS[0]
+        for (const l of levels) {
             if (xp >= l.xpRequired) lvl = l
         }
         return lvl
@@ -105,7 +142,7 @@ export function GameProvider({ children }) {
 
     const getNextLevel = (xp) => {
         const current = getLevelFromXP(xp)
-        return LEVELS.find(l => l.level === current.level + 1) || null
+        return levels.find(l => l.level === current.level + 1) || null
     }
 
     const triggerXPPopup = (amount) => {
@@ -173,9 +210,11 @@ export function GameProvider({ children }) {
             completeChapter,
             getUserRank,
             getNextRankGap,
-            CHAPTERS,
-            LEVELS,
-            BADGES,
+            CHAPTERS: chapters,
+            LEVELS: levels,
+            BADGES: badges,
+            BACKGROUNDS: backgrounds,
+            CHARACTERS: characters,
         }}>
             {children}
         </GameContext.Provider>
