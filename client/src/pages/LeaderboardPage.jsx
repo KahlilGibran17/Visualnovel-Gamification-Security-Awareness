@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Filter, ChevronDown, Users, TrendingUp } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import { useGame, DEMO_LEADERBOARD, DEPT_STATS } from '../contexts/GameContext.jsx'
+import { useGame } from '../contexts/GameContext.jsx'
 import Layout from '../components/Layout.jsx'
 import AvatarDisplay from '../components/AvatarDisplay.jsx'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
@@ -85,7 +85,7 @@ function ChapterDots({ count }) {
 
 export default function LeaderboardPage() {
     const { user } = useAuth()
-    const { leaderboard, getUserRank, getNextRankGap } = useGame()
+    const { leaderboard, deptStats, getUserRank, getNextRankGap } = useGame()
     const [filter, setFilter] = useState('All Time')
     const [dept, setDept] = useState('All Departments')
     const [showDeptFilter, setShowDeptFilter] = useState(false)
@@ -160,15 +160,15 @@ export default function LeaderboardPage() {
                                 <h2 className="font-bold text-white text-lg">🏢 Department Rankings</h2>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-white/40">by Average XP</span>
-                                    {DEPT_STATS.length > 0 && (
+                                    {deptStats && deptStats.length > 0 && (
                                         <span className="text-xs bg-accent/20 text-accent border border-accent/30 px-2 py-1 rounded-full font-bold">
-                                            ⭐ Top: {DEPT_STATS[0].dept}
+                                            ⭐ Top: {deptStats[0].dept}
                                         </span>
                                     )}
                                 </div>
                             </div>
                             <ResponsiveContainer width="100%" height={200}>
-                                <BarChart data={DEPT_STATS} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
+                                <BarChart data={deptStats || []} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
                                     <XAxis dataKey="dept" stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 12 }} />
                                     <YAxis stroke="rgba(255,255,255,0.2)" tick={{ fontSize: 11 }} />
                                     <Tooltip
@@ -176,7 +176,7 @@ export default function LeaderboardPage() {
                                         formatter={(val) => [`${val.toLocaleString()} avg XP`]}
                                     />
                                     <Bar dataKey="avgXp" radius={[4, 4, 0, 0]}>
-                                        {DEPT_STATS.map((entry, idx) => (
+                                        {(deptStats || []).map((entry, idx) => (
                                             <Cell key={idx} fill={idx === 0 ? '#FFD60A' : '#E63946'} opacity={idx === 0 ? 1 : 0.6} />
                                         ))}
                                     </Bar>
@@ -200,8 +200,8 @@ export default function LeaderboardPage() {
                             id={`filter-${f.replace(' ', '-').toLowerCase()}`}
                             onClick={() => setFilter(f)}
                             className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${filter === f
-                                    ? 'bg-primary text-white'
-                                    : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                                ? 'bg-primary text-white'
+                                : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
                                 }`}
                         >
                             {f}
@@ -297,8 +297,8 @@ export default function LeaderboardPage() {
                                 <motion.div
                                     key={entry.id}
                                     className={`grid grid-cols-12 gap-2 px-5 py-3.5 items-center transition-all duration-200 ${isOwn
-                                            ? 'bg-gradient-to-r from-accent/10 to-primary/10 border-l-2 border-accent'
-                                            : 'hover:bg-white/5'
+                                        ? 'bg-gradient-to-r from-accent/10 to-primary/10 border-l-2 border-accent'
+                                        : 'hover:bg-white/5'
                                         }`}
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}

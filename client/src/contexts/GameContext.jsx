@@ -57,7 +57,7 @@ export const DEMO_LEADERBOARD = [
     { rank: 20, id: 4, name: 'Dewi Kusuma', department: 'Finance', xp: 0, level: 1, chaptersCompleted: 0, avatarId: 2, nik: '10003' },
 ]
 
-export const DEPT_STATS = [
+export const DEMO_DEPT_STATS = [
     { dept: 'IT', avgXp: 3325, members: 3 },
     { dept: 'Engineering', avgXp: 2488, members: 4 },
     { dept: 'Marketing', avgXp: 1167, members: 3 },
@@ -70,6 +70,7 @@ export function GameProvider({ children }) {
     const { user, updateUser } = useAuth()
     const [chapterProgress, setChapterProgress] = useState({})
     const [leaderboard, setLeaderboard] = useState(DEMO_LEADERBOARD)
+    const [deptStats, setDeptStats] = useState(DEMO_DEPT_STATS)
     const [xpPopups, setXpPopups] = useState([])
 
     const [chapters, setChapters] = useState(FALLBACK_CHAPTERS)
@@ -103,17 +104,86 @@ export function GameProvider({ children }) {
                 if (charRes?.data && Array.isArray(charRes.data)) {
                     setCharacters(charRes.data)
                 }
+                if (charRes?.data && Array.isArray(charRes.data)) {
+                    setCharacters(charRes.data)
+                }
             } catch (err) {
                 console.warn('Using fallback content (auth may not be ready):', err.message)
+            }
+        }
+
+        const fetchLeaderboardData = async () => {
+            try {
+                const [lbRes, deptRes] = await Promise.all([
+                    axios.get('/api/leaderboard'),
+                    axios.get('/api/leaderboard/departments')
+                ])
+                if (lbRes.data && Array.isArray(lbRes.data) && lbRes.data.length > 0) {
+                    setLeaderboard(lbRes.data)
+                }
+                if (deptRes.data && Array.isArray(deptRes.data) && deptRes.data.length > 0) {
+                    setDeptStats(deptRes.data)
+                }
+            } catch (err) {
+                console.warn('Using fallback leaderboard', err.message)
             }
         }
 
         // Only fetch content when user is authenticated (token available via axios defaults)
         if (user) {
             fetchContent()
+            fetchLeaderboardData()
             loadProgress()
         }
     }, [user?.id])
+
+    // Synchronize local leaderboard immediately when user changes xp so rank adjusts continuously 
+    useEffect(() => {
+        if (!user) return
+        setLeaderboard(prev => {
+            const index = prev.findIndex(u => u.nik === user.nik || u.id === user.id)
+            if (index === -1) {
+                // User not in leaderboard yet, add them so they can see themselves rank up
+                const updated = [...prev, {
+                    id: user.id || Date.now(),
+                    nik: user.nik,
+                    name: user.name || 'You',
+                    department: user.department || 'Unknown',
+                    xp: user.xp || 0,
+                    level: user.level || 1,
+                    avatarId: user.avatarId || 1,
+                    chaptersCompleted: user.chaptersCompleted || 0
+                }]
+                updated.sort((a, b) => b.xp - a.xp)
+                let rank = 1
+                for (let i = 0; i < updated.length; i++) {
+                    if (i > 0 && Math.floor(updated[i].xp) < Math.floor(updated[i - 1].xp)) {
+                        rank = i + 1
+                    }
+                    updated[i].rank = rank
+                }
+                return updated
+            }
+
+            if (prev[index].xp === user.xp) return prev // unchanged
+
+            const updated = [...prev]
+            updated[index] = { ...updated[index], xp: user.xp, level: user.level }
+
+            // Re-sort
+            updated.sort((a, b) => b.xp - a.xp)
+
+            // Re-rank 
+            let rank = 1
+            for (let i = 0; i < updated.length; i++) {
+                if (i > 0 && Math.floor(updated[i].xp) < Math.floor(updated[i - 1].xp)) {
+                    rank = i + 1
+                }
+                updated[i].rank = rank
+            }
+            return updated
+        })
+    }, [user?.xp, user?.level, user?.id, user?.nik, user?.name, user?.department])
 
     const loadProgress = async () => {
         try {
@@ -203,6 +273,7 @@ export function GameProvider({ children }) {
         <GameContext.Provider value={{
             chapterProgress,
             leaderboard,
+            deptStats,
             xpPopups,
             getLevelFromXP,
             getNextLevel,
