@@ -109,6 +109,7 @@ npm run dev
 | Socket.io real-time updates | ✅ |
 | JWT authentication | ✅ |
 | Role-based access | ✅ |
+| Content-Management Studio | ✅ |
 
 ---
 
