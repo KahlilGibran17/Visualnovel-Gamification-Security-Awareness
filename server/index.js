@@ -23,6 +23,7 @@ app.use('/api/users', require('./routes/users'))
 app.use('/api/progress', require('./routes/progress'))
 app.use('/api/leaderboard', require('./routes/leaderboard'))
 app.use('/api/admin', require('./routes/admin'))
+app.use('/api/elearning', require('./routes/elearning'))
 
 // Health
 app.get('/api/health', (req, res) => {

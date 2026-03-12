@@ -12,6 +12,8 @@ import VNEnginePage from './pages/VNEnginePage.jsx'
 import ChapterResultPage from './pages/ChapterResultPage.jsx'
 import LeaderboardPage from './pages/LeaderboardPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import ElearningPage from './pages/ELearningPage.jsx'
+import ElearningPlayerPage from './pages/ElearningPlayerPage.jsx'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
 import AdminContentPage from './pages/admin/AdminContentPage.jsx'
@@ -61,6 +63,16 @@ export default function App() {
                             <Route path="/profile" element={
                                 <ProtectedRoute roles={['employee', 'manager', 'admin']}>
                                     <ProfilePage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/elearning" element={
+                                <ProtectedRoute roles={['employee', 'manager', 'admin']}>
+                                    <ElearningPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/elearning/:id" element={
+                                <ProtectedRoute roles={['employee', 'manager', 'admin']}>
+                                    <ElearningPlayerPage />
                                 </ProtectedRoute>
                             } />
 
