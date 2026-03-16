@@ -15,7 +15,16 @@ const DEMO_USERS = [
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
-    const [token, setToken] = useState(() => localStorage.getItem('ake_token'))
+    const [token, setToken] = useState(() => {
+        const urlParams = new URLSearchParams(window.location.search)
+        const urlToken = urlParams.get('token')
+        if (urlToken) {
+            sessionStorage.setItem('ake_token', urlToken)
+            window.history.replaceState({}, document.title, window.location.pathname)
+            return urlToken
+        }
+        return localStorage.getItem('ake_token') || sessionStorage.getItem('ake_token')
+    })
 
     useEffect(() => {
         if (token) {

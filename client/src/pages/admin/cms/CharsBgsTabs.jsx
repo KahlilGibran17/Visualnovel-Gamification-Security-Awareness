@@ -16,7 +16,7 @@ const PRESET_EXPRESSIONS = [
     { name: 'sad', emoji: '😢', label: 'Sad' },
 ]
 
-function ExpressionSlot({ slot, existingExpr, characterId, onSaved, onDeleted }) {
+function ExpressionSlot({ slot, existingExpr, character, onSaved, onDeleted }) {
     const [uploading, setUploading] = useState(false)
     const fileRef = useRef()
 
@@ -29,7 +29,7 @@ function ExpressionSlot({ slot, existingExpr, characterId, onSaved, onDeleted })
             fd.append('image', file)
             fd.append('expression_name', slot.name)
             fd.append('emoji', slot.emoji)
-            const res = await axios.post(`/api/cms/characters/${characterId}/expressions`, fd, {
+            const res = await axios.post(`/api/cms/characters/${character.id}/expressions`, fd, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             })
             onSaved(res.data)
@@ -42,32 +42,36 @@ function ExpressionSlot({ slot, existingExpr, characterId, onSaved, onDeleted })
         }
     }
 
+
+
     return (
-        <div className="bg-white/3 border border-white/10 rounded-xl p-3 flex items-center gap-3">
-            <div className="text-2xl flex-shrink-0">{slot.emoji}</div>
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white">{slot.label}</p>
-                {existingExpr?.image_url ? (
-                    <div className="flex items-center gap-2 mt-1">
-                        <img src={existingExpr.image_url} alt={slot.name} className="w-10 h-10 object-cover rounded-lg border border-white/20" />
-                        <span className="text-xs text-green-400">Uploaded ✓</span>
-                    </div>
-                ) : (
-                    <p className="text-xs text-white/30 mt-0.5">No image yet</p>
-                )}
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-                <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                    className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-all">
-                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                </button>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col gap-2 group relative overflow-hidden">
+            <div className="flex justify-between items-center z-10 mb-1">
+                <p className="text-xs font-bold text-white uppercase tracking-wider">{slot.label}</p>
                 {existingExpr?.id && (
-                    <button onClick={() => onDeleted(existingExpr.id)} className="p-2 rounded-lg hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-all">
-                        <X className="w-4 h-4" />
+                    <button onClick={() => onDeleted(existingExpr.id)} className="p-1 rounded hover:bg-red-500/20 text-white/30 hover:text-red-400">
+                        <Trash2 className="w-3.5 h-3.5" />
                     </button>
                 )}
-                <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
             </div>
+
+            <div className="flex-1 min-h-[160px] flex flex-col items-center justify-center bg-black/40 rounded-lg relative overflow-hidden border border-white/5">
+                {existingExpr?.image_url ? (
+                    <img src={existingExpr.image_url} alt={slot.name} className="absolute inset-0 w-full h-full object-cover object-top transition-transform hover:scale-110" />
+                ) : (
+                    <div className="text-center p-2 opacity-30">
+                        <div className="text-3xl mb-1">{slot.emoji}</div>
+                        <p className="text-[10px] text-white">No sprite</p>
+                    </div>
+                )}
+
+                <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 to-transparent flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => fileRef.current?.click()} disabled={uploading} className="flex-1 py-1.5 bg-white/20 hover:bg-white/30 rounded text-[10px] text-white backdrop-blur flex justify-center items-center">
+                        {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : '📁 Upload'}
+                    </button>
+                </div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
         </div>
     )
 }
@@ -173,6 +177,8 @@ export function CharactersTab() {
         } catch { toast.error('Failed to delete expression') }
     }
 
+
+
     if (loading) return <div className="flex justify-center p-20"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>
 
     if (editingChar) {
@@ -190,29 +196,33 @@ export function CharactersTab() {
                 {chars.map(c => (
                     <div key={c.id} className="glass-card overflow-hidden">
                         <div className="p-4 flex items-center gap-4">
-                            <div className="text-4xl">{c.emoji}</div>
+                            <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-3xl border border-white/10 shrink-0">
+                                {c.emoji}
+                            </div>
                             <div className="flex-1">
-                                <p className="font-bold text-white">{c.name}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs bg-white/10 text-white/50 px-2 py-0.5 rounded-full">{c.role}</span>
-                                    <span className="text-xs text-white/30">{c.key_name}</span>
-                                    <span className="text-xs text-white/30">{(c.expressions || []).length} expressions</span>
+                                <div className="flex items-center gap-3">
+                                    <p className="font-bold text-white text-lg">{c.name}</p>
+                                    <span className="text-[10px] uppercase font-bold bg-white/10 text-white/70 px-2 py-0.5 rounded-full tracking-wider">{c.role}</span>
+                                </div>
+                                <div className="flex items-center gap-4 mt-1">
+                                    <span className="text-xs text-white/40 font-mono">key: {c.key_name}</span>
+                                    <span className="text-xs text-white/40">{(c.expressions || []).length} expressions</span>
                                 </div>
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setExpandedExprs(expandedExprs === c.id ? null : c.id)}
                                     className="btn-secondary text-xs flex items-center gap-1.5">
-                                    {expandedExprs === c.id ? 'Close' : '🎭 Expressions'}
+                                    {expandedExprs === c.id ? 'Close' : '🎬 Studio'}
                                 </button>
-                                <button onClick={() => setEditingChar(c)} className="p-2 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-all"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => setEditingChar(c)} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"><Edit3 className="w-4 h-4" /></button>
                                 <button onClick={() => deleteChar(c.id)} className="p-2 rounded-lg hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-all"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         </div>
 
                         {expandedExprs === c.id && (
-                            <div className="border-t border-white/5 p-4">
-                                <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Expression Images — Upload one image per expression</p>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div className="border-t border-white/5 p-5 bg-black/20">
+                                <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Sprite Previews</p>
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
                                     {PRESET_EXPRESSIONS.map(slot => {
                                         const existing = (c.expressions || []).find(e => e.expression_name === slot.name)
                                         return (
@@ -220,7 +230,7 @@ export function CharactersTab() {
                                                 key={slot.name}
                                                 slot={slot}
                                                 existingExpr={existing}
-                                                characterId={c.id}
+                                                character={c}
                                                 onSaved={expr => onExprSaved(c.id, expr)}
                                                 onDeleted={exprId => deleteExpr(c.id, exprId)}
                                             />

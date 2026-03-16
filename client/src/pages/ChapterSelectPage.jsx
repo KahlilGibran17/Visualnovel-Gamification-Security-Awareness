@@ -35,7 +35,11 @@ export default function ChapterSelectPage() {
     const { CHAPTERS, chapterProgress, getLevelFromXP } = useGame()
     const navigate = useNavigate()
 
-    const isLocked = (idx) => idx > 0 && !chapterProgress[idx]?.completed
+    const isLocked = (idx) => {
+        if (idx === 0) return false
+        const prevChapter = CHAPTERS[idx - 1]
+        return !chapterProgress[prevChapter.id]?.completed
+    }
 
     return (
         <Layout>
@@ -58,11 +62,15 @@ export default function ChapterSelectPage() {
                         const completed = progress?.completed
                         const goodEnding = progress?.ending === 'good'
 
+                        const colorClass = CHAPTER_COLORS[idx % CHAPTER_COLORS.length]
+                        const borderClass = CHAPTER_BORDER[idx % CHAPTER_BORDER.length]
+                        const topicDesc = TOPICS[idx % TOPICS.length]?.desc || "Complete this mission to improve your security awareness and earn XP."
+
                         return (
                             <motion.div
                                 key={chapter.id}
                                 id={`chapter-card-${chapter.id}`}
-                                className={`glass-card border ${CHAPTER_BORDER[idx]} bg-gradient-to-br ${CHAPTER_COLORS[idx]} relative overflow-hidden cursor-pointer group transition-all duration-300 ${locked ? 'opacity-60 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-xl'
+                                className={`glass-card border ${borderClass} bg-gradient-to-br ${colorClass} relative overflow-hidden cursor-pointer group transition-all duration-300 ${locked ? 'opacity-60 cursor-not-allowed' : 'hover:scale-[1.02] hover:shadow-xl'
                                     }`}
                                 initial={{ opacity: 0, y: 30 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -106,7 +114,7 @@ export default function ChapterSelectPage() {
                                     </div>
 
                                     {/* Topic description */}
-                                    <p className="text-white/50 text-xs leading-relaxed mb-4">{TOPICS[idx].desc}</p>
+                                    <p className="text-white/50 text-xs leading-relaxed mb-4">{topicDesc}</p>
 
                                     {/* Location */}
                                     <div className="flex items-center gap-1 text-xs text-white/40 mb-4">
@@ -123,8 +131,8 @@ export default function ChapterSelectPage() {
                                         <button
                                             id={`play-chapter-${chapter.id}-btn`}
                                             className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${completed
-                                                    ? 'bg-white/10 text-white hover:bg-white/20'
-                                                    : 'bg-primary text-white hover:bg-primary-dark'
+                                                ? 'bg-white/10 text-white hover:bg-white/20'
+                                                : 'bg-primary text-white hover:bg-primary-dark'
                                                 }`}
                                             style={completed ? {} : { boxShadow: '0 0 20px rgba(230,57,70,0.3)' }}
                                         >

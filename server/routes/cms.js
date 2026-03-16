@@ -5,6 +5,7 @@ const { requireAuth, requireRole } = require('../middleware/auth')
 const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
+const { Jimp } = require('jimp')
 
 // Ensure uploads dir exists
 const uploadsDir = path.join(__dirname, '../../uploads')
@@ -88,6 +89,28 @@ async function buildVNJson(chapterId) {
                 title: scene.custom_data?.title || scene.scene_name,
                 points: scene.custom_data?.points || [],
                 next: nextKey
+            })
+        } else if (scene.scene_type === 'investigate') {
+            let targetsStr = scene.custom_data?.targets || '[]';
+            let parsedTargets = [];
+            try { parsedTargets = typeof targetsStr === 'string' ? JSON.parse(targetsStr) : targetsStr; } catch (e) { }
+            vnScenes.push({
+                id: sceneKey, type: 'investigate', background: bg,
+                uiType: scene.custom_data?.uiType || 'browser',
+                timer: scene.timer || 0,
+                xpReward: scene.xp_reward || 0,
+                targets: parsedTargets,
+                next: nextKey
+            })
+        } else if (scene.scene_type === 'terminal') {
+            vnScenes.push({
+                id: sceneKey, type: 'terminal', background: bg,
+                promptText: scene.custom_data?.promptText || '>_',
+                correctCommand: scene.custom_data?.correctCommand || '',
+                timer: scene.timer || 0,
+                xpReward: scene.xp_reward || 0,
+                successNext: nextKey, // default 'next' goes here
+                failNext: scene.custom_data?.failSceneId ? idToKey[scene.custom_data.failSceneId] : null
             })
         }
     }
@@ -424,10 +447,10 @@ router.post('/characters', requireAuth, requireRole('admin'), async (req, res) =
 
 router.put('/characters/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { name, key_name, role, emoji } = req.body
+        const { name, key_name, role, emoji, uniform_reference_url } = req.body
         const r = await pool.query(
-            'UPDATE vn_characters SET name=$1, key_name=$2, role=$3, emoji=$4 WHERE id=$5 RETURNING *',
-            [name, key_name, role, emoji, req.params.id]
+            'UPDATE vn_characters SET name=$1, key_name=$2, role=$3, emoji=$4, uniform_reference_url=COALESCE($5, uniform_reference_url) WHERE id=$6 RETURNING *',
+            [name, key_name, role, emoji, uniform_reference_url, req.params.id]
         )
         const exprRes = await pool.query('SELECT * FROM vn_char_expressions WHERE character_id=$1', [req.params.id])
         res.json({ ...r.rows[0], expressions: exprRes.rows })
@@ -445,11 +468,81 @@ router.delete('/characters/:id', requireAuth, requireRole('admin'), async (req, 
     }
 })
 
+// Upload uniform reference image
+router.post('/characters/:id/uniform-reference', requireAuth, requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No image provided' })
+        const imageUrl = `/uploads/${req.file.filename}`
+        const r = await pool.query('UPDATE vn_characters SET uniform_reference_url=$1 WHERE id=$2 RETURNING *', [imageUrl, req.params.id])
+        res.json({ message: 'Uniform reference uploaded', character: r.rows[0] })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to upload uniform reference' })
+    }
+})
+
 // Upload expression image for a character
 router.post('/characters/:id/expressions', requireAuth, requireRole('admin'), upload.single('image'), async (req, res) => {
     try {
         const { expression_name, emoji } = req.body
-        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null
+
+        let imageUrl = null
+        if (req.file) {
+            const filePath = req.file.path;
+            try {
+                // Auto-remove white backgrounds on upload using Jimp
+                const image = await Jimp.read(filePath);
+                const w = image.bitmap.width;
+                const h = image.bitmap.height;
+                const { intToRGBA } = require('jimp');
+
+                const isWhite = (x, y) => {
+                    if (x < 0 || x >= w || y < 0 || y >= h) return false;
+                    const c = intToRGBA(image.getPixelColor(x, y));
+                    return c.r > 240 && c.g > 240 && c.b > 240 && c.a > 200;
+                };
+
+                const setTransparent = (x, y) => {
+                    image.setPixelColor(0x00000000, x, y);
+                };
+
+                const bgPoints = [];
+                const visited = new Set();
+
+                for (let x = 0; x < w; x++) {
+                    if (isWhite(x, 0)) bgPoints.push({ x, y: 0 });
+                    if (isWhite(x, h - 1)) bgPoints.push({ x, y: h - 1 });
+                }
+                for (let y = 1; y < h - 1; y++) {
+                    if (isWhite(0, y)) bgPoints.push({ x: 0, y });
+                    if (isWhite(w - 1, y)) bgPoints.push({ x: w - 1, y });
+                }
+
+                let queue = [...bgPoints];
+                let idx = 0;
+                let modified = false;
+                while (idx < queue.length) {
+                    const { x, y } = queue[idx++];
+                    const key = `${x},${y}`;
+                    if (visited.has(key)) continue;
+                    visited.add(key);
+
+                    if (isWhite(x, y)) {
+                        setTransparent(x, y);
+                        modified = true;
+                        if (x > 0 && !visited.has(`${x - 1},${y}`)) queue.push({ x: x - 1, y });
+                        if (x < w - 1 && !visited.has(`${x + 1},${y}`)) queue.push({ x: x + 1, y });
+                        if (y > 0 && !visited.has(`${x},${y - 1}`)) queue.push({ x, y: y - 1 });
+                        if (y < h - 1 && !visited.has(`${x},${y + 1}`)) queue.push({ x, y: y + 1 });
+                    }
+                }
+
+                if (modified) await image.write(filePath);
+            } catch (e) {
+                console.warn('[CMS] Background removal failed for uploaded image:', e.message);
+            }
+            imageUrl = `/uploads/${req.file.filename}`;
+        }
+
         // Upsert: update expression if name already exists for this character
         const existing = await pool.query(
             'SELECT id FROM vn_char_expressions WHERE character_id=$1 AND expression_name=$2',
@@ -480,6 +573,48 @@ router.delete('/characters/:charId/expressions/:exprId', requireAuth, requireRol
         res.json({ message: 'Expression deleted' })
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete expression' })
+    }
+})
+
+function mockAIGenerateDelay() {
+    return new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000))
+}
+
+router.post('/characters/:charId/expressions/:exprId/generate', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { prompt_text, style_preset } = req.body;
+        // Mocking the AI service delay and returning a placeholder
+        // In real prod, this replaces with OpenAI/Replicate SDK calls which takes character uniform ref and prompt text
+        await mockAIGenerateDelay()
+
+        const existingInfo = await pool.query('SELECT * FROM vn_char_expressions WHERE id=$1', [req.params.exprId])
+        if (!existingInfo.rows.length) return res.status(404).json({ error: 'Expr not found' })
+
+        // Simulation complete. In a real scenario, we would parse the AI image URL and update the DB here.
+        // For the offline mock, we safely return the existing image to avoid breaking the UI with transparent pixels.
+        res.json(existingInfo.rows[0])
+    } catch (err) {
+        console.error('Gen error:', err.message)
+        res.status(500).json({ error: 'Failed to generate sprite' })
+    }
+})
+
+router.post('/characters/:charId/expressions/batch-generate', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { base_prompt } = req.body
+        const charRes = await pool.query('SELECT * FROM vn_char_expressions WHERE character_id=$1', [req.params.charId])
+        const expressions = charRes.rows;
+
+        const results = []
+        for (const expr of expressions) {
+            await mockAIGenerateDelay()
+            // Simulation complete. Push the existing expression safely.
+            results.push(expr)
+        }
+        res.json({ message: 'Batch generated', expressions: results })
+    } catch (err) {
+        console.error('Batch error:', err.message)
+        res.status(500).json({ error: 'Failed to batch generate' })
     }
 })
 

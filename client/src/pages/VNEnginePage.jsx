@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Volume2, VolumeX, SkipForward, RotateCcw, Star, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { Home, Volume2, VolumeX, SkipForward, RotateCcw, Star, AlertTriangle, CheckCircle, Clock, Search, Monitor, Smartphone, MousePointer2, XCircle, Terminal as TerminalIcon, Mail, BookOpen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useGame } from '../contexts/GameContext.jsx'
 
@@ -35,7 +35,7 @@ const BACKGROUNDS = {
 }
 
 // Character sprites
-function CharacterSprite({ character, expression, position }) {
+function CharacterSprite({ character, expression, position, isActive }) {
     const { CHARACTERS } = useGame()
 
     const SPRITES = {
@@ -50,47 +50,35 @@ function CharacterSprite({ character, expression, position }) {
 
     const sprite = SPRITES[character] || SPRITES.player
     const exprEmoji = customExpr?.emoji || (customChar ? customChar.emoji : (sprite.expressions[expression] || sprite.base))
-    const imgUrl = customExpr?.image_url
+    const imgUrl = customExpr?.sprite_url || customExpr?.image_url
 
-    const charColors = {
-        player: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30',
-        akebot: 'from-yellow-500/20 to-amber-500/20 border-yellow-500/30',
-        villain: 'from-red-900/40 to-purple-900/30 border-red-600/30',
-        manager: 'from-green-500/20 to-emerald-500/20 border-green-500/30',
-    }
-
-    const colorClass = charColors[character] || (customChar ? 'from-purple-500/20 to-fuchsia-500/20 border-purple-500/30' : charColors.player)
-
+    // Full height 2D sprite rendering
     return (
         <motion.div
-            className={`flex flex-col items-center gap-1 ${position === 'right' ? 'items-end' : 'items-start'}`}
-            initial={{ opacity: 0, x: position === 'left' ? -30 : 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: position === 'left' ? -30 : 30 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+            className={`relative flex flex-col justify-end ${position === 'right' ? 'items-end' : 'items-start'} h-[30vh] md:h-[40vh] w-[35vw] md:w-[25vw] overflow-visible`}
+            initial={{ opacity: 0, x: position === 'left' ? -50 : 50 }}
+            animate={{
+                opacity: isActive ? 1 : 0.6,
+                x: 0,
+                scale: isActive ? 1.05 : 0.95,
+                filter: isActive ? 'brightness(1)' : 'brightness(0.5)'
+            }}
+            exit={{ opacity: 0, x: position === 'left' ? -50 : 50 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 25, duration: 0.2 }}
+            style={{ transformOrigin: 'bottom center' }}
         >
-            <motion.div
-                className={`w-28 h-36 md:w-36 md:h-48 rounded-2xl border bg-gradient-to-b ${colorClass} flex flex-col items-center justify-center gap-2 relative overflow-hidden`}
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            >
-                {/* CRT scanlines overlay */}
-                <div className="absolute inset-0 scanlines opacity-30 pointer-events-none z-10" />
-
-                {imgUrl ? (
-                    <img src={imgUrl} alt={expression} className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                    <span className="text-5xl md:text-7xl select-none relative z-10">{exprEmoji?.split('')[0] || '👤'}</span>
-                )}
-
-                {character === 'villain' && !imgUrl && (
-                    <motion.div
-                        className="absolute inset-0 bg-red-500/5"
-                        animate={{ opacity: [0, 0.3, 0] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                    />
-                )}
-            </motion.div>
+            {imgUrl ? (
+                <img
+                    src={imgUrl}
+                    alt={expression}
+                    className="w-full h-full object-contain object-bottom drop-shadow-xl relative z-10"
+                />
+            ) : (
+                // Fallback emoji rendering if no sprite is available
+                <div className={`w-full max-w-sm aspect-[2/3] rounded-3xl border ${isActive ? 'from-white/20 to-white/5 border-white/30' : 'from-black/40 to-black/20 border-black/50'} bg-gradient-to-b flex flex-col items-center justify-center relative overflow-hidden backdrop-blur-sm`}>
+                    <span className="text-8xl md:text-9xl select-none relative z-10 drop-shadow-xl">{exprEmoji?.split('')[0] || '👤'}</span>
+                </div>
+            )}
         </motion.div>
     )
 }
@@ -241,6 +229,183 @@ function TimerRing({ seconds, total }) {
     )
 }
 
+// Investigate display
+function InvestigateDisplay({ scene, onFound, timer, timerTotal }) {
+    const [foundItems, setFoundItems] = useState([])
+    const totalItems = scene.targets?.length || 0
+
+    const handleClick = (target) => {
+        if (!foundItems.includes(target.id)) {
+            const newFound = [...foundItems, target.id]
+            setFoundItems(newFound)
+            if (newFound.length === totalItems) {
+                setTimeout(() => onFound(true), 1000)
+            }
+        }
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto pointer-events-auto z-20">
+            <div className="bg-dark/80 backdrop-blur-xl border border-white/10 p-4 rounded-xl mb-4 w-full flex items-center justify-between">
+                <div>
+                    <h3 className="text-xl font-bold text-accent mb-1 flex items-center gap-2"><Search className="w-5 h-5" /> Spot the Threats!</h3>
+                    <p className="text-white/70 text-sm">Find and click all {totalItems} security vulnerabilities.</p>
+                </div>
+                <div className="flex gap-4 items-center">
+                    <div className="text-right">
+                        <div className="text-sm text-white/50">Found</div>
+                        <div className="text-2xl font-black font-mono text-white">{foundItems.length}/{totalItems}</div>
+                    </div>
+                    {timer > 0 && <TimerRing seconds={timer} total={timerTotal} />}
+                </div>
+            </div>
+
+            <div className="relative w-full aspect-video bg-[#e0e0e0] rounded-lg border-4 border-gray-700 overflow-hidden shadow-2xl ring-4 ring-black/20">
+                {/* Simulated Content Area overlayed with invisible click targets */}
+                {scene.uiType === 'email' ? (
+                    <div className="absolute inset-0 bg-white flex flex-col text-left font-sans">
+                        <div className="bg-[#0078d4] text-white p-2.5 px-4 font-semibold text-sm flex items-center gap-2">
+                            <Mail className="w-4 h-4" /> Outlook Web Access
+                        </div>
+                        <div className="border-b p-4 bg-[#f3f2f1] flex flex-col gap-1">
+                            <div className="text-gray-900 text-xl font-semibold mb-2">URGENT: Password Expiry Notification</div>
+                            <div className="text-sm text-gray-600 flex items-center gap-1">
+                                <span className="font-semibold text-gray-800">IT-Support</span> &lt;admin@akeb0no-secure.net&gt;
+                            </div>
+                            <div className="text-sm text-gray-500">To: Employee User</div>
+                        </div>
+                        <div className="p-6 text-gray-800 text-sm flex-1 bg-white overflow-hidden">
+                            <p className="mb-4">Dear Employee,</p>
+                            <p className="mb-4">Your Akebono corporate network password is set to expire in <strong>2 hours</strong>. Failure to update it immediately will result in a complete account lockout and require IT unblocking.</p>
+                            <p className="mb-6">Please securely log in and update your credentials immediately below:</p>
+                            <div className="bg-blue-50 border border-blue-200 inline-block p-4 rounded mb-6">
+                                <a href="#" className="underline text-[#0078d4] font-semibold text-base block">https://auth.akebono-secure-reset.com/login</a>
+                            </div>
+                            <p className="text-gray-500 text-xs">Regards,<br />Information Technology Administration Desk<br />Akebono Brake Astra Indonesia</p>
+                        </div>
+                    </div>
+                ) : scene.uiType === 'desktop' ? (
+                    <div className="absolute inset-0 bg-[#005a9e] flex flex-col">
+                        <div className="flex-1 p-4 grid grid-cols-6 gap-4 content-start">
+                            <div className="w-16 flex flex-col items-center gap-1 cursor-pointer">
+                                <div className="w-10 h-10 bg-blue-300 rounded shadow flex items-center justify-center text-[#005a9e]"><Monitor className="w-6 h-6" /></div>
+                                <span className="text-white text-xs drop-shadow-md text-center">My PC</span>
+                            </div>
+                            <div className="w-16 flex flex-col items-center gap-1 cursor-pointer">
+                                <div className="w-10 h-10 bg-yellow-400 rounded shadow flex items-center justify-center text-white"><BookOpen className="w-6 h-6" /></div>
+                                <span className="text-white text-xs drop-shadow-md text-center">Reports</span>
+                            </div>
+                            <div className="w-16 flex flex-col items-center gap-1 cursor-pointer">
+                                <div className="w-10 h-10 bg-gray-200 rounded shadow border-l-[12px] border-red-500 flex items-center justify-center relative"><span className="absolute bottom-0 right-0 text-[10px] font-bold text-gray-500 bg-white px-0.5 border">EXE</span></div>
+                                <span className="text-white text-xs drop-shadow-md text-center bg-blue-600/50 px-1 rounded truncate w-20">Salary_2024.pdf.exe</span>
+                            </div>
+                        </div>
+                        <div className="h-10 bg-black/80 backdrop-blur border-t border-white/10 flex items-center px-2 z-10 w-full">
+                            <div className="w-10 h-8 rounded bg-[#0078d4] mr-4 flex items-center justify-center text-white font-bold text-xs shadow-inner hover:bg-blue-600 cursor-pointer">Start</div>
+                            <div className="text-white text-xs ml-auto pr-4">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="absolute inset-0 bg-gray-100 flex flex-col">
+                        {/* Fake Web browser UI */}
+                        <div className="h-10 bg-[#dee1e6] border-b border-[#cccccc] flex items-center px-4 gap-2 shrink-0">
+                            <div className="flex gap-1.5"><div className="w-3 h-3 rounded-full bg-[#ff5f56]" /><div className="w-3 h-3 rounded-full bg-[#ffbd2e]" /><div className="w-3 h-3 rounded-full bg-[#27c93f]" /></div>
+                            <div className="ml-4 flex-1 bg-white rounded-full text-xs px-4 py-1.5 text-red-600 font-mono shadow-sm flex items-center gap-2 border border-red-200">
+                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> <span className="truncate">https://akeb0no-internal-login.net/auth/verify?token=1829f0</span>
+                            </div>
+                        </div>
+                        <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] text-gray-800">
+                            <div className="bg-white p-8 rounded-xl shadow-xl w-[400px] border border-gray-100 flex flex-col items-center">
+                                <div className="w-16 h-16 bg-blue-900 rounded-full flex items-center justify-center mb-4">
+                                    <span className="text-white font-bold text-xl">AKE</span>
+                                </div>
+                                <h2 className="text-xl font-bold mb-6 text-center text-gray-800 w-full border-b pb-4">Employee Portal Login</h2>
+                                <div className="space-y-4 w-full">
+                                    <div>
+                                        <input type="text" disabled className="w-full border border-gray-300 rounded-md mt-1 p-2.5 bg-gray-50 text-sm" placeholder="Enter NIK (e.g. 10001)" />
+                                    </div>
+                                    <div>
+                                        <input type="password" disabled className="w-full border border-gray-300 rounded-md mt-1 p-2.5 bg-gray-50 text-sm" placeholder="Password" />
+                                    </div>
+                                    <button className="w-full bg-[#005a9e] text-white rounded-md p-2.5 font-bold opacity-70 cursor-not-allowed mt-2">Sign In securely</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {scene.targets?.map((t) => (
+                    <motion.button
+                        key={t.id}
+                        className={`absolute w-12 h-12 -ml-6 -mt-6 rounded-full border-4 shadow-lg flex items-center justify-center pointer-events-auto transition-colors ${foundItems.includes(t.id) ? 'border-green-500 bg-green-500/20 text-green-600' : 'border-red-500/50 hover:border-red-500 bg-transparent text-transparent hover:text-red-500'}`}
+                        style={{ left: `${t.x}%`, top: `${t.y}%` }}
+                        onClick={() => handleClick(t)}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        {foundItems.includes(t.id) ? <CheckCircle className="w-6 h-6" /> : <MousePointer2 className="w-6 h-6" />}
+                    </motion.button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+// Terminal display
+function TerminalDisplay({ scene, onCommand, timer, timerTotal }) {
+    const [input, setInput] = useState('')
+    const [logs, setLogs] = useState([{ type: 'sys', text: scene.promptText }])
+
+    const handleSubmit = (e) => {
+        e.preventDefault()
+        if (!input.trim()) return
+
+        const cmd = input.trim().toLowerCase()
+        const correct = scene.correctCommand.toLowerCase()
+
+        setLogs(prev => [...prev, { type: 'user', text: `> ${input} ` }])
+        setInput('')
+
+        if (cmd === correct) {
+            setLogs(prev => [...prev, { type: 'success', text: 'ACCESS GRANTED / THREAT NEUTRALIZED' }])
+            setTimeout(() => onCommand(true), 1500)
+        } else {
+            setLogs(prev => [...prev, { type: 'error', text: 'Command unrecognized or access denied.' }])
+        }
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center w-full max-w-3xl mx-auto pointer-events-auto z-20">
+            <div className="w-full bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl font-mono text-sm border flex flex-col h-[50vh] border-gray-700 ring-2 ring-black/50">
+                <div className="bg-gray-800 p-2 flex items-center justify-between border-b border-gray-900 border-opacity-50">
+                    <div className="flex items-center gap-2 text-gray-400 text-xs">
+                        <TerminalIcon className="w-4 h-4" /> Security CLI - root@akebono
+                    </div>
+                    {timer > 0 && <div className="text-red-400 font-bold flex items-center gap-2">T-MINUS {timer}s</div>}
+                </div>
+                <div className="flex-1 p-4 overflow-y-auto font-mono flex flex-col gap-1 text-green-400 pb-20">
+                    {logs.map((L, i) => (
+                        <div key={i} className={`${L.type === 'error' ? 'text-red-400' : L.type === 'sys' ? 'text-yellow-400 font-bold' : L.type === 'success' ? 'text-green-300 font-bold bg-green-900/40 p-1' : 'text-gray-300'} `}>
+                            {L.text}
+                        </div>
+                    ))}
+                </div>
+                <form onSubmit={handleSubmit} className="p-2 bg-black border-t border-gray-800 flex items-center gap-2 mt-auto">
+                    <span className="text-green-500 font-bold">root@sec~#</span>
+                    <input
+                        type="text"
+                        autoFocus
+                        autoComplete="off"
+                        className="flex-1 bg-transparent text-gray-100 outline-none placeholder-gray-700"
+                        placeholder="Type command..."
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                    />
+                </form>
+            </div>
+        </div>
+    )
+}
+
 export default function VNEnginePage() {
     const { chapterId } = useParams()
     const { user } = useAuth()
@@ -258,11 +423,18 @@ export default function VNEnginePage() {
     const [showHud, setShowHud] = useState(true)
     const [gameOver, setGameOver] = useState(false)
 
+    const [loading, setLoading] = useState(true)
+
     useEffect(() => {
+        // Wait for chapters to load from context if they are still the default ones
+        if (CHAPTERS.length > 0) {
+            setLoading(false)
+        }
+
         if (!sceneId && chapterData?.scenes?.length > 0) {
             setSceneId(chapterData.scenes[0].id)
         }
-    }, [chapterData, sceneId])
+    }, [CHAPTERS, chapterData, sceneId])
 
     const currentScene = chapterData?.scenes?.find(s => s.id === sceneId)
     const playerName = user?.name?.split(' ')[0] || 'Recruit'
@@ -275,17 +447,25 @@ export default function VNEnginePage() {
         currentScene?.type === 'dialogue'
     )
 
-    // Timer for choices
+    // Timer handle for choice, investigate, and terminal scenes
     useEffect(() => {
-        if (currentScene?.type === 'choice' && currentScene.timer && !choiceResult) {
+        if (!currentScene?.timer || choiceResult) return;
+        const typesWithTimer = ['choice', 'investigate', 'terminal'];
+
+        if (typesWithTimer.includes(currentScene.type)) {
             setTimer(currentScene.timer)
             setTimerTotal(currentScene.timer)
             const interval = setInterval(() => {
                 setTimer(prev => {
                     if (prev <= 1) {
                         clearInterval(interval)
-                        // Auto-select wrong answer on timeout
-                        handleChoice(currentScene.choices[0], true)
+                        if (currentScene.type === 'choice') {
+                            handleChoice(currentScene.choices[0], true)
+                        } else if (currentScene.type === 'investigate') {
+                            handleInvestigate(false, true)
+                        } else if (currentScene.type === 'terminal') {
+                            handleTerminal(false, true)
+                        }
                         return 0
                     }
                     return prev - 1
@@ -294,6 +474,46 @@ export default function VNEnginePage() {
             return () => clearInterval(interval)
         }
     }, [sceneId, choiceResult])
+
+    const handleInvestigate = useCallback((success, timedOut = false) => {
+        setTimer(null)
+        if (success) {
+            if (currentScene.xpReward) {
+                awardXP(currentScene.xpReward, `Chapter ${chapterId} spot the phish`)
+                setXpTotal(prev => prev + currentScene.xpReward)
+            }
+            setSceneId(currentScene.next)
+        } else {
+            setWrongChoices(prev => prev + 1)
+            setChoiceResult({
+                correct: false,
+                consequence: timedOut ? "Time ran out before you could spot all the threats!" : "Investigation failed.",
+                lesson: "Always inspect URLs carefully and scrutinize unexpected attachments before clicking.",
+                xp: 0,
+                next: currentScene.next
+            })
+        }
+    }, [currentScene, chapterId, awardXP])
+
+    const handleTerminal = useCallback((success, timedOut = false) => {
+        setTimer(null)
+        if (success) {
+            if (currentScene.xpReward) {
+                awardXP(currentScene.xpReward, `Chapter ${chapterId} terminal defense`)
+                setXpTotal(prev => prev + currentScene.xpReward)
+            }
+            setSceneId(currentScene.successNext || currentScene.failNext)
+        } else {
+            setWrongChoices(prev => prev + 1)
+            setChoiceResult({
+                correct: false,
+                consequence: timedOut ? "Network breached. Your terminal timed out." : "Invalid commands entered. System compromised.",
+                lesson: "In emergency scenarios, speed and accurate command execution are critical.",
+                xp: 0,
+                next: currentScene.failNext
+            })
+        }
+    }, [currentScene, chapterId, awardXP])
 
     const handleChoice = useCallback((choice, timedOut = false) => {
         setTimer(null)
@@ -344,12 +564,29 @@ export default function VNEnginePage() {
         navigate(`/result/${chapterId}`, { state: { result, chapterData } })
     }
 
-    if (!chapterData) {
+    if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-dark">
                 <div className="text-center">
-                    <p className="text-white text-xl mb-4">Chapter not available yet</p>
-                    <button onClick={() => navigate('/chapters')} className="btn-primary">← Back to Chapters</button>
+                    <motion.div
+                        className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4"
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    />
+                    <p className="text-white text-xl">Loading Mission...</p>
+                </div>
+            </div>
+        )
+    }
+
+    if (!chapterData || !chapterData.scenes || chapterData.scenes.length === 0) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-dark">
+                <div className="text-center max-w-md p-8 glass-card">
+                    <div className="text-6xl mb-4">🚧</div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Chapter {chapterId} Not Ready</h2>
+                    <p className="text-white/60 mb-6"> This chapter is currently under development or has no playable scenes yet. Please check back later!</p>
+                    <button onClick={() => navigate('/chapters')} className="btn-primary w-full">← Back to Mission Select</button>
                 </div>
             </div>
         )
@@ -371,14 +608,6 @@ export default function VNEnginePage() {
                 className={`absolute inset-0 transition-all duration-1000 ${bgGradient ? `bg-gradient-to-b ${bgGradient}` : ''}`}
                 style={bgStyle}
             />
-
-            {/* Scanline overlay */}
-            <div className="absolute inset-0 scanlines opacity-20 pointer-events-none" />
-
-            {/* CRT vignette */}
-            <div className="absolute inset-0 pointer-events-none" style={{
-                background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%)'
-            }} />
 
             {/* HUD - Top bar */}
             <AnimatePresence>
@@ -417,34 +646,42 @@ export default function VNEnginePage() {
             <div className="relative flex-1 flex items-end">
                 {/* Characters */}
                 {currentScene?.type === 'dialogue' && (
-                    <div className="absolute inset-0 flex items-end justify-between px-8 pb-36 pointer-events-none">
+                    <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none z-0 overflow-hidden">
                         {/* Left character */}
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence mode="popLayout">
                             {currentScene.position === 'left' && (
-                                <motion.div key={currentScene.character + '_left'} className="pointer-events-auto">
+                                <motion.div key={currentScene.character + '_left'} className="absolute bottom-24 md:bottom-32 left-4 md:left-16 pointer-events-auto flex items-end">
                                     <CharacterSprite
                                         character={currentScene.character}
                                         expression={currentScene.expression}
                                         position="left"
+                                        isActive={true} /* Only 1 char speaks in single char scenes */
                                     />
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
                         {/* Right character */}
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence mode="popLayout">
                             {currentScene.position === 'right' && (
-                                <motion.div key={currentScene.character + '_right'} className="pointer-events-auto">
+                                <motion.div key={currentScene.character + '_right'} className="absolute bottom-24 md:bottom-32 right-4 md:right-16 pointer-events-auto flex items-end">
                                     <CharacterSprite
                                         character={currentScene.character}
                                         expression={currentScene.expression}
                                         position="right"
+                                        isActive={true}
                                     />
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
                 )}
+
+                {/* Visual Novel Retro Overlays (Covers background + characters to blend them) */}
+                <div className="absolute inset-0 scanlines opacity-25 pointer-events-none z-0" />
+                <div className="absolute inset-0 pointer-events-none z-0" style={{
+                    background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.8) 100%)'
+                }} />
 
                 {/* Email scene */}
                 {currentScene?.type === 'email' && (
@@ -466,6 +703,30 @@ export default function VNEnginePage() {
                     </div>
                 )}
 
+                {/* Investigate scene */}
+                {currentScene?.type === 'investigate' && !choiceResult && (
+                    <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
+                        <InvestigateDisplay
+                            scene={currentScene}
+                            onFound={(success) => handleInvestigate(success)}
+                            timer={timer}
+                            timerTotal={timerTotal}
+                        />
+                    </div>
+                )}
+
+                {/* Terminal scene */}
+                {currentScene?.type === 'terminal' && !choiceResult && (
+                    <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
+                        <TerminalDisplay
+                            scene={currentScene}
+                            onCommand={(success) => handleTerminal(success)}
+                            timer={timer}
+                            timerTotal={timerTotal}
+                        />
+                    </div>
+                )}
+
                 {/* Ending scene */}
                 {currentScene?.type === 'ending' && (
                     <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
@@ -476,7 +737,7 @@ export default function VNEnginePage() {
                             transition={{ type: 'spring' }}
                         >
                             <div className="text-6xl mb-4">{currentScene.ending === 'good' ? '🎉' : '💥'}</div>
-                            <h2 className={`text-2xl font-bold font-display mb-3 ${currentScene.ending === 'good' ? 'text-accent' : 'text-primary'}`}>
+                            <h2 className={`text - 2xl font - bold font - display mb - 3 ${currentScene.ending === 'good' ? 'text-accent' : 'text-primary'} `}>
                                 {currentScene.title}
                             </h2>
                             <p className="text-white/70 mb-4">{currentScene.message}</p>

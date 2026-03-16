@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, ChevronUp, ChevronDown, Copy, GripVertical, MessageSquare, HelpCircle, Flag, CheckCircle, Circle, X, Loader2, Clock, Mail, BookOpen } from 'lucide-react'
+import { Plus, Trash2, ChevronUp, ChevronDown, Copy, GripVertical, MessageSquare, HelpCircle, Flag, CheckCircle, Circle, X, Loader2, Clock, Mail, BookOpen, Search, Terminal } from 'lucide-react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 
 export const SCENE_TYPES = [
     { value: 'dialogue', label: 'Dialogue', icon: MessageSquare, color: 'blue' },
     { value: 'choice', label: 'Choice', icon: HelpCircle, color: 'yellow' },
-    { value: 'ending', label: 'Ending', icon: Flag, color: 'green' },
+    { value: 'investigate', label: 'Spot the Phish', icon: Search, color: 'orange' },
+    { value: 'terminal', label: 'Terminal CLI', icon: Terminal, color: 'green' },
+    { value: 'ending', label: 'Ending', icon: Flag, color: 'red' },
     { value: 'email', label: 'Email', icon: Mail, color: 'purple' },
     { value: 'lesson', label: 'Lesson', icon: BookOpen, color: 'cyan' },
 ]
@@ -136,7 +138,15 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, onUpd
 
     const typeInfo = SCENE_TYPES.find(t => t.value === local.scene_type) || SCENE_TYPES[0]
     const TypeIcon = typeInfo.icon
-    const colorMap = { blue: 'bg-blue-500/20 text-blue-400', yellow: 'bg-yellow-500/20 text-yellow-400', green: 'bg-green-500/20 text-green-400' }
+    const colorMap = {
+        blue: 'bg-blue-500/20 text-blue-400',
+        yellow: 'bg-yellow-500/20 text-yellow-400',
+        green: 'bg-green-500/20 text-green-400',
+        orange: 'bg-orange-500/20 text-orange-400',
+        red: 'bg-red-500/20 text-red-400',
+        purple: 'bg-purple-500/20 text-purple-400',
+        cyan: 'bg-cyan-500/20 text-cyan-400'
+    }
 
     return (
         <motion.div layout initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="glass-card overflow-hidden">
@@ -354,6 +364,79 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, onUpd
                                     <div>
                                         <label className="label-xs">➡️ Next Scene</label>
                                         <select className="input-field w-full text-sm mt-1" value={local.next_scene_id || ''} onChange={e => field('next_scene_id', e.target.value ? parseInt(e.target.value) : null)}>
+                                            <option value="">— Auto-next —</option>
+                                            {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Investigate / Spot-The-Phish fields */}
+                            {local.scene_type === 'investigate' && (
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="label-xs">🔎 Target UI Type</label>
+                                            <select className="input-field w-full text-sm mt-1" value={local.custom_data?.uiType || 'browser'} onChange={e => field('custom_data', { ...local.custom_data, uiType: e.target.value })}>
+                                                <option value="browser">Web Browser</option>
+                                                <option value="email">Email Client</option>
+                                                <option value="desktop">PC Desktop</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="label-xs">⏱️ Timer (seconds, 0 = no timer)</label>
+                                            <input type="number" className="input-field w-full text-sm mt-1" value={local.timer || 0} onChange={e => field('timer', parseInt(e.target.value) || 0)} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="label-xs">⭐ XP Reward on Success</label>
+                                        <input type="number" className="input-field w-full text-sm mt-1" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
+                                    </div>
+                                    <div>
+                                        <label className="label-xs">🎯 Target Items (JSON Array)</label>
+                                        <textarea className="input-field w-full text-sm resize-none mt-1 font-mono" rows={5} placeholder='[{"id":"url","x":20,"y":5,"description":"Fake domain name"},{"id":"attachment","x":50,"y":80,"description":"Suspicious .exe file"}]' value={typeof local.custom_data?.targets === 'string' ? local.custom_data.targets : JSON.stringify(local.custom_data?.targets || [], null, 2)} onChange={e => field('custom_data', { ...local.custom_data, targets: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="label-xs">➡️ Next Scene</label>
+                                        <select className="input-field w-full text-sm mt-1" value={local.next_scene_id || ''} onChange={e => field('next_scene_id', e.target.value ? parseInt(e.target.value) : null)}>
+                                            <option value="">— Auto-next —</option>
+                                            {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Terminal fields */}
+                            {local.scene_type === 'terminal' && (
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="label-xs">💻 Terminal Prompt Message</label>
+                                        <textarea className="input-field w-full text-sm resize-none mt-1" rows={3} placeholder="WARNING: Unidentified connection from 192.168.1.55! Type block to stop it." value={local.custom_data?.promptText || ''} onChange={e => field('custom_data', { ...local.custom_data, promptText: e.target.value })} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="label-xs">⌨️ Correct Command</label>
+                                            <input className="input-field w-full text-sm mt-1 font-mono" placeholder="sudo block 192.168.1.55" value={local.custom_data?.correctCommand || ''} onChange={e => field('custom_data', { ...local.custom_data, correctCommand: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="label-xs">⏱️ Timer (seconds, 0 = no timer)</label>
+                                            <input type="number" className="input-field w-full text-sm mt-1" value={local.timer || 0} onChange={e => field('timer', parseInt(e.target.value) || 0)} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="label-xs">⭐ XP Reward on Success</label>
+                                        <input type="number" className="input-field w-full text-sm mt-1" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
+                                    </div>
+                                    <div>
+                                        <label className="label-xs">➡️ Next Scene (Success)</label>
+                                        <select className="input-field w-full text-sm mt-1" value={local.next_scene_id || ''} onChange={e => field('next_scene_id', e.target.value ? parseInt(e.target.value) : null)}>
+                                            <option value="">— Auto-next —</option>
+                                            {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="label-xs">➡️ Next Scene (Fail/Timeout)</label>
+                                        <select className="input-field w-full text-sm mt-1" value={local.custom_data?.failSceneId || ''} onChange={e => field('custom_data', { ...local.custom_data, failSceneId: e.target.value })}>
                                             <option value="">— Auto-next —</option>
                                             {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
                                         </select>

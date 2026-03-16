@@ -191,10 +191,10 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
                         {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
                         Publish
                     </button>
-                    <a href={`/play/${chapterId}`} target="_blank" rel="noreferrer"
+                    <button onClick={() => window.open(`/play/${chapterId}?token=${sessionStorage.getItem('ake_token') || localStorage.getItem('ake_token') || ''}`, '_blank')}
                         className="btn-secondary flex items-center gap-2 text-sm">
                         <Eye className="w-4 h-4" /> Preview
-                    </a>
+                    </button>
                 </div>
             </div>
 

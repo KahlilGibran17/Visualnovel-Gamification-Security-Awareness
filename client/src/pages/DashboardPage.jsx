@@ -71,7 +71,7 @@ function ChapterMapNode({ chapter, progress, locked, onPlay, index }) {
                 whileHover={isUnlocked ? { scale: 1.1 } : {}}
                 whileTap={isUnlocked ? { scale: 0.95 } : {}}
                 className={`relative w-16 h-16 rounded-full border-2 flex items-center justify-center text-2xl transition-all duration-300 ${isComplete ? 'chapter-node-completed' :
-                        isUnlocked ? 'chapter-node-unlocked' : 'chapter-node-locked'
+                    isUnlocked ? 'chapter-node-unlocked' : 'chapter-node-locked'
                     }`}
             >
                 {isComplete && (
@@ -279,7 +279,7 @@ export default function DashboardPage() {
 
                         <div className="grid grid-cols-3 gap-6 place-items-center py-2">
                             {CHAPTERS.map((ch, idx) => {
-                                const locked = idx > 0 && !chapterProgress[idx]?.completed
+                                const locked = idx > 0 && !chapterProgress[CHAPTERS[idx - 1].id]?.completed
                                 return (
                                     <ChapterMapNode
                                         key={ch.id}
