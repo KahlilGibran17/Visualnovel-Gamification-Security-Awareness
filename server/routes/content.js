@@ -14,6 +14,17 @@ router.get('/chapters', requireAuth, async (req, res) => {
     }
 })
 
+// Get UI types
+router.get('/ui-types', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM vn_ui_types ORDER BY id ASC')
+        res.json(result.rows)
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({ error: 'Failed to fetch UI types' })
+    }
+})
+
 // Admin: Update chapter details or scenes
 router.put('/chapters/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {

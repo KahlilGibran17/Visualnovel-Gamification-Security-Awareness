@@ -15,6 +15,7 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
     const [scenes, setScenes] = useState([])
     const [characters, setCharacters] = useState([])
     const [backgrounds, setBackgrounds] = useState([])
+    const [uiTypes, setUiTypes] = useState([])
     const [loading, setLoading] = useState(true)
     const [headerForm, setHeaderForm] = useState({})
     const [savingHeader, setSavingHeader] = useState(false)
@@ -28,10 +29,11 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
     const loadAll = async () => {
         setLoading(true)
         try {
-            const [chRes, chrRes, bgRes] = await Promise.all([
+            const [chRes, chrRes, bgRes, uiRes] = await Promise.all([
                 axios.get(`/api/cms/chapters/${chapterId}`),
                 axios.get('/api/cms/characters'),
                 axios.get('/api/cms/backgrounds'),
+                axios.get('/api/cms/ui-types')
             ])
             const ch = chRes.data
             setChapter(ch)
@@ -39,6 +41,7 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
             setScenes(ch.relationalScenes || [])
             setCharacters(chrRes.data)
             setBackgrounds(bgRes.data)
+            setUiTypes(uiRes.data)
         } catch (err) {
             toast.error('Failed to load chapter: ' + (err.response?.data?.error || err.message))
         } finally {
@@ -262,6 +265,7 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
                                     scenes={scenes}
                                     characters={characters}
                                     backgrounds={backgrounds}
+                                    uiTypes={uiTypes}
                                     onUpdate={updateScene}
                                     onDelete={deleteScene}
                                     onMoveUp={() => moveScene(idx, idx - 1)}

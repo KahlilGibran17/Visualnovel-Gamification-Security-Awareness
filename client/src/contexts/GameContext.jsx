@@ -78,16 +78,18 @@ export function GameProvider({ children }) {
     const [badges, setBadges] = useState(FALLBACK_BADGES)
     const [backgrounds, setBackgrounds] = useState([])
     const [characters, setCharacters] = useState([])
+    const [uiTypes, setUiTypes] = useState([])
 
     useEffect(() => {
         const fetchContent = async () => {
             try {
-                const [cRes, lRes, bRes, bgRes, charRes] = await Promise.all([
+                const [cRes, lRes, bRes, bgRes, charRes, uiRes] = await Promise.all([
                     axios.get('/api/content/chapters'),
                     axios.get('/api/content/levels'),
                     axios.get('/api/content/badges'),
                     axios.get('/api/cms/backgrounds').catch(() => ({ data: [] })),
-                    axios.get('/api/cms/characters').catch(() => ({ data: [] }))
+                    axios.get('/api/cms/characters').catch(() => ({ data: [] })),
+                    axios.get('/api/content/ui-types').catch(() => ({ data: [] }))
                 ])
                 if (Array.isArray(cRes.data) && cRes.data.length > 0) {
                     setChapters(cRes.data)
@@ -104,8 +106,8 @@ export function GameProvider({ children }) {
                 if (charRes?.data && Array.isArray(charRes.data)) {
                     setCharacters(charRes.data)
                 }
-                if (charRes?.data && Array.isArray(charRes.data)) {
-                    setCharacters(charRes.data)
+                if (uiRes?.data && Array.isArray(uiRes.data)) {
+                    setUiTypes(uiRes.data)
                 }
             } catch (err) {
                 console.warn('Using fallback content (auth may not be ready):', err.message)
@@ -286,6 +288,7 @@ export function GameProvider({ children }) {
             BADGES: badges,
             BACKGROUNDS: backgrounds,
             CHARACTERS: characters,
+            UI_TYPES: uiTypes,
         }}>
             {children}
         </GameContext.Provider>

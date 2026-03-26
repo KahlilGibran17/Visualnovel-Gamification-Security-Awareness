@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, ChevronUp, ChevronDown, Copy, GripVertical, MessageSquare, HelpCircle, Flag, CheckCircle, Circle, X, Loader2, Clock, Mail, BookOpen, Search, Terminal } from 'lucide-react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
+import { FakeUIScaledWrapper } from '../../../components/FakeUIBackground'
 
 export const SCENE_TYPES = [
     { value: 'dialogue', label: 'Dialogue', icon: MessageSquare, color: 'blue' },
@@ -71,8 +72,93 @@ function ChoiceRow({ choice, index, scenes, currentSceneId, onUpdate, onDelete }
     )
 }
 
+// ─── Target Visual Picker ──────────────────────────────────────────────────
+function TargetVisualPicker({ uiType, targets, onAddTarget, uiTypesData = [] }) {
+    const [dragStart, setDragStart] = useState(null)
+    const [currentPos, setCurrentPos] = useState(null)
+
+    const handlePointerDown = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = Math.min(Math.max(((e.clientX - rect.left) / rect.width) * 100, 0), 100)
+        const y = Math.min(Math.max(((e.clientY - rect.top) / rect.height) * 100, 0), 100)
+        const pos = { x, y }
+        setDragStart(pos)
+        setCurrentPos(pos)
+        e.currentTarget.setPointerCapture(e.pointerId)
+    }
+
+    const handlePointerMove = (e) => {
+        if (!dragStart) return
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = Math.min(Math.max(((e.clientX - rect.left) / rect.width) * 100, 0), 100)
+        const y = Math.min(Math.max(((e.clientY - rect.top) / rect.height) * 100, 0), 100)
+        setCurrentPos({ x, y })
+    }
+
+    const handlePointerUp = (e) => {
+        if (!dragStart || !currentPos) return
+        e.currentTarget.releasePointerCapture(e.pointerId)
+
+        const x = Math.round(Math.min(dragStart.x, currentPos.x))
+        const y = Math.round(Math.min(dragStart.y, currentPos.y))
+        const w = Math.round(Math.abs(currentPos.x - dragStart.x))
+        const h = Math.round(Math.abs(currentPos.y - dragStart.y))
+
+        if (w < 2 && h < 2) {
+            onAddTarget(Math.min(x, 94), Math.min(y, 90), 6, 10)
+        } else {
+            onAddTarget(x, y, w, h)
+        }
+
+        setDragStart(null)
+        setCurrentPos(null)
+    }
+
+    const drawDragBox = () => {
+        if (!dragStart || !currentPos) return null
+        const x = Math.min(dragStart.x, currentPos.x)
+        const y = Math.min(dragStart.y, currentPos.y)
+        const w = Math.abs(currentPos.x - dragStart.x)
+        const h = Math.abs(currentPos.y - dragStart.y)
+        return (
+            <div className="absolute bg-blue-500/30 border border-blue-500 pointer-events-none z-50"
+                 style={{ left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }} />
+        )
+    }
+
+    return (
+        <FakeUIScaledWrapper 
+            uiType={uiType}
+            uiTypesData={uiTypesData}
+            className="mt-3 mb-4 cursor-crosshair rounded-lg border-2 border-white/20 select-none shadow-lg touch-none"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+        >
+             {targets.map(t => {
+                 const w = t.w || 6
+                 const h = t.h || 10
+                 return (
+                     <div key={t.id} 
+                          className="absolute bg-red-500/30 border-2 border-red-500 flex flex-col items-center justify-center shadow-lg backdrop-blur-sm pointer-events-none z-10"
+                          style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${w}%`, height: `${h}%` }}
+                     >
+                        <span className="text-[10px] font-bold text-white leading-none drop-shadow-md text-center max-w-full overflow-hidden text-clip px-1 leading-[1.2]">{t.description || `${t.x},${t.y}`}</span>
+                     </div>
+                 )
+             })}
+             
+             {drawDragBox()}
+             
+             <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur text-white text-[10px] px-2 py-1 rounded shadow pointer-events-none z-50">
+                 Click and drag to draw a bounding box
+             </div>
+        </FakeUIScaledWrapper>
+    )
+}
+
 // ─── Scene Card ────────────────────────────────────────────────────────────
-export function SceneCard({ scene, index, scenes, characters, backgrounds, onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate }) {
+export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTypes = [], onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate }) {
     const [expanded, setExpanded] = useState(false)
     const [saving, setSaving] = useState(false)
     const [lastSaved, setLastSaved] = useState(null)
@@ -381,6 +467,9 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, onUpd
                                                 <option value="browser">Web Browser</option>
                                                 <option value="email">Email Client</option>
                                                 <option value="desktop">PC Desktop</option>
+                                                {uiTypes.map(ut => (
+                                                    <option key={ut.id} value={ut.key_name}>{ut.name}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>
@@ -388,20 +477,111 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, onUpd
                                             <input type="number" className="input-field w-full text-sm mt-1" value={local.timer || 0} onChange={e => field('timer', parseInt(e.target.value) || 0)} />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="label-xs">⭐ XP Reward on Success</label>
-                                        <input type="number" className="input-field w-full text-sm mt-1" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="label-xs">⭐ XP Reward on Success</label>
+                                            <input type="number" className="input-field w-full text-sm mt-1" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
+                                        </div>
+                                        <div>
+                                            <label className="label-xs">❌ Max False Points</label>
+                                            <input type="number" className="input-field w-full text-sm mt-1" value={local.custom_data?.maxFalsePoints || 3} onChange={e => field('custom_data', { ...local.custom_data, maxFalsePoints: parseInt(e.target.value) || 0 })} />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="label-xs">🎯 Target Items (JSON Array)</label>
-                                        <textarea className="input-field w-full text-sm resize-none mt-1 font-mono" rows={5} placeholder='[{"id":"url","x":20,"y":5,"description":"Fake domain name"},{"id":"attachment","x":50,"y":80,"description":"Suspicious .exe file"}]' value={typeof local.custom_data?.targets === 'string' ? local.custom_data.targets : JSON.stringify(local.custom_data?.targets || [], null, 2)} onChange={e => field('custom_data', { ...local.custom_data, targets: e.target.value })} />
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="label-xs">🎯 Target Items</label>
+                                            <button onClick={() => {
+                                                const currentTargets = (typeof local.custom_data?.targets === 'string' ? (() => { try { return JSON.parse(local.custom_data.targets) } catch { return [] } })() : local.custom_data?.targets) || [];
+                                                field('custom_data', { ...local.custom_data, targets: [...currentTargets, { id: Date.now().toString(), x: 50, y: 50, description: '' }] });
+                                            }} className="btn-primary text-xs px-2 py-1 flex items-center gap-1"><Plus className="w-3 h-3" /> Add Target</button>
+                                        </div>
+                                        
+                                        {/* Visual Picker Component */}
+                                        <TargetVisualPicker 
+                                            uiType={local.custom_data?.uiType || 'browser'} 
+                                            uiTypesData={uiTypes}
+                                            targets={(() => {
+                                                const targetsList = (typeof local.custom_data?.targets === 'string' ? (() => { try { return JSON.parse(local.custom_data.targets) } catch { return [] } })() : local.custom_data?.targets) || [];
+                                                return targetsList;
+                                            })()}
+                                            onAddTarget={(x, y, w, h) => {
+                                                const currentTargets = (typeof local.custom_data?.targets === 'string' ? (() => { try { return JSON.parse(local.custom_data.targets) } catch { return [] } })() : local.custom_data?.targets) || [];
+                                                field('custom_data', { ...local.custom_data, targets: [...currentTargets, { id: Date.now().toString(), x, y, w: w || 6, h: h || 10, description: '' }] });
+                                            }}
+                                        />
+
+                                        <div className="space-y-2">
+                                            {(() => {
+                                                const targetsList = (typeof local.custom_data?.targets === 'string' ? (() => { try { return JSON.parse(local.custom_data.targets) } catch { return [] } })() : local.custom_data?.targets) || [];
+                                                return targetsList.map((t, i) => (
+                                                    <div key={t.id || i} className="flex items-center gap-2 bg-white/5 p-2 rounded border border-white/10">
+                                                        <div className="flex flex-col gap-1 w-12">
+                                                            <label className="text-[10px] text-white/40">X (%)</label>
+                                                            <input type="number" className="input-field text-xs py-1 px-1 text-center" value={t.x || 0} onChange={e => {
+                                                                const newTargets = [...targetsList];
+                                                                newTargets[i] = { ...t, x: parseInt(e.target.value) || 0 };
+                                                                field('custom_data', { ...local.custom_data, targets: newTargets });
+                                                            }} />
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 w-12">
+                                                            <label className="text-[10px] text-white/40">Y (%)</label>
+                                                            <input type="number" className="input-field text-xs py-1 px-1 text-center" value={t.y || 0} onChange={e => {
+                                                                const newTargets = [...targetsList];
+                                                                newTargets[i] = { ...t, y: parseInt(e.target.value) || 0 };
+                                                                field('custom_data', { ...local.custom_data, targets: newTargets });
+                                                            }} />
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 w-12">
+                                                            <label className="text-[10px] text-white/40">W (%)</label>
+                                                            <input type="number" className="input-field text-xs py-1 px-1 text-center" value={t.w || 6} onChange={e => {
+                                                                const newTargets = [...targetsList];
+                                                                newTargets[i] = { ...t, w: parseInt(e.target.value) || 0 };
+                                                                field('custom_data', { ...local.custom_data, targets: newTargets });
+                                                            }} />
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 w-12">
+                                                            <label className="text-[10px] text-white/40">H (%)</label>
+                                                            <input type="number" className="input-field text-xs py-1 px-1 text-center" value={t.h || 10} onChange={e => {
+                                                                const newTargets = [...targetsList];
+                                                                newTargets[i] = { ...t, h: parseInt(e.target.value) || 0 };
+                                                                field('custom_data', { ...local.custom_data, targets: newTargets });
+                                                            }} />
+                                                        </div>
+                                                        <div className="flex flex-col gap-1 flex-1">
+                                                            <label className="text-[10px] text-white/40">Description</label>
+                                                            <input className="input-field text-xs py-1 px-2" placeholder="e.g. Malicious link" value={t.description || ''} onChange={e => {
+                                                                const newTargets = [...targetsList];
+                                                                newTargets[i] = { ...t, description: e.target.value };
+                                                                field('custom_data', { ...local.custom_data, targets: newTargets });
+                                                            }} />
+                                                        </div>
+                                                        <button onClick={() => {
+                                                            const newTargets = targetsList.filter((_, idx) => idx !== i);
+                                                            field('custom_data', { ...local.custom_data, targets: newTargets });
+                                                        }} className="text-white/20 hover:text-red-400 p-1 mt-4 rounded flex-shrink-0 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                    </div>
+                                                ));
+                                            })()}
+                                            {(!local.custom_data?.targets || (typeof local.custom_data.targets === 'string' ? (() => { try { return JSON.parse(local.custom_data.targets) } catch { return [] } })() : local.custom_data.targets).length === 0) && (
+                                                <div className="text-xs text-white/40 italic p-2 border border-dashed border-white/10 rounded text-center">No targets added yet.</div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="label-xs">➡️ Next Scene</label>
-                                        <select className="input-field w-full text-sm mt-1" value={local.next_scene_id || ''} onChange={e => field('next_scene_id', e.target.value ? parseInt(e.target.value) : null)}>
-                                            <option value="">— Auto-next —</option>
-                                            {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
-                                        </select>
+                                    <div className="grid grid-cols-2 gap-3 border-t border-white/5 pt-4 mt-2">
+                                        <div>
+                                            <label className="label-xs text-green-400">✅ Success Next Scene</label>
+                                            <select className="input-field w-full text-sm mt-1" value={local.next_scene_id || ''} onChange={e => field('next_scene_id', e.target.value ? parseInt(e.target.value) : null)}>
+                                                <option value="">— Auto-next —</option>
+                                                {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="label-xs text-red-400">❌ Failure Next Scene</label>
+                                            <select className="input-field w-full text-sm mt-1" value={local.custom_data?.failSceneId || ''} onChange={e => field('custom_data', { ...local.custom_data, failSceneId: e.target.value ? parseInt(e.target.value) : null })}>
+                                                <option value="">— End Scene / Game Over —</option>
+                                                {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             )}

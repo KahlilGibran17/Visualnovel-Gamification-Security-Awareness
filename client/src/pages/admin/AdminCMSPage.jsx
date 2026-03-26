@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, Users, Image, Film, Plus, Edit3, Trash2, Globe, Clock, Loader2, Search, Upload, ArrowLeft, Home } from 'lucide-react'
+import { BookOpen, Users, Image, Film, Plus, Edit3, Trash2, Globe, Clock, Loader2, Search, Upload, ArrowLeft, Home, Monitor } from 'lucide-react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import ChapterEditor from './cms/ChapterEditor.jsx'
 import { CharactersTab, BackgroundsTab } from './cms/CharsBgsTabs.jsx'
+import { UITypesTab } from './cms/UITypesTab.jsx'
 
 const TABS = [
     { id: 'chapters', label: 'Chapters', icon: BookOpen },
     { id: 'characters', label: 'Characters', icon: Users },
     { id: 'backgrounds', label: 'Backgrounds', icon: Image },
+    { id: 'ui-types', label: 'UI Types', icon: Monitor },
     { id: 'media', label: 'Media Library', icon: Film },
 ]
 
@@ -303,6 +305,7 @@ export default function AdminCMSPage() {
                         )}
                         {activeTab === 'characters' && <CharactersTab />}
                         {activeTab === 'backgrounds' && <BackgroundsTab />}
+                        {activeTab === 'ui-types' && <UITypesTab />}
                         {activeTab === 'media' && <MediaLibrary />}
                     </motion.div>
                 </AnimatePresence>

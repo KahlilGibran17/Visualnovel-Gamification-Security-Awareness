@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Home, Volume2, VolumeX, SkipForward, RotateCcw, Star, AlertTriangle, CheckCircle, Clock, Search, Monitor, Smartphone, MousePointer2, XCircle, Terminal as TerminalIcon, Mail, BookOpen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useGame } from '../contexts/GameContext.jsx'
+import { FakeUIScaledWrapper } from '../components/FakeUIBackground.jsx'
 
 // Scene background styles
 const BACKGROUNDS = {
@@ -151,7 +152,7 @@ function EmailDisplay({ email, onContinue }) {
             {/* Red flags */}
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                 <p className="text-red-700 font-bold text-xs mb-2">🚨 Red Flags Detected:</p>
-                {email.redFlags.map((flag, i) => (
+                {(email.redFlags || []).map((flag, i) => (
                     <div key={i} className="flex items-start gap-1.5 text-xs text-red-600 mb-1">
                         <span className="text-red-500 mt-0.5">❌</span>
                         <span>{flag}</span>
@@ -179,7 +180,7 @@ function LessonDisplay({ lesson, onContinue }) {
         >
             <h3 className="font-bold text-accent text-lg mb-3">{lesson.title}</h3>
             <ul className="space-y-2">
-                {lesson.points.map((point, i) => (
+                {(lesson.points || []).map((point, i) => (
                     <motion.li
                         key={i}
                         className="flex items-start gap-2 text-white/80 text-sm"
@@ -231,10 +232,15 @@ function TimerRing({ seconds, total }) {
 
 // Investigate display
 function InvestigateDisplay({ scene, onFound, timer, timerTotal }) {
+    const { UI_TYPES } = useGame()
     const [foundItems, setFoundItems] = useState([])
+    const [falsePoints, setFalsePoints] = useState(0)
+    const [shake, setShake] = useState(false)
     const totalItems = scene.targets?.length || 0
+    const maxFalsePoints = scene.maxFalsePoints || scene.custom_data?.maxFalsePoints || 3
 
-    const handleClick = (target) => {
+    const handleClick = (e, target) => {
+        e.stopPropagation()
         if (!foundItems.includes(target.id)) {
             const newFound = [...foundItems, target.id]
             setFoundItems(newFound)
@@ -244,14 +250,32 @@ function InvestigateDisplay({ scene, onFound, timer, timerTotal }) {
         }
     }
 
+    const handleMiss = () => {
+        if (foundItems.length >= totalItems) return
+
+        const newFalse = falsePoints + 1
+        setFalsePoints(newFalse)
+
+        setShake(true)
+        setTimeout(() => setShake(false), 400)
+
+        if (newFalse >= maxFalsePoints) {
+            setTimeout(() => onFound(false, false, `Investigation Failed! You made ${maxFalsePoints} incorrect clicks, triggering system lockout.`), 500)
+        }
+    }
+
     return (
         <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto pointer-events-auto z-20">
             <div className="bg-dark/80 backdrop-blur-xl border border-white/10 p-4 rounded-xl mb-4 w-full flex items-center justify-between">
                 <div>
                     <h3 className="text-xl font-bold text-accent mb-1 flex items-center gap-2"><Search className="w-5 h-5" /> Spot the Threats!</h3>
-                    <p className="text-white/70 text-sm">Find and click all {totalItems} security vulnerabilities.</p>
+                    <p className="text-white/70 text-sm">Find and click all {totalItems} security vulnerabilities without making mistakes.</p>
                 </div>
                 <div className="flex gap-4 items-center">
+                    <div className="text-right border-r border-white/20 pr-4">
+                        <div className="text-sm text-white/50">Mistakes</div>
+                        <div className="text-2xl font-black font-mono text-red-400">{falsePoints}/{maxFalsePoints}</div>
+                    </div>
                     <div className="text-right">
                         <div className="text-sm text-white/50">Found</div>
                         <div className="text-2xl font-black font-mono text-white">{foundItems.length}/{totalItems}</div>
@@ -260,92 +284,34 @@ function InvestigateDisplay({ scene, onFound, timer, timerTotal }) {
                 </div>
             </div>
 
-            <div className="relative w-full aspect-video bg-[#e0e0e0] rounded-lg border-4 border-gray-700 overflow-hidden shadow-2xl ring-4 ring-black/20">
-                {/* Simulated Content Area overlayed with invisible click targets */}
-                {scene.uiType === 'email' ? (
-                    <div className="absolute inset-0 bg-white flex flex-col text-left font-sans">
-                        <div className="bg-[#0078d4] text-white p-2.5 px-4 font-semibold text-sm flex items-center gap-2">
-                            <Mail className="w-4 h-4" /> Outlook Web Access
-                        </div>
-                        <div className="border-b p-4 bg-[#f3f2f1] flex flex-col gap-1">
-                            <div className="text-gray-900 text-xl font-semibold mb-2">URGENT: Password Expiry Notification</div>
-                            <div className="text-sm text-gray-600 flex items-center gap-1">
-                                <span className="font-semibold text-gray-800">IT-Support</span> &lt;admin@akeb0no-secure.net&gt;
-                            </div>
-                            <div className="text-sm text-gray-500">To: Employee User</div>
-                        </div>
-                        <div className="p-6 text-gray-800 text-sm flex-1 bg-white overflow-hidden">
-                            <p className="mb-4">Dear Employee,</p>
-                            <p className="mb-4">Your Akebono corporate network password is set to expire in <strong>2 hours</strong>. Failure to update it immediately will result in a complete account lockout and require IT unblocking.</p>
-                            <p className="mb-6">Please securely log in and update your credentials immediately below:</p>
-                            <div className="bg-blue-50 border border-blue-200 inline-block p-4 rounded mb-6">
-                                <a href="#" className="underline text-[#0078d4] font-semibold text-base block">https://auth.akebono-secure-reset.com/login</a>
-                            </div>
-                            <p className="text-gray-500 text-xs">Regards,<br />Information Technology Administration Desk<br />Akebono Brake Astra Indonesia</p>
-                        </div>
-                    </div>
-                ) : scene.uiType === 'desktop' ? (
-                    <div className="absolute inset-0 bg-[#005a9e] flex flex-col">
-                        <div className="flex-1 p-4 grid grid-cols-6 gap-4 content-start">
-                            <div className="w-16 flex flex-col items-center gap-1 cursor-pointer">
-                                <div className="w-10 h-10 bg-blue-300 rounded shadow flex items-center justify-center text-[#005a9e]"><Monitor className="w-6 h-6" /></div>
-                                <span className="text-white text-xs drop-shadow-md text-center">My PC</span>
-                            </div>
-                            <div className="w-16 flex flex-col items-center gap-1 cursor-pointer">
-                                <div className="w-10 h-10 bg-yellow-400 rounded shadow flex items-center justify-center text-white"><BookOpen className="w-6 h-6" /></div>
-                                <span className="text-white text-xs drop-shadow-md text-center">Reports</span>
-                            </div>
-                            <div className="w-16 flex flex-col items-center gap-1 cursor-pointer">
-                                <div className="w-10 h-10 bg-gray-200 rounded shadow border-l-[12px] border-red-500 flex items-center justify-center relative"><span className="absolute bottom-0 right-0 text-[10px] font-bold text-gray-500 bg-white px-0.5 border">EXE</span></div>
-                                <span className="text-white text-xs drop-shadow-md text-center bg-blue-600/50 px-1 rounded truncate w-20">Salary_2024.pdf.exe</span>
-                            </div>
-                        </div>
-                        <div className="h-10 bg-black/80 backdrop-blur border-t border-white/10 flex items-center px-2 z-10 w-full">
-                            <div className="w-10 h-8 rounded bg-[#0078d4] mr-4 flex items-center justify-center text-white font-bold text-xs shadow-inner hover:bg-blue-600 cursor-pointer">Start</div>
-                            <div className="text-white text-xs ml-auto pr-4">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="absolute inset-0 bg-gray-100 flex flex-col">
-                        {/* Fake Web browser UI */}
-                        <div className="h-10 bg-[#dee1e6] border-b border-[#cccccc] flex items-center px-4 gap-2 shrink-0">
-                            <div className="flex gap-1.5"><div className="w-3 h-3 rounded-full bg-[#ff5f56]" /><div className="w-3 h-3 rounded-full bg-[#ffbd2e]" /><div className="w-3 h-3 rounded-full bg-[#27c93f]" /></div>
-                            <div className="ml-4 flex-1 bg-white rounded-full text-xs px-4 py-1.5 text-red-600 font-mono shadow-sm flex items-center gap-2 border border-red-200">
-                                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> <span className="truncate">https://akeb0no-internal-login.net/auth/verify?token=1829f0</span>
-                            </div>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] text-gray-800">
-                            <div className="bg-white p-8 rounded-xl shadow-xl w-[400px] border border-gray-100 flex flex-col items-center">
-                                <div className="w-16 h-16 bg-blue-900 rounded-full flex items-center justify-center mb-4">
-                                    <span className="text-white font-bold text-xl">AKE</span>
-                                </div>
-                                <h2 className="text-xl font-bold mb-6 text-center text-gray-800 w-full border-b pb-4">Employee Portal Login</h2>
-                                <div className="space-y-4 w-full">
-                                    <div>
-                                        <input type="text" disabled className="w-full border border-gray-300 rounded-md mt-1 p-2.5 bg-gray-50 text-sm" placeholder="Enter NIK (e.g. 10001)" />
-                                    </div>
-                                    <div>
-                                        <input type="password" disabled className="w-full border border-gray-300 rounded-md mt-1 p-2.5 bg-gray-50 text-sm" placeholder="Password" />
-                                    </div>
-                                    <button className="w-full bg-[#005a9e] text-white rounded-md p-2.5 font-bold opacity-70 cursor-not-allowed mt-2">Sign In securely</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {scene.targets?.map((t) => (
-                    <motion.button
-                        key={t.id}
-                        className={`absolute w-12 h-12 -ml-6 -mt-6 rounded-full border-4 shadow-lg flex items-center justify-center pointer-events-auto transition-colors ${foundItems.includes(t.id) ? 'border-green-500 bg-green-500/20 text-green-600' : 'border-red-500/50 hover:border-red-500 bg-transparent text-transparent hover:text-red-500'}`}
-                        style={{ left: `${t.x}%`, top: `${t.y}%` }}
-                        onClick={() => handleClick(t)}
-                        whileTap={{ scale: 0.9 }}
-                    >
-                        {foundItems.includes(t.id) ? <CheckCircle className="w-6 h-6" /> : <MousePointer2 className="w-6 h-6" />}
-                    </motion.button>
-                ))}
-            </div>
+            <motion.div 
+                className="w-full"
+                animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
+                transition={{ duration: 0.4 }}
+            >
+                <FakeUIScaledWrapper
+                    uiType={scene.uiType || scene.custom_data?.uiType || 'browser'}
+                    uiTypesData={UI_TYPES}
+                    className="border-4 border-gray-700 shadow-2xl ring-4 ring-black/20 cursor-crosshair rounded-lg"
+                    onClick={handleMiss}
+                >
+                    {scene.targets?.map((t) => {
+                        const w = t.w || 6
+                        const h = t.h || 10
+                        return (
+                            <motion.button
+                                key={t.id}
+                                className={`absolute rounded-md flex items-center justify-center pointer-events-auto transition-all ${foundItems.includes(t.id) ? 'border-[3px] border-green-500 bg-green-500/20 text-green-600 shadow-md cursor-default' : 'bg-transparent text-transparent border-transparent !cursor-crosshair'}`}
+                                style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${w}%`, height: `${h}%` }}
+                                onClick={(e) => handleClick(e, t)}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                {foundItems.includes(t.id) && <CheckCircle className="w-6 h-6 absolute drop-shadow" />}
+                            </motion.button>
+                        )
+                    })}
+                </FakeUIScaledWrapper>
+            </motion.div>
         </div>
     )
 }
@@ -360,7 +326,7 @@ function TerminalDisplay({ scene, onCommand, timer, timerTotal }) {
         if (!input.trim()) return
 
         const cmd = input.trim().toLowerCase()
-        const correct = scene.correctCommand.toLowerCase()
+        const correct = (scene.correctCommand || '').toLowerCase()
 
         setLogs(prev => [...prev, { type: 'user', text: `> ${input} ` }])
         setInput('')
@@ -475,22 +441,22 @@ export default function VNEnginePage() {
         }
     }, [sceneId, choiceResult])
 
-    const handleInvestigate = useCallback((success, timedOut = false) => {
+    const handleInvestigate = useCallback((success, timedOut = false, failMsg = null) => {
         setTimer(null)
         if (success) {
             if (currentScene.xpReward) {
                 awardXP(currentScene.xpReward, `Chapter ${chapterId} spot the phish`)
                 setXpTotal(prev => prev + currentScene.xpReward)
             }
-            setSceneId(currentScene.next)
+            setSceneId(currentScene.successNext || currentScene.next)
         } else {
             setWrongChoices(prev => prev + 1)
             setChoiceResult({
                 correct: false,
-                consequence: timedOut ? "Time ran out before you could spot all the threats!" : "Investigation failed.",
+                consequence: failMsg || (timedOut ? "Time ran out before you could spot all the threats!" : "Investigation failed."),
                 lesson: "Always inspect URLs carefully and scrutinize unexpected attachments before clicking.",
                 xp: 0,
-                next: currentScene.next
+                next: currentScene.failNext || currentScene.next
             })
         }
     }, [currentScene, chapterId, awardXP])
@@ -708,7 +674,7 @@ export default function VNEnginePage() {
                     <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
                         <InvestigateDisplay
                             scene={currentScene}
-                            onFound={(success) => handleInvestigate(success)}
+                            onFound={(success, timedOut, failMsg) => handleInvestigate(success, timedOut, failMsg)}
                             timer={timer}
                             timerTotal={timerTotal}
                         />

@@ -100,7 +100,8 @@ async function buildVNJson(chapterId) {
                 timer: scene.timer || 0,
                 xpReward: scene.xp_reward || 0,
                 targets: parsedTargets,
-                next: nextKey
+                successNext: nextKey, // default 'next' goes here
+                failNext: scene.custom_data?.failSceneId ? idToKey[scene.custom_data.failSceneId] : null
             })
         } else if (scene.scene_type === 'terminal') {
             vnScenes.push({
@@ -682,6 +683,56 @@ router.delete('/backgrounds/:id', requireAuth, requireRole('admin'), async (req,
         res.json({ message: 'Background deleted' })
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete background' })
+    }
+})
+
+// ─── TARGET UI TYPES ─────────────────────────────────────────────────────────
+router.get('/ui-types', requireAuth, async (req, res) => {
+    try {
+        const r = await pool.query('SELECT * FROM vn_ui_types ORDER BY id ASC')
+        res.json(r.rows)
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch UI types' })
+    }
+})
+
+router.post('/ui-types', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { name, key_name, template_type, custom_html } = req.body
+        const safeKey = key_name || name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+        
+        const existing = await pool.query('SELECT id FROM vn_ui_types WHERE key_name=$1', [safeKey])
+        if (existing.rows.length > 0) return res.status(409).json({ error: 'UI Type key already exists' })
+
+        const r = await pool.query(
+            `INSERT INTO vn_ui_types (name, key_name, template_type, custom_html) VALUES ($1,$2,$3,$4) RETURNING *`,
+            [name, safeKey, template_type || 'browser', custom_html || '']
+        )
+        res.status(201).json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create UI type', detail: err.message })
+    }
+})
+
+router.put('/ui-types/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { name, template_type, custom_html } = req.body
+        const r = await pool.query(
+            'UPDATE vn_ui_types SET name=$1, template_type=$2, custom_html=$3 WHERE id=$4 RETURNING *',
+            [name, template_type, custom_html, req.params.id]
+        )
+        res.json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update UI type' })
+    }
+})
+
+router.delete('/ui-types/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        await pool.query('DELETE FROM vn_ui_types WHERE id=$1', [req.params.id])
+        res.json({ message: 'UI Type deleted' })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete UI type' })
     }
 })
 
