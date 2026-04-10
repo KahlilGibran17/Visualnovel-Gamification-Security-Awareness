@@ -4,14 +4,29 @@ const { requireAuth } = require('../middleware/auth')
 
 // GET /api/leaderboard
 router.get('/', requireAuth, async (req, res) => {
-    const { filter, dept, chapter } = req.query
+  const { filter = 'all', dept = 'all' } = req.query
+  const includeZeroXp = String(req.query.includeZeroXp).toLowerCase() === 'true'
+  const whereConditions = []
+  const values = []
 
-    let dateFilter = ''
-    if (filter === 'weekly') dateFilter = "AND last_login >= NOW() - INTERVAL '7 days'"
-    else if (filter === 'monthly') dateFilter = "AND last_login >= NOW() - INTERVAL '30 days'"
+  if (!includeZeroXp) {
+    whereConditions.push('COALESCE(u.xp, 0) > 0')
+  }
 
-    let deptFilter = ''
-    if (dept && dept !== 'all') deptFilter = `AND u.department = '${dept.replace(/'/g, "''")}'`
+  if (filter === 'weekly') {
+    whereConditions.push("u.last_login >= NOW() - INTERVAL '7 days'")
+  } else if (filter === 'monthly') {
+    whereConditions.push("u.last_login >= NOW() - INTERVAL '30 days'")
+  }
+
+  if (dept && dept !== 'all') {
+    values.push(dept)
+    whereConditions.push(`u.department = $${values.length}`)
+  }
+
+  const whereClause = whereConditions.length > 0
+    ? `WHERE ${whereConditions.join(' AND ')}`
+    : ''
 
     try {
         const result = await pool.query(`
@@ -23,8 +38,8 @@ router.get('/', requireAuth, async (req, res) => {
         u.xp,
         u.avatar_id as "avatarId",
         r.name as role,
-        (SELECT COUNT(*) FROM chapter_progress cp WHERE cp.user_id = u.id AND cp.completed = TRUE) as "chaptersCompleted",
-        RANK() OVER (ORDER BY u.xp DESC) as rank,
+        (SELECT COUNT(*)::int FROM chapter_progress cp WHERE cp.user_id = u.id AND cp.completed = TRUE) as "chaptersCompleted",
+        (RANK() OVER (ORDER BY u.xp DESC, u.id ASC))::int as rank,
         CASE
           WHEN u.xp >= 6000 THEN 5
           WHEN u.xp >= 3000 THEN 4
@@ -34,10 +49,10 @@ router.get('/', requireAuth, async (req, res) => {
         END as level
       FROM users u
       JOIN roles r ON u.role_id = r.id
-      WHERE 1=1 ${dateFilter} ${deptFilter}
-      ORDER BY u.xp DESC
+      ${whereClause}
+      ORDER BY u.xp DESC, u.id ASC
       LIMIT 100
-    `)
+    `, values)
         res.json(result.rows)
     } catch (err) {
         console.error(err)
@@ -51,8 +66,8 @@ router.get('/departments', requireAuth, async (req, res) => {
         const result = await pool.query(`
       SELECT
         department as dept,
-        COUNT(*) as members,
-        ROUND(AVG(xp)) as "avgXp"
+        COUNT(*)::int as members,
+        COALESCE(ROUND(AVG(xp))::int, 0) as "avgXp"
       FROM users
       WHERE department IS NOT NULL AND department != ''
       GROUP BY department

@@ -7,7 +7,25 @@ router.get('/overview', requireAuth, requireRole('admin', 'manager'), async (req
     try {
         const [usersRes, completionRes, avgXpRes] = await Promise.all([
             pool.query('SELECT COUNT(*) as total FROM users'),
-            pool.query('SELECT COUNT(DISTINCT user_id) as completed FROM chapter_progress WHERE chapter_id = 6 AND completed = TRUE'),
+            pool.query(`
+                WITH chapter_total AS (
+                    SELECT COUNT(*)::int AS total_chapters
+                    FROM chapters
+                ),
+                user_completion AS (
+                    SELECT
+                        cp.user_id,
+                        COUNT(DISTINCT cp.chapter_id)::int AS completed_chapters
+                    FROM chapter_progress cp
+                    WHERE cp.completed = TRUE
+                    GROUP BY cp.user_id
+                )
+                SELECT COUNT(*)::int AS completed
+                FROM user_completion uc
+                CROSS JOIN chapter_total ct
+                WHERE ct.total_chapters > 0
+                  AND uc.completed_chapters >= ct.total_chapters
+            `),
             pool.query('SELECT ROUND(AVG(xp)) as avg FROM users'),
         ])
         res.json({

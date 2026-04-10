@@ -8,14 +8,21 @@ import Layout from '../components/Layout.jsx'
 import AvatarDisplay from '../components/AvatarDisplay.jsx'
 
 function XPBar({ xp, level, nextLevel }) {
-    const xpIntoLevel = xp - level.xpRequired
-    const xpForNext = nextLevel ? nextLevel.xpRequired - level.xpRequired : 1
-    const pct = nextLevel ? Math.min(100, (xpIntoLevel / xpForNext) * 100) : 100
+    const currentLevelXp = level?.xpRequired || 0
+    const nextLevelXp = nextLevel?.xpRequired || currentLevelXp + 1000
+    
+    const xpIntoLevel = Math.max(0, xp - currentLevelXp)
+    
+    // Total XP yang dibutuhkan untuk naik level
+    const xpForNextLevel = Math.max(1, nextLevelXp - currentLevelXp)
+    
+    // Persentase progress (0-100%)
+    const pct = Math.min(100, (xpIntoLevel / xpForNextLevel) * 100)
 
     return (
         <div>
             <div className="flex justify-between text-xs mb-1">
-                <span className="text-white/50">{level.title}</span>
+                <span className="text-white/50">{level?.title || 'Loading'}</span>
                 {nextLevel && <span className="text-white/50">{nextLevel.title}</span>}
             </div>
             <div className="xp-bar">
@@ -27,8 +34,14 @@ function XPBar({ xp, level, nextLevel }) {
                 />
             </div>
             <div className="flex justify-between text-xs mt-1">
-                <span className="text-accent font-semibold">{xp.toLocaleString()} XP</span>
-                {nextLevel && <span className="text-white/30">{nextLevel.xpRequired.toLocaleString()} needed</span>}
+                <span className="text-accent font-semibold">
+                    {xpIntoLevel.toLocaleString()}  XP
+                </span>
+                {nextLevel && (
+                    <span className="text-white/30">
+                        {Math.max(0, nextLevelXp - xp).toLocaleString()} to next
+                    </span>
+                )}
             </div>
         </div>
     )
@@ -141,7 +154,7 @@ function StreakCalendar({ streak = 0 }) {
         <div className="flex gap-1 flex-wrap">
             {days.map((d, i) => (
                 <div
-                    key={i}
+                    key={d.date.toISOString()}
                     title={d.date.toLocaleDateString()}
                     className={`w-7 h-7 rounded-md transition-all ${d.active ? 'bg-primary/70' : 'bg-white/5 border border-white/10'
                         }`}
@@ -152,24 +165,49 @@ function StreakCalendar({ streak = 0 }) {
 }
 
 export default function DashboardPage() {
-    const { user } = useAuth()
-    const { chapterProgress, getLevelFromXP, getNextLevel, CHAPTERS, BADGES, leaderboard, getUserRank, getNextRankGap } = useGame()
+    const { user, refreshUser } = useAuth()
+    const { chapterProgress, getLevelFromXP, getNextLevel, CHAPTERS, badges,loadBadges,levels,loading,error ,leaderboard, getUserRank, getNextRankGap } = useGame()
     const navigate = useNavigate()
     const [showWelcome, setShowWelcome] = useState(true)
 
     const level = getLevelFromXP(user?.xp || 0)
     const nextLevel = getNextLevel(user?.xp || 0)
+
+    if (!level) {
+        return (
+            <Layout>
+                <div className="p-6 text-center text-white/50">
+                    Loading profile...
+                </div>
+            </Layout>
+        )
+    }
+
     const myRank = getUserRank()
     const rankGap = getNextRankGap()
+    const normalizeBadgeKey = (value) => {
+        if (typeof value === 'string') return value.trim().toLowerCase()
+        if (!value || typeof value !== 'object') return ''
+        return String(value.id ?? value.badge_key ?? '').trim().toLowerCase()
+    }
+
     const earnedBadges = user?.badges || []
+    const earnedBadgeSet = new Set(earnedBadges.map(normalizeBadgeKey).filter(Boolean))
+    const displayedBadges = badges.slice(0, 6)
 
     const completedChapters = Object.values(chapterProgress).filter(p => p.completed).length
     const totalXP = user?.xp || 0
 
     useEffect(() => {
+        loadBadges()
+        refreshUser()
+    }, [])
+
+    useEffect(() => {
         const timer = setTimeout(() => setShowWelcome(false), 4000)
         return () => clearTimeout(timer)
     }, [])
+
 
     return (
         <Layout>
@@ -258,8 +296,8 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatWidget icon={Star} label="Total XP" value={totalXP.toLocaleString()} color="#FFD60A" delay={0.1} />
                     <StatWidget icon={Trophy} label="Global Rank" value={`#${myRank || '—'}`} color="#E63946" delay={0.15} />
-                    <StatWidget icon={BookOpen} label="Chapters Done" value={`${completedChapters}/6`} color="#60a5fa" delay={0.2} />
-                    <StatWidget icon={Award} label="Badges" value={`${earnedBadges.length}/${BADGES.length}`} color="#a78bfa" delay={0.25} />
+                    <StatWidget icon={BookOpen} label="Chapters Done" value={`${completedChapters}`} color="#60a5fa" delay={0.2} />
+                    <StatWidget icon={Award} label="Badges" value={`${[...earnedBadgeSet].filter(b => displayedBadges.some(db => normalizeBadgeKey(db) === b)).length}/${displayedBadges.length}`} color="#a78bfa" delay={0.25} />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -356,19 +394,19 @@ export default function DashboardPage() {
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-                        {BADGES.map(badge => {
-                            const earned = earnedBadges.includes(badge.id)
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {displayedBadges.map((badge, i) => {
+                            const earned = earnedBadgeSet.has(normalizeBadgeKey(badge))
                             return (
                                 <motion.div
-                                    key={badge.id}
-                                    className={`${earned ? 'badge-earned' : 'badge-locked'} w-full aspect-square p-2`}
+                                    key={badge?.id ?? `${badge?.name ?? 'badge'}-${i}`}
+                                    className={`${earned ? 'badge-earned' : 'badge-locked'} w-full aspect-square p-4`}
                                     whileHover={earned ? { scale: 1.1 } : {}}
                                     title={badge.name}
                                 >
                                     <div className="flex flex-col items-center justify-center gap-1 h-full">
-                                        <span className="text-2xl">{badge.icon}</span>
-                                        <span className="text-xs text-center font-medium leading-tight text-white/70" style={{ fontSize: '10px' }}>
+                                        <span className="text-4xl">{badge.icon}</span>
+                                        <span className="text-sm text-center font-medium leading-tight text-white/70">
                                             {badge.name}
                                         </span>
                                     </div>

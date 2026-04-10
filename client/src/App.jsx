@@ -18,6 +18,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
 import AdminContentPage from './pages/admin/AdminContentPage.jsx'
 import AdminReportsPage from './pages/admin/AdminReportsPage.jsx'
+import AdminElearningPage from './pages/admin/AdminElearningPage.jsx'
 
 export default function App() {
     return (
@@ -95,6 +96,11 @@ export default function App() {
                             <Route path="/admin/reports" element={
                                 <ProtectedRoute roles={['admin', 'manager']}>
                                     <AdminReportsPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="admin/elearning" element={
+                                <ProtectedRoute roles={['admin', 'manager']}>
+                                    <AdminElearningPage />
                                 </ProtectedRoute>
                             } />
 

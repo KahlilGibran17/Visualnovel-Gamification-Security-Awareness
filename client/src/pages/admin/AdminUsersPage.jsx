@@ -1,12 +1,26 @@
-import { useState, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Search, RefreshCw, UserPlus, MoreVertical, Filter } from 'lucide-react'
+import { Upload, Search, UserPlus } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
-import { DEMO_LEADERBOARD } from '../../contexts/GameContext.jsx'
 import toast from 'react-hot-toast'
+import axios from 'axios'
 
 const LEVEL_LABELS = ['', 'Rookie', 'Aware', 'Guardian', 'Expert', 'Cyber Hero']
+
+const normalizeLeaderboardRows = (rows) => {
+    if (!Array.isArray(rows)) return []
+
+    return rows.map((row, index) => ({
+        ...row,
+        id: Number(row?.id) || index + 1,
+        rank: Number(row?.rank) || index + 1,
+        xp: Number(row?.xp) || 0,
+        level: Number(row?.level) || 1,
+        chaptersCompleted: Number(row?.chaptersCompleted) || 0,
+        avatarId: Number(row?.avatarId) || 1,
+    }))
+}
 
 export default function AdminUsersPage() {
     const [search, setSearch] = useState('')
@@ -14,14 +28,70 @@ export default function AdminUsersPage() {
     const [showImport, setShowImport] = useState(false)
     const [dragging, setDragging] = useState(false)
     const [importFile, setImportFile] = useState(null)
+    const [leaderboardRows, setLeaderboardRows] = useState([])
+    const [totalChapters, setTotalChapters] = useState(0)
+    const [loadingUsers, setLoadingUsers] = useState(true)
     const fileRef = useRef()
 
-    const depts = ['All', 'Engineering', 'IT', 'Marketing', 'HR', 'Finance', 'Operations']
+    useEffect(() => {
+        let isMounted = true
 
-    const users = DEMO_LEADERBOARD.filter(u =>
-        (deptFilter === 'All' || u.department === deptFilter) &&
-        (search === '' || u.name.toLowerCase().includes(search.toLowerCase()) || u.nik.includes(search))
+        const loadUsers = async () => {
+            setLoadingUsers(true)
+            try {
+                const [leaderboardRes, chaptersRes] = await Promise.all([
+                    axios.get('/api/leaderboard', {
+                        params: { filter: 'all', dept: 'all', includeZeroXp: 'true' },
+                    }),
+                    axios.get('/api/elearning/getChapters'),
+                ])
+
+                if (isMounted) {
+                    setLeaderboardRows(normalizeLeaderboardRows(leaderboardRes.data))
+                    setTotalChapters(Array.isArray(chaptersRes.data) ? chaptersRes.data.length : 0)
+                }
+            } catch (err) {
+                console.error('Failed to load users for admin page:', err)
+                if (isMounted) {
+                    setLeaderboardRows([])
+                    setTotalChapters(0)
+                    toast.error('Failed to load users data')
+                }
+            } finally {
+                if (isMounted) {
+                    setLoadingUsers(false)
+                }
+            }
+        }
+
+        loadUsers()
+
+        return () => {
+            isMounted = false
+        }
+    }, [])
+
+    const depts = useMemo(
+        () => ['All', ...Array.from(new Set(leaderboardRows.map(u => u.department).filter(Boolean)))],
+        [leaderboardRows]
     )
+
+    const users = useMemo(
+        () => leaderboardRows.filter(u =>
+            (deptFilter === 'All' || u.department === deptFilter) &&
+            (search === '' || u.name.toLowerCase().includes(search.toLowerCase()) || u.nik.includes(search))
+        ),
+        [deptFilter, leaderboardRows, search]
+    )
+
+    const effectiveTotalChapters = useMemo(() => {
+        if (totalChapters > 0) return totalChapters
+
+        return leaderboardRows.reduce(
+            (max, row) => Math.max(max, Number(row?.chaptersCompleted) || 0),
+            0
+        )
+    }, [leaderboardRows, totalChapters])
 
     const handleFileDrop = (e) => {
         e.preventDefault()
@@ -48,7 +118,9 @@ export default function AdminUsersPage() {
                     initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
                     <div>
                         <h1 className="text-3xl font-bold font-display text-white">👥 User Management</h1>
-                        <p className="text-white/50 mt-1">{DEMO_LEADERBOARD.length} total employees</p>
+                        <p className="text-white/50 mt-1">
+                            {loadingUsers ? 'Loading users...' : `${leaderboardRows.length} total employees`}
+                        </p>
                     </div>
                     <div className="md:ml-auto flex gap-2">
                         <button
@@ -143,7 +215,19 @@ export default function AdminUsersPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map((user, i) => (
+                                {loadingUsers && (
+                                    <tr>
+                                        <td colSpan={7} className="text-center text-white/40 py-8">Loading users...</td>
+                                    </tr>
+                                )}
+
+                                {!loadingUsers && users.length === 0 && (
+                                    <tr>
+                                        <td colSpan={7} className="text-center text-white/40 py-8">No users found.</td>
+                                    </tr>
+                                )}
+
+                                {!loadingUsers && users.map((user, i) => (
                                     <motion.tr key={user.id}
                                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
                                         <td>
@@ -163,11 +247,17 @@ export default function AdminUsersPage() {
                                         <td>
                                             <div className="flex items-center gap-2">
                                                 <div className="flex gap-0.5">
-                                                    {[1, 2, 3, 4, 5, 6].map(n => (
-                                                        <div key={n} className={`w-2 h-4 rounded-sm ${n <= user.chaptersCompleted ? 'bg-accent' : 'bg-white/10'}`} />
-                                                    ))}
+                                                    {Array.from({ length: effectiveTotalChapters }).map((_, idx) => {
+                                                        const chapterNumber = idx + 1
+                                                        return (
+                                                            <div
+                                                                key={chapterNumber}
+                                                                className={`w-2 h-4 rounded-sm ${chapterNumber <= user.chaptersCompleted ? 'bg-accent' : 'bg-white/10'}`}
+                                                            />
+                                                        )
+                                                    })}
                                                 </div>
-                                                <span className="text-xs text-white/40">{user.chaptersCompleted}/6</span>
+                                                <span className="text-xs text-white/40">{user.chaptersCompleted}/{effectiveTotalChapters}</span>
                                             </div>
                                         </td>
                                         <td>
@@ -186,7 +276,7 @@ export default function AdminUsersPage() {
                         </table>
                     </div>
                     <div className="p-4 border-t border-white/10 text-xs text-white/40">
-                        Showing {users.length} of {DEMO_LEADERBOARD.length} employees
+                        Showing {users.length} of {leaderboardRows.length} employees
                     </div>
                 </motion.div>
             </div>

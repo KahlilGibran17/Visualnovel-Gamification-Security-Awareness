@@ -17,17 +17,39 @@ const adminItems = [
     { path: '/admin', label: 'Admin Panel', icon: ShieldAlert },
 ]
 
+function SidebarXPBar({ xp, nextLevel }) {
+    const safeXp = Math.max(0, Number(xp) || 0)
+    const nextLevelXp = nextLevel?.xpRequired ?? safeXp
+    const xpForNextLevel = Math.max(1, nextLevelXp)
+    const pct = nextLevel ? Math.min(100, (safeXp / xpForNextLevel) * 100) : 100
+
+    return (
+        <div className="mt-3">
+            <div className="flex items-center justify-between text-xs mb-1 text-white/40">
+                <span>{safeXp.toLocaleString()} XP</span>
+                <span>→</span>
+                <span>{nextLevelXp.toLocaleString()}</span>
+            </div>
+            <div className="xp-bar h-2 relative">
+                <motion.div
+                    className="xp-bar-fill"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
+                />
+            </div>
+        </div>
+    )
+}
 export default function Layout({ children }) {
     const { user, logout } = useAuth()
-    const { getLevelFromXP, LEVELS, getUserRank } = useGame()
+    const { getLevelFromXP, getNextLevel, getUserRank } = useGame()
     const navigate = useNavigate()
     const location = useLocation()
 
-    const level = getLevelFromXP(user?.xp || 0)
-    const nextLevel = LEVELS.find(l => l.level === level.level + 1)
-    const xpIntoLevel = (user?.xp || 0) - level.xpRequired
-    const xpForNext = nextLevel ? nextLevel.xpRequired - level.xpRequired : 1
-    const xpPct = nextLevel ? Math.min(100, (xpIntoLevel / xpForNext) * 100) : 100
+    const currentXp = user?.xp || 0
+    const level = getLevelFromXP(currentXp)
+    const nextLevel = getNextLevel(currentXp)
 
     const isActive = (path) => location.pathname === path || (path !== '/dashboard' && location.pathname.startsWith(path))
 
@@ -54,26 +76,12 @@ export default function Layout({ children }) {
                         <AvatarDisplay avatarId={user?.avatarId || 1} size="sm" />
                         <div className="flex-1 min-w-0">
                             <p className="font-semibold text-sm text-white truncate">{user?.name}</p>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-xs" style={{ color: level.color }}>{level.icon} {level.title}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-xs" style={{ color: level?.color || '#94a3b8' }}>{level?.icon || '🛡️'} {level?.title || 'Loading'}</span>
                             </div>
                         </div>
                     </div>
-                    {/* Mini XP bar */}
-                    <div className="mt-3">
-                        <div className="flex justify-between text-xs text-white/40 mb-1">
-                            <span>{user?.xp?.toLocaleString()} XP</span>
-                            {nextLevel && <span>→ {nextLevel.xpRequired?.toLocaleString()}</span>}
-                        </div>
-                        <div className="xp-bar h-2">
-                            <motion.div
-                                className="xp-bar-fill"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${xpPct}%` }}
-                                transition={{ duration: 1, ease: 'easeOut' }}
-                            />
-                        </div>
-                    </div>
+                    <SidebarXPBar xp={currentXp} nextLevel={nextLevel} />
                 </div>
 
                 {/* Nav */}

@@ -3,27 +3,79 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { useGame } from '../contexts/GameContext.jsx'
 import Layout from '../components/Layout.jsx'
 import AvatarDisplay, { AvatarPicker } from '../components/AvatarDisplay.jsx'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Edit3, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 
 export default function ProfilePage() {
-    const { user, updateUser } = useAuth()
-    const { getLevelFromXP, getNextLevel, BADGES, LEVELS, getUserRank } = useGame()
+    const { user, updateUser, refreshUser } = useAuth()
+    const { getLevelFromXP, getNextLevel, badges,levels,loading,error, getUserRank } = useGame()
     const [editing, setEditing] = useState(false)
     const [displayName, setDisplayName] = useState(user?.name || '')
     const [avatarId, setAvatarId] = useState(user?.avatarId || 1)
+    const [badgesByCategory, setBadgesByCategory] = useState({})
 
     const level = getLevelFromXP(user?.xp || 0)
     const nextLevel = getNextLevel(user?.xp || 0)
     const myRank = getUserRank()
+    if (!level) return null
+    const normalizeBadgeKey = (value) => {
+        if (typeof value === 'string' || typeof value === 'number') {
+            return String(value).trim().toLowerCase()
+        }
+        if (!value || typeof value !== 'object') return ''
+        return String(
+            value.id ?? value.badge_key ?? value.badgeId ?? value.badge_id ?? ''
+        ).trim().toLowerCase()
+    }
+
+    const getCategoryLabel = (badge) => (
+        badge?.category_name || badge?.categoryName || badge?.category || 'Uncategorized'
+    )
+
     const earnedBadges = user?.badges || []
+    const earnedBadgeSet = new Set(earnedBadges.map(normalizeBadgeKey).filter(Boolean))
 
     const xpIntoLevel = (user?.xp || 0) - level.xpRequired
     const xpForNext = nextLevel ? nextLevel.xpRequired - level.xpRequired : 1
     const xpPct = nextLevel ? Math.min(100, (xpIntoLevel / xpForNext) * 100) : 100
+    
+    
+    
+    const loadBadgesByCategory = async () => {
+        try {
+            const data = await axios.get('/api/badges/getBadgesByCategory')
+            const badgeList = data.data.badges
+            console.log('Loaded badges by category:', badgeList)
+            const grouped = badgeList.reduce((groups, badge) => {
+                const key = getCategoryLabel(badge)
+                if (!groups[key]) groups[key] = []
+                groups[key].push(badge)
+                return groups
+            }, {})
+            setBadgesByCategory(grouped)
+        } catch (error) {
+            console.error('Error loading badges by category:', error)
+        }
+    }
+    useEffect(() => {
+        loadBadgesByCategory()
+        refreshUser()
 
+    }, [])
+
+    const groupedBadges = Object.keys(badgesByCategory).length
+        ? badgesByCategory
+        : badges.reduce((groups, badge) => {
+            const key = getCategoryLabel(badge)
+            if (!groups[key]) groups[key] = []
+            groups[key].push(badge)
+            return groups
+        }, {})
+
+    const totalBadgeCount = Object.values(groupedBadges)
+        .reduce((sum, items) => sum + items.length, 0)
     const handleSave = async () => {
         try {
             await axios.put('/api/users/me', { displayName, avatarId })
@@ -125,7 +177,11 @@ export default function ProfilePage() {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                     <h2 className="font-bold text-white mb-4">🎯 Level Progression</h2>
                     <div className="flex items-end gap-2">
-                        {LEVELS.map((l, i) => {
+                        {loading ? (
+                            <p className="text-white/40 text-xs text-center">Loading levels...</p>
+                        ) : error ? (
+                            <p className="text-red-400 text-xs text-center">Failed to load levels</p>
+                        ) : levels.map((l, i) => {
                             const reached = (user?.xp || 0) >= l.xpRequired
                             const isCurrent = l.level === level.level
                             return (
@@ -151,24 +207,43 @@ export default function ProfilePage() {
                 </motion.div>
 
                 {/* Badge Collection */}
-                <motion.div className="glass-card p-5"
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                    <h2 className="font-bold text-white mb-4">🏆 Badge Collection ({earnedBadges.length}/{BADGES.length})</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {BADGES.map(badge => {
-                            const earned = earnedBadges.includes(badge.id)
-                            return (
-                                <motion.div key={badge.id}
-                                    className={`${earned ? 'badge-earned' : 'badge-locked'} p-4 flex flex-col items-center gap-2`}
-                                    whileHover={earned ? { scale: 1.05 } : {}}>
-                                    <span className="text-3xl">{badge.icon}</span>
-                                    <p className="text-xs font-bold text-white text-center">{badge.name}</p>
-                                    <p className="text-xs text-white/40 text-center">{badge.desc}</p>
-                                    {earned && <span className="text-xs text-accent font-bold">✓ Earned</span>}
-                                </motion.div>
-                            )
-                        })}
-                    </div>
+              <motion.div
+                    className="glass-card p-5"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                >
+                    <h2 className="font-bold text-white mb-4">
+                        🏆 Badge Collection ({earnedBadgeSet.size}/{totalBadgeCount})
+                    </h2>
+
+                    {/* Group badges by category */}
+                    {Object.entries(groupedBadges).map(([categoryName, categoryBadges]) => (
+                        <div key={categoryName} className="mb-6">
+                            {/* Category Header */}
+                            <h3 className="text-sm font-semibold text-white/60 uppercase tracking-widest mb-3 border-b border-white/10 pb-2">
+                                {categoryName === 'Badge Game' ? '🎮' : '📚'} {categoryName}
+                            </h3>
+
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {categoryBadges.map(badge => {
+                                    const earned = earnedBadgeSet.has(normalizeBadgeKey(badge))
+                                    return (
+                                        <motion.div
+                                            key={badge.id}
+                                            className={`${earned ? 'badge-earned' : 'badge-locked'} p-4 flex flex-col items-center gap-2`}
+                                            whileHover={earned ? { scale: 1.05 } : {}}
+                                        >
+                                            <span className="text-3xl">{badge.icon}</span>
+                                            <p className="text-xs font-bold text-white text-center">{badge.name}</p>
+                                            <p className="text-xs text-white/40 text-center">{badge.desc}</p>
+                                            {earned && <span className="text-xs text-accent font-bold">✓ Earned</span>}
+                                        </motion.div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))}
                 </motion.div>
             </div>
         </Layout>

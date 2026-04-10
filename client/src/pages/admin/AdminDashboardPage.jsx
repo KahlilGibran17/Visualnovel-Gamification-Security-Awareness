@@ -1,17 +1,11 @@
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Users, BookOpen, BarChart2, Bell, TrendingUp, AlertCircle, CheckCircle, Clock } from 'lucide-react'
+import { Users, BookOpen, BarChart2, Bell, TrendingUp, AlertCircle, CheckCircle, Clock, PlusCircle } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
-import { DEMO_LEADERBOARD } from '../../contexts/GameContext.jsx'
+import axios from 'axios'
 
-const DEPT_STATS_FULL = [
-    { dept: 'IT', total: 3, completed: 2, avgXp: 3325, color: '#60a5fa' },
-    { dept: 'Engineering', total: 4, completed: 3, avgXp: 2488, color: '#a78bfa' },
-    { dept: 'Marketing', total: 3, completed: 1, avgXp: 1167, color: '#f97316' },
-    { dept: 'Finance', total: 4, completed: 1, avgXp: 475, color: '#22c55e' },
-    { dept: 'HR', total: 3, completed: 1, avgXp: 1000, color: '#ec4899' },
-    { dept: 'Operations', total: 3, completed: 0, avgXp: 450, color: '#FFD60A' },
-]
+const DEPT_COLORS = ['#60a5fa', '#a78bfa', '#f97316', '#22c55e', '#ec4899', '#FFD60A']
 
 const RECENT_ACTIVITY = [
     { user: 'Ahmad Fauzi', action: 'Completed Chapter 6 — Cyber Hero badge earned', time: '2 min ago', icon: '🏆' },
@@ -39,12 +33,128 @@ function KpiCard({ icon: Icon, label, value, sub, color, delay }) {
     )
 }
 
+const normalizeLeaderboardRows = (rows) => {
+    if (!Array.isArray(rows)) return []
+
+    return rows.map((row, index) => ({
+        ...row,
+        id: Number(row?.id) || index + 1,
+        xp: Number(row?.xp) || 0,
+        chaptersCompleted: Number(row?.chaptersCompleted) || 0,
+    }))
+}
+
+const normalizeDeptStats = (rows) => {
+    if (!Array.isArray(rows)) return []
+
+    return rows.map((row) => ({
+        ...row,
+        members: Number(row?.members) || 0,
+        avgXp: Number(row?.avgXp) || 0,
+    }))
+}
+
 export default function AdminDashboardPage() {
     const navigate = useNavigate()
-    const totalUsers = DEMO_LEADERBOARD.length
-    const completedAll = DEMO_LEADERBOARD.filter(u => u.chaptersCompleted === 6).length
-    const completionRate = Math.round((completedAll / totalUsers) * 100)
-    const avgXp = Math.round(DEMO_LEADERBOARD.reduce((s, u) => s + u.xp, 0) / totalUsers)
+    const [leaderboardRows, setLeaderboardRows] = useState([])
+    const [deptStats, setDeptStats] = useState([])
+    const [totalChapters, setTotalChapters] = useState(0)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        let isMounted = true
+
+        const loadAdminData = async () => {
+            setLoading(true)
+            try {
+                const [leaderboardRes, deptRes, chaptersRes] = await Promise.all([
+                    axios.get('/api/leaderboard', {
+                        params: { filter: 'all', dept: 'all', includeZeroXp: 'true' },
+                    }),
+                    axios.get('/api/leaderboard/departments'),
+                    axios.get('/api/elearning/getChapters'),
+                ])
+
+                if (!isMounted) return
+
+                setLeaderboardRows(normalizeLeaderboardRows(leaderboardRes.data))
+                setDeptStats(normalizeDeptStats(deptRes.data))
+                setTotalChapters(Array.isArray(chaptersRes.data) ? chaptersRes.data.length : 0)
+            } catch (err) {
+                console.error('Failed to load admin dashboard data:', err)
+                if (isMounted) {
+                    setLeaderboardRows([])
+                    setDeptStats([])
+                    setTotalChapters(0)
+                }
+            } finally {
+                if (isMounted) {
+                    setLoading(false)
+                }
+            }
+        }
+
+        loadAdminData()
+
+        return () => {
+            isMounted = false
+        }
+    }, [])
+
+    const isAllChaptersDone = (chaptersCompleted) => (
+        totalChapters > 0 && chaptersCompleted >= totalChapters
+    )
+
+    const totalUsers = leaderboardRows.length
+    const completedAll = leaderboardRows.filter(u => isAllChaptersDone(u.chaptersCompleted)).length
+    const completionRate = totalUsers > 0 ? Math.round((completedAll / totalUsers) * 100) : 0
+    const avgXp = totalUsers > 0
+        ? Math.round(leaderboardRows.reduce((sum, user) => sum + user.xp, 0) / totalUsers)
+        : 0
+    const notStarted = leaderboardRows.filter(u => u.chaptersCompleted === 0).length
+
+    const departmentProgress = useMemo(() => {
+        const completedByDept = leaderboardRows.reduce((acc, user) => {
+            const dept = user.department || 'Unknown'
+            if (isAllChaptersDone(user.chaptersCompleted)) {
+                acc[dept] = (acc[dept] || 0) + 1
+            }
+            return acc
+        }, {})
+
+        if (deptStats.length > 0) {
+            return deptStats.map((dept, index) => ({
+                dept: dept.dept,
+                total: dept.members,
+                completed: completedByDept[dept.dept] || 0,
+                avgXp: dept.avgXp,
+                color: DEPT_COLORS[index % DEPT_COLORS.length],
+            }))
+        }
+
+        const grouped = leaderboardRows.reduce((acc, user) => {
+            const dept = user.department || 'Unknown'
+            if (!acc[dept]) {
+                acc[dept] = { dept, total: 0, completed: 0, xpSum: 0 }
+            }
+
+            acc[dept].total += 1
+            acc[dept].xpSum += user.xp
+            if (isAllChaptersDone(user.chaptersCompleted)) {
+                acc[dept].completed += 1
+            }
+
+            return acc
+        }, {})
+
+        return Object.values(grouped).map((dept, index) => ({
+            dept: dept.dept,
+            total: dept.total,
+            completed: dept.completed,
+            avgXp: dept.total > 0 ? Math.round(dept.xpSum / dept.total) : 0,
+            color: DEPT_COLORS[index % DEPT_COLORS.length],
+        }))
+    }, [deptStats, leaderboardRows, totalChapters])
 
     return (
         <Layout>
@@ -57,10 +167,10 @@ export default function AdminDashboardPage() {
 
                 {/* KPI Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <KpiCard icon={Users} label="Total Employees" value={totalUsers} sub="Registered users" color="#60a5fa" delay={0.1} />
-                    <KpiCard icon={CheckCircle} label="Completion Rate" value={`${completionRate}%`} sub="All chapters done" color="#22c55e" delay={0.15} />
-                    <KpiCard icon={TrendingUp} label="Avg XP" value={avgXp.toLocaleString()} sub="Per employee" color="#FFD60A" delay={0.2} />
-                    <KpiCard icon={AlertCircle} label="Not Started" value={DEMO_LEADERBOARD.filter(u => u.chaptersCompleted === 0).length} sub="Need attention" color="#E63946" delay={0.25} />
+                    <KpiCard icon={Users} label="Total Employees" value={loading ? '...' : totalUsers} sub="Registered users" color="#60a5fa" delay={0.1} />
+                    <KpiCard icon={CheckCircle} label="Completion Rate" value={loading ? '...' : `${completionRate}%`} sub="All chapters done" color="#22c55e" delay={0.15} />
+                    <KpiCard icon={TrendingUp} label="Avg XP" value={loading ? '...' : avgXp.toLocaleString()} sub="Per employee" color="#FFD60A" delay={0.2} />
+                    <KpiCard icon={AlertCircle} label="Not Started" value={loading ? '...' : notStarted} sub="Need attention" color="#E63946" delay={0.25} />
                 </div>
 
                 {/* Quick links */}
@@ -69,6 +179,7 @@ export default function AdminDashboardPage() {
                         { icon: Users, label: 'User Management', desc: 'Import, manage, and reset employee accounts', path: '/admin/users', color: '#60a5fa' },
                         { icon: BookOpen, label: 'Content Management', desc: 'Edit chapters, dialogues, and quiz questions', path: '/admin/content', color: '#a78bfa' },
                         { icon: BarChart2, label: 'Reports & Export', desc: 'Compliance reports, export to Excel and PDF', path: '/admin/reports', color: '#22c55e' },
+                        { icon: PlusCircle, label: 'Buat eLearning', desc: 'Buat modul eLearning baru', path: '/admin/elearning', color: '#f97316' },
                     ].map(item => (
                         <motion.button
                             key={item.path}
@@ -95,13 +206,21 @@ export default function AdminDashboardPage() {
                             <Users className="w-4 h-4 text-accent" /> Department Progress
                         </h2>
                         <div className="space-y-3">
-                            {DEPT_STATS_FULL.map(d => (
+                            {loading && (
+                                <p className="text-white/40 text-sm">Loading department stats...</p>
+                            )}
+
+                            {!loading && departmentProgress.length === 0 && (
+                                <p className="text-white/40 text-sm">No department data available.</p>
+                            )}
+
+                            {!loading && departmentProgress.map(d => (
                                 <div key={d.dept} className="flex items-center gap-3">
                                     <span className="w-20 text-white/70 text-sm">{d.dept}</span>
                                     <div className="flex-1 bg-white/10 rounded-full h-2">
                                         <div
                                             className="h-2 rounded-full transition-all duration-1000"
-                                            style={{ width: `${(d.completed / d.total) * 100}%`, background: d.color }}
+                                            style={{ width: `${d.total > 0 ? (d.completed / d.total) * 100 : 0}%`, background: d.color }}
                                         />
                                     </div>
                                     <span className="text-xs text-white/50 w-12 text-right">{d.completed}/{d.total}</span>

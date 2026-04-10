@@ -2,14 +2,40 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Filter, ChevronDown, Users, TrendingUp } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import { useGame, DEMO_LEADERBOARD, DEPT_STATS } from '../contexts/GameContext.jsx'
 import Layout from '../components/Layout.jsx'
 import AvatarDisplay from '../components/AvatarDisplay.jsx'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import axios from 'axios'
 
 const FILTERS = ['All Time', 'This Week', 'This Month']
-const DEPARTMENTS = ['All Departments', 'Engineering', 'IT', 'Marketing', 'HR', 'Finance', 'Operations']
-const LEVEL_COLORS = ['#94a3b8', '#60a5fa', '#a78bfa', '#f59e0b', '#E63946']
+const FILTER_QUERY_MAP = {
+    'All Time': 'all',
+    'This Week': 'weekly',
+    'This Month': 'monthly',
+}
+
+const normalizeLeaderboardRows = (rows) => {
+    if (!Array.isArray(rows)) return []
+
+    return rows.map((row, index) => ({
+        ...row,
+        rank: Number(row?.rank) || index + 1,
+        xp: Number(row?.xp) || 0,
+        level: Number(row?.level) || 1,
+        chaptersCompleted: Number(row?.chaptersCompleted) || 0,
+        avatarId: Number(row?.avatarId) || 1,
+    }))
+}
+
+const normalizeDeptStats = (rows) => {
+    if (!Array.isArray(rows)) return []
+
+    return rows.map((row) => ({
+        ...row,
+        members: Number(row?.members) || 0,
+        avgXp: Number(row?.avgXp) || 0,
+    }))
+}
 
 function PodiumBlock({ user, place, isOwn }) {
     const heights = { 1: 'h-32', 2: 'h-24', 3: 'h-16' }
@@ -58,50 +84,168 @@ function PodiumBlock({ user, place, isOwn }) {
     )
 }
 
-function LevelBadge({ level }) {
-    const colors = ['#94a3b8', '#60a5fa', '#a78bfa', '#f59e0b', '#E63946']
-    const icons = ['🛡️', '👁️', '🛡️', '⚡', '🦸']
-    const titles = ['Rookie', 'Aware', 'Guardian', 'Expert', 'Cyber Hero']
-    const color = colors[level - 1] || colors[0]
+function LevelBadge({ badge }) {
+    if (!badge) return <span className="text-xs text-white/40">-</span>
+
     return (
-        <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border" style={{ color, borderColor: `${color}50`, background: `${color}15` }}>
-            {icons[level - 1]} {titles[level - 1]}
+        <span
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border"
+            style={{
+                color: badge.color,
+                borderColor: `${badge.color}50`,
+                background: `${badge.color}15`,
+            }}
+        >
+            {badge.icon} {badge.title}
         </span>
     )
 }
 
-function ChapterDots({ count }) {
+function useChapterCount(moduleId) {
+    const [count, setCount] = useState(0)
+    const [total, setTotal] = useState(0)  // total semua chapter = jumlah dots
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        async function fetchChapters() {
+            try {
+                const res = await fetch('/api/elearning/getChapters')
+                const data = await res.json()
+
+                setTotal(data.length)  // jumlah dots mengikuti total chapter di DB
+
+                const filtered = moduleId
+                    ? data.filter(ch => ch.module_id === moduleId)
+                    : data
+
+                setCount(filtered.length)
+            } catch (err) {
+                console.error('Failed to fetch chapters:', err)
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchChapters()
+    }, [moduleId])
+
+    return { count, total, loading }
+}
+
+function ChapterDots({ moduleId }) {
+    const { count, total, loading } = useChapterCount(moduleId)
+
+    if (loading) {
+        return (
+            <div className="flex items-center gap-1">
+                {Array.from({ length: 3 }).map((_, i) => (  // placeholder saat loading
+                    <div key={i} className="w-2.5 h-2.5 rounded-full bg-white/5 animate-pulse" />
+                ))}
+            </div>
+        )
+    }
+
     return (
         <div className="flex items-center gap-1">
-            {[1, 2, 3, 4, 5, 6].map(n => (
+            {Array.from({ length: total }).map((_, i) => (  // total dari DB
                 <div
-                    key={n}
-                    className={`w-2.5 h-2.5 rounded-full ${n <= count ? 'bg-accent' : 'bg-white/10'}`}
+                    key={i}
+                    className={`w-2.5 h-2.5 rounded-full ${i < count ? 'bg-accent' : 'bg-white/10'}`}
                 />
             ))}
         </div>
     )
 }
 
+
+
 export default function LeaderboardPage() {
     const { user } = useAuth()
-    const { leaderboard, getUserRank, getNextRankGap } = useGame()
     const [filter, setFilter] = useState('All Time')
     const [dept, setDept] = useState('All Departments')
     const [showDeptFilter, setShowDeptFilter] = useState(false)
     const [showDeptChart, setShowDeptChart] = useState(false)
+    const [leaderboardRows, setLeaderboardRows] = useState([])
+    const [deptStats, setDeptStats] = useState([])
+    const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
 
-    const myRank = getUserRank()
-    const rankGap = getNextRankGap()
+    const departmentOptions = ['All Departments', ...Array.from(new Set(deptStats.map(d => d.dept).filter(Boolean)))]
 
-    // Filter results based on selected filters
-    const filtered = leaderboard.filter(u =>
-        dept === 'All Departments' || u.department === dept
-    ).map((u, i) => ({ ...u, rank: i + 1 }))
+    useEffect(() => {
+        const load = async () => {
+            setLoadingLeaderboard(true)
+            try {
+                const res = await axios.get('/api/leaderboard', {
+                    params: {
+                        filter: FILTER_QUERY_MAP[filter] || 'all',
+                        dept: dept === 'All Departments' ? 'all' : dept,
+                        includeZeroXp: 'false',
+                    },
+                })
+                setLeaderboardRows(normalizeLeaderboardRows(res.data))
+            } catch (e) {
+                console.error('Failed to load leaderboard data', e)
+                setLeaderboardRows([])
+            }
+            setLoadingLeaderboard(false)
+        }
 
+        load()
+    }, [filter, dept])
+
+    useEffect(() => {
+        const loadDepartmentStats = async () => {
+            try {
+                const res = await axios.get('/api/leaderboard/departments')
+                setDeptStats(normalizeDeptStats(res.data))
+            } catch (e) {
+                console.error('Failed to load department stats', e)
+                setDeptStats([])
+            }
+        }
+
+        loadDepartmentStats()
+    }, [])
+
+    const myEntry = leaderboardRows.find(u => u.nik === user?.nik) || null
+    const myRank = myEntry?.rank || null
+    const aboveEntry = myRank && myRank > 1 ? leaderboardRows.find(u => u.rank === myRank - 1) : null
+    const rankGap = aboveEntry
+        ? {
+            rank: aboveEntry.rank,
+            name: aboveEntry.name,
+            gap: Math.max(0, aboveEntry.xp - (myEntry?.xp || 0)),
+        }
+        : null
+
+    const filtered = leaderboardRows
     const top3 = filtered.slice(0, 3)
-    const rest = filtered.slice(3)
-    const ownEntry = leaderboard.find(u => u.nik === user?.nik)
+    const ownEntry = myEntry
+
+    const [levelMap, setLevelMap] = useState({})
+
+    useEffect(() => {
+        const loadLevels = async () => {
+            try {
+                const res = await axios.get('/api/badges/getLevelBadges')
+                const rows = Array.isArray(res.data)
+                    ? res.data
+                    : Array.isArray(res.data?.levelBadges)
+                        ? res.data.levelBadges
+                        : []
+
+                const map = Object.fromEntries(
+                    rows
+                        .filter(l => Number.isFinite(Number(l?.level)))
+                        .map(l => [Number(l.level), l])
+                )
+                setLevelMap(map)
+            } catch (e) {
+                console.error('Failed to load levels', e)
+            }
+        }
+        loadLevels()
+    }, [])
 
     return (
         <Layout>
@@ -160,15 +304,15 @@ export default function LeaderboardPage() {
                                 <h2 className="font-bold text-white text-lg">🏢 Department Rankings</h2>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-white/40">by Average XP</span>
-                                    {DEPT_STATS.length > 0 && (
+                                    {deptStats.length > 0 && (
                                         <span className="text-xs bg-accent/20 text-accent border border-accent/30 px-2 py-1 rounded-full font-bold">
-                                            ⭐ Top: {DEPT_STATS[0].dept}
+                                            ⭐ Top: {deptStats[0].dept}
                                         </span>
                                     )}
                                 </div>
                             </div>
                             <ResponsiveContainer width="100%" height={200}>
-                                <BarChart data={DEPT_STATS} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
+                                <BarChart data={deptStats} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
                                     <XAxis dataKey="dept" stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 12 }} />
                                     <YAxis stroke="rgba(255,255,255,0.2)" tick={{ fontSize: 11 }} />
                                     <Tooltip
@@ -176,7 +320,7 @@ export default function LeaderboardPage() {
                                         formatter={(val) => [`${val.toLocaleString()} avg XP`]}
                                     />
                                     <Bar dataKey="avgXp" radius={[4, 4, 0, 0]}>
-                                        {DEPT_STATS.map((entry, idx) => (
+                                        {deptStats.map((entry, idx) => (
                                             <Cell key={idx} fill={idx === 0 ? '#FFD60A' : '#E63946'} opacity={idx === 0 ? 1 : 0.6} />
                                         ))}
                                     </Bar>
@@ -225,7 +369,7 @@ export default function LeaderboardPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                 >
-                                    {DEPARTMENTS.map(d => (
+                                    {departmentOptions.map(d => (
                                         <button
                                             key={d}
                                             onClick={() => { setDept(d); setShowDeptFilter(false) }}
@@ -280,70 +424,82 @@ export default function LeaderboardPage() {
                         <h2 className="font-bold text-white text-lg">Full Rankings</h2>
                     </div>
 
-                    {/* Header */}
-                    <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-white/10 text-xs text-white/40 font-semibold uppercase tracking-wider">
-                        <span className="col-span-1">Rank</span>
-                        <span className="col-span-4">Player</span>
-                        <span className="col-span-2 text-center hidden md:block">Level</span>
-                        <span className="col-span-2 text-center">XP</span>
-                        <span className="col-span-3 hidden lg:block">Chapters</span>
-                    </div>
+                    <div className="overflow-x-auto">
+                        <div className="min-w-[760px]">
+                            {/* Header */}
+                            <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-white/10 text-xs text-white/40 font-semibold uppercase tracking-wider">
+                                <span className="col-span-1">Rank</span>
+                                <span className="col-span-4">Player</span>
+                                <span className="col-span-2 text-center">Level</span>
+                                <span className="col-span-2 text-center">XP</span>
+                                <span className="col-span-3">Chapters</span>
+                            </div>
 
-                    {/* Rows */}
-                    <div className="divide-y divide-white/5">
-                        {filtered.map((entry, idx) => {
-                            const isOwn = entry.nik === user?.nik
-                            return (
-                                <motion.div
-                                    key={entry.id}
-                                    className={`grid grid-cols-12 gap-2 px-5 py-3.5 items-center transition-all duration-200 ${isOwn
-                                            ? 'bg-gradient-to-r from-accent/10 to-primary/10 border-l-2 border-accent'
-                                            : 'hover:bg-white/5'
-                                        }`}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.02 * idx }}
-                                >
-                                    {/* Rank */}
-                                    <div className="col-span-1">
-                                        {entry.rank <= 3 ? (
-                                            <span className="text-xl">{['👑', '🥈', '🥉'][entry.rank - 1]}</span>
-                                        ) : (
-                                            <span className={`font-bold text-sm ${isOwn ? 'text-accent' : 'text-white/60'}`}>#{entry.rank}</span>
-                                        )}
-                                    </div>
+                            {/* Rows */}
+                            <div className="divide-y divide-white/5">
+                                {loadingLeaderboard && (
+                                    <div className="px-5 py-8 text-center text-white/40 text-sm">Loading leaderboard...</div>
+                                )}
 
-                                    {/* Player */}
-                                    <div className="col-span-4 flex items-center gap-2 min-w-0">
-                                        <AvatarDisplay avatarId={entry.avatarId} size="sm" />
-                                        <div className="min-w-0">
-                                            <p className={`font-semibold text-sm truncate ${isOwn ? 'text-accent' : 'text-white'}`}>
-                                                {entry.name} {isOwn && '(You)'}
-                                            </p>
-                                            <p className="text-white/40 text-xs truncate">{entry.department}</p>
-                                        </div>
-                                    </div>
+                                {!loadingLeaderboard && filtered.length === 0 && (
+                                    <div className="px-5 py-8 text-center text-white/40 text-sm">No leaderboard data available.</div>
+                                )}
 
-                                    {/* Level */}
-                                    <div className="col-span-2 hidden md:flex justify-center">
-                                        <LevelBadge level={entry.level} />
-                                    </div>
+                                {filtered.map((entry, idx) => {
+                                    const isOwn = entry.nik === user?.nik
+                                    return (
+                                        <motion.div
+                                            key={entry.id}
+                                            className={`grid grid-cols-12 gap-2 px-5 py-3.5 items-center transition-all duration-200 ${isOwn
+                                                    ? 'bg-gradient-to-r from-accent/10 to-primary/10 border-l-2 border-accent'
+                                                    : 'hover:bg-white/5'
+                                                }`}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: 0.02 * idx }}
+                                        >
+                                            {/* Rank */}
+                                            <div className="col-span-1">
+                                                {entry.rank <= 3 ? (
+                                                    <span className="text-xl">{['👑', '🥈', '🥉'][entry.rank - 1]}</span>
+                                                ) : (
+                                                    <span className={`font-bold text-sm ${isOwn ? 'text-accent' : 'text-white/60'}`}>#{entry.rank}</span>
+                                                )}
+                                            </div>
 
-                                    {/* XP */}
-                                    <div className="col-span-2 text-center">
-                                        <span className={`font-bold text-sm ${isOwn ? 'text-accent' : 'text-white/80'}`}>
-                                            {entry.xp.toLocaleString()}
-                                        </span>
-                                    </div>
+                                            {/* Player */}
+                                            <div className="col-span-4 flex items-center gap-2 min-w-0">
+                                                <AvatarDisplay avatarId={entry.avatarId} size="sm" />
+                                                <div className="min-w-0">
+                                                    <p className={`font-semibold text-sm truncate ${isOwn ? 'text-accent' : 'text-white'}`}>
+                                                        {entry.name} {isOwn && '(You)'}
+                                                    </p>
+                                                    <p className="text-white/40 text-xs truncate">{entry.department}</p>
+                                                </div>
+                                            </div>
 
-                                    {/* Chapters */}
-                                    <div className="col-span-3 hidden lg:block">
-                                        <ChapterDots count={entry.chaptersCompleted} />
-                                        <p className="text-xs text-white/30 mt-1">{entry.chaptersCompleted}/6 done</p>
-                                    </div>
-                                </motion.div>
-                            )
-                        })}
+                                            {/* Level */}
+                                            <div className="col-span-2 flex justify-center">
+                                                <LevelBadge badge={levelMap[Number(entry.level)]} />
+                                            </div>
+
+                                            {/* XP */}
+                                            <div className="col-span-2 text-center">
+                                                <span className={`font-bold text-sm ${isOwn ? 'text-accent' : 'text-white/80'}`}>
+                                                    {entry.xp.toLocaleString()}
+                                                </span>
+                                            </div>
+
+                                            {/* Chapters */}
+                                            <div className="col-span-3">
+                                                <ChapterDots count={entry.chaptersCompleted} />
+                                                <p className="text-xs text-white/30 mt-1">{entry.chaptersCompleted} chapters completed</p>
+                                            </div>
+                                        </motion.div>
+                                    )
+                                })}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Own row sticky at bottom if not visible */}

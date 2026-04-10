@@ -4,6 +4,7 @@ import axios from 'axios'
 
 const GameContext = createContext(null)
 
+
 // Chapter definitions
 export const CHAPTERS = [
     { id: 1, title: 'First Day', subtitle: 'Phishing Email', icon: '📧', location: 'Office Lobby', unlockAt: 0 },
@@ -14,67 +15,120 @@ export const CHAPTERS = [
     { id: 6, title: 'Showdown with Ph1sh', subtitle: 'FINALE', icon: '⚔️', location: 'Data Center', unlockAt: 5 },
 ]
 
-export const LEVELS = [
-    { level: 1, title: 'Rookie', xpRequired: 0, color: '#94a3b8', icon: '🛡️' },
-    { level: 2, title: 'Aware', xpRequired: 500, color: '#60a5fa', icon: '👁️' },
-    { level: 3, title: 'Guardian', xpRequired: 1500, color: '#a78bfa', icon: '🛡️' },
-    { level: 4, title: 'Expert', xpRequired: 3000, color: '#f59e0b', icon: '⚡' },
-    { level: 5, title: 'Cyber Hero', xpRequired: 6000, color: '#E63946', icon: '🦸' },
-]
 
-export const BADGES = [
-    { id: 'phishing-hunter', name: 'Phishing Hunter', icon: '🎣', desc: 'Complete Chapter 1 with perfect score', color: '#E63946' },
-    { id: 'tidy-desk', name: 'Tidy Desk', icon: '🗂️', desc: 'Complete Chapter 2', color: '#3b82f6' },
-    { id: 'social-shield', name: 'Social Shield', icon: '🛡️', desc: 'Complete Chapter 3', color: '#8b5cf6' },
-    { id: 'password-master', name: 'Password Master', icon: '🔐', desc: 'Complete Chapter 4 without mistakes', color: '#22c55e' },
-    { id: 'first-responder', name: 'First Responder', icon: '🚨', desc: 'Complete Chapter 5', color: '#f97316' },
-    { id: 'cyber-hero', name: 'Cyber Hero', icon: '🦸', desc: 'Complete all chapters with good endings', color: '#FFD60A' },
-    { id: '7-day-streak', name: '7-Day Streak', icon: '🔥', desc: 'Log in 7 consecutive days', color: '#ef4444' },
-    { id: 'speed-runner', name: 'Speed Runner', icon: '⚡', desc: 'Complete a chapter in record time', color: '#06b6d4' },
-]
+const DEFAULT_LEVEL = { level: 1, title: 'Rookie', xpRequired: 0, color: '#94a3b8', icon: '🛡️' }
 
-// Demo data for leaderboard
-export const DEMO_LEADERBOARD = [
-    { rank: 1, id: 3, name: 'Ahmad Fauzi', department: 'IT', xp: 5600, level: 4, chaptersCompleted: 6, avatarId: 5, nik: 'admin001' },
-    { rank: 2, id: 1, name: 'Budi Santoso', department: 'Engineering', xp: 2850, level: 3, chaptersCompleted: 4, avatarId: 1, nik: '10001' },
-    { rank: 3, id: 5, name: 'Riko Pratama', department: 'Engineering', xp: 2700, level: 3, chaptersCompleted: 4, avatarId: 4, nik: '10005' },
-    { rank: 4, id: 6, name: 'Maya Sari', department: 'Marketing', xp: 2200, level: 3, chaptersCompleted: 3, avatarId: 2, nik: '10006' },
-    { rank: 5, id: 2, name: 'Siti Rahayu', department: 'HR', xp: 1900, level: 2, chaptersCompleted: 3, avatarId: 3, nik: '10002' },
-    { rank: 6, id: 7, name: 'Doni Kurniawan', department: 'Finance', xp: 1650, level: 2, chaptersCompleted: 2, avatarId: 6, nik: '10007' },
-    { rank: 7, id: 8, name: 'Lestari Wulandari', department: 'Engineering', xp: 1400, level: 2, chaptersCompleted: 2, avatarId: 7, nik: '10008' },
-    { rank: 8, id: 9, name: 'Hendra Gunawan', department: 'Operations', xp: 1200, level: 2, chaptersCompleted: 2, avatarId: 8, nik: '10009' },
-    { rank: 9, id: 10, name: 'Nurul Fadilah', department: 'IT', xp: 1050, level: 2, chaptersCompleted: 2, avatarId: 1, nik: '10010' },
-    { rank: 10, id: 11, name: 'Rizky Aditya', department: 'Marketing', xp: 900, level: 2, chaptersCompleted: 1, avatarId: 2, nik: '10011' },
-    { rank: 11, id: 12, name: 'Eka Putri', department: 'HR', xp: 800, level: 2, chaptersCompleted: 1, avatarId: 3, nik: '10012' },
-    { rank: 12, id: 13, name: 'Fajar Nugroho', department: 'Finance', xp: 700, level: 2, chaptersCompleted: 1, avatarId: 4, nik: '10013' },
-    { rank: 13, id: 14, name: 'Gita Permata', department: 'Operations', xp: 600, level: 2, chaptersCompleted: 1, avatarId: 5, nik: '10014' },
-    { rank: 14, id: 15, name: 'Irfan Hakim', department: 'Engineering', xp: 500, level: 2, chaptersCompleted: 1, avatarId: 6, nik: '10015' },
-    { rank: 15, id: 16, name: 'Juliana Putri', department: 'Marketing', xp: 400, level: 1, chaptersCompleted: 0, avatarId: 7, nik: '10016' },
-    { rank: 16, id: 17, name: 'Kevin Wijaya', department: 'IT', xp: 350, level: 1, chaptersCompleted: 0, avatarId: 8, nik: '10017' },
-    { rank: 17, id: 18, name: 'Linda Hartati', department: 'HR', xp: 300, level: 1, chaptersCompleted: 0, avatarId: 1, nik: '10018' },
-    { rank: 18, id: 19, name: 'Mita Anggraini', department: 'Finance', xp: 200, level: 1, chaptersCompleted: 0, avatarId: 2, nik: '10019' },
-    { rank: 19, id: 20, name: 'Nanda Prabowo', department: 'Operations', xp: 150, level: 1, chaptersCompleted: 0, avatarId: 3, nik: '10020' },
-    { rank: 20, id: 4, name: 'Dewi Kusuma', department: 'Finance', xp: 0, level: 1, chaptersCompleted: 0, avatarId: 2, nik: '10003' },
-]
+const getLevelXPRequired = (level) => {
+    const rawValue = level?.xpRequired ?? level?.xprequired ?? level?.xp_required
+    const xpRequired = Number(rawValue)
+    return Number.isFinite(xpRequired) ? xpRequired : null
+}
 
-export const DEPT_STATS = [
-    { dept: 'IT', avgXp: 3325, members: 3 },
-    { dept: 'Engineering', avgXp: 2488, members: 4 },
-    { dept: 'Marketing', avgXp: 1167, members: 3 },
-    { dept: 'Finance', avgXp: 475, members: 4 },
-    { dept: 'HR', avgXp: 1000, members: 3 },
-    { dept: 'Operations', avgXp: 450, members: 3 },
-]
+const normalizeLevels = (rows) => {
+    if (!Array.isArray(rows)) return []
 
+    return rows
+        .map((row, index) => {
+            const xpRequired = getLevelXPRequired(row)
+            const levelNumber = Number(row?.level)
+
+            if (!Number.isFinite(xpRequired)) return null
+
+            return {
+                ...row,
+                xpRequired,
+                level: Number.isFinite(levelNumber) ? levelNumber : index + 1,
+            }
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.xpRequired - b.xpRequired)
+}
+
+const normalizeLeaderboardRows = (rows) => {
+    if (!Array.isArray(rows)) return []
+
+    return rows.map((row, index) => ({
+        ...row,
+        rank: Number(row?.rank) || index + 1,
+        xp: Number(row?.xp) || 0,
+        level: Number(row?.level) || 1,
+        chaptersCompleted: Number(row?.chaptersCompleted) || 0,
+        avatarId: Number(row?.avatarId) || 1,
+    }))
+}
+
+export function useLevels(){
+
+    const [levels, setLevels] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const { user } = useAuth()
+
+    useEffect(() => {
+        if (!user) {
+            setLevels([])
+            setLoading(false)
+            return
+        }
+
+        let isMounted = true
+
+        const fetchLevels = async () => {
+            setLoading(true)
+            try {
+                const res = await axios.get('/api/badges/getLevelBadges');
+                const rows = Array.isArray(res.data)
+                    ? res.data
+                    : Array.isArray(res.data?.levelBadges)
+                        ? res.data.levelBadges
+                        : []
+
+                const normalizedLevels = normalizeLevels(rows)
+                if (isMounted) {
+                    setLevels(normalizedLevels)
+                }
+                console.log('Fetched levels:', normalizedLevels);
+            } catch (err) {
+                console.error('Error fetching levels:', err);
+                if (isMounted) {
+                    setError(err)
+                    setLevels([])
+                }
+            } finally {
+                if (isMounted) {
+                    setLoading(false)
+                }
+            };
+        };
+
+        fetchLevels();
+        return () => {
+            isMounted = false
+        }
+    }, [user?.id]);
+
+    return { levels, loading, error };
+
+
+    
+}
 export function GameProvider({ children }) {
     const { user, updateUser } = useAuth()
     const [chapterProgress, setChapterProgress] = useState({})
-    const [leaderboard, setLeaderboard] = useState(DEMO_LEADERBOARD)
+    const [leaderboard, setLeaderboard] = useState([])
+    const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+    const [leaderboardError, setLeaderboardError] = useState(null)
     const [xpPopups, setXpPopups] = useState([])
+    const [badges, setBadges] = useState([])
+    const { levels,loading,error } = useLevels()
 
     useEffect(() => {
         if (user) {
             loadProgress()
+            loadLeaderboard()
+        } else {
+            setChapterProgress({})
+            setLeaderboard([])
         }
     }, [user?.id])
 
@@ -95,17 +149,50 @@ export function GameProvider({ children }) {
         }
     }
 
-    const getLevelFromXP = (xp) => {
-        let lvl = LEVELS[0]
-        for (const l of LEVELS) {
-            if (xp >= l.xpRequired) lvl = l
+    const loadLeaderboard = async ({ filter = 'all', dept = 'all' } = {}) => {
+        if (!user) {
+            setLeaderboard([])
+            return []
         }
+
+        setLeaderboardLoading(true)
+        setLeaderboardError(null)
+
+        try {
+            const res = await axios.get('/api/leaderboard', {
+                params: { filter, dept },
+            })
+
+            const normalizedRows = normalizeLeaderboardRows(res.data)
+            setLeaderboard(normalizedRows)
+            return normalizedRows
+        } catch (err) {
+            console.error('Failed to load leaderboard:', err)
+            setLeaderboardError(err)
+            setLeaderboard([])
+            return []
+        } finally {
+            setLeaderboardLoading(false)
+        }
+    }
+
+    const getLevelFromXP = (xp) => {
+        const safeXp = Math.max(0, Number(xp) || 0)
+        const levelList = (levels && levels.length > 0) ? levels : []
+
+        let lvl = DEFAULT_LEVEL
+        for (const l of levelList) {
+            if (safeXp >= l.xpRequired) lvl = l
+            else break
+        }
+
         return lvl
     }
 
     const getNextLevel = (xp) => {
-        const current = getLevelFromXP(xp)
-        return LEVELS.find(l => l.level === current.level + 1) || null
+        const safeXp = Math.max(0, Number(xp) || 0)
+        const levelList = (levels && levels.length > 0) ? levels : []
+        return levelList.find(l => safeXp < l.xpRequired) || null
     }
 
     const triggerXPPopup = (amount) => {
@@ -126,6 +213,15 @@ export function GameProvider({ children }) {
             await axios.post('/api/progress/xp', { amount, reason })
         } catch {
             // demo mode, state already updated
+        }
+    }
+
+    const loadBadges = async () => {
+        try {
+            const data = await axios.get('/api/badges/getBadges')
+            setBadges(data.data.badges)
+        } catch (error) {
+            console.error('Error loading badges:', error)
         }
     }
 
@@ -173,9 +269,15 @@ export function GameProvider({ children }) {
             completeChapter,
             getUserRank,
             getNextRankGap,
+            loadLeaderboard,
             CHAPTERS,
-            LEVELS,
-            BADGES,
+            levels,
+            loading,
+            error,
+            leaderboardLoading,
+            leaderboardError,
+            badges,
+            loadBadges
         }}>
             {children}
         </GameContext.Provider>

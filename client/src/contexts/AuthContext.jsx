@@ -40,6 +40,10 @@ export function AuthProvider({ children }) {
         }
     }
 
+    const refreshUser = async () => {
+        await fetchProfile()
+    }
+
     const login = async (nik, password, remember) => {
         try {
             const res = await axios.post('/api/auth/login', { nik, password })
@@ -93,7 +97,7 @@ export function AuthProvider({ children }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, updateUser, forgotPassword, isDemo: token?.startsWith('demo_') }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, updateUser, refreshUser, forgotPassword, isDemo: token?.startsWith('demo_') }}>
             {children}
         </AuthContext.Provider>
     )

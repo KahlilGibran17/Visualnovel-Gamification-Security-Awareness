@@ -48,6 +48,8 @@ router.get('/me', requireAuth, async (req, res) => {
     }
 })
 
+
+
 // PUT /api/users/me
 router.put('/me', requireAuth, async (req, res) => {
     const { displayName, avatarId } = req.body
