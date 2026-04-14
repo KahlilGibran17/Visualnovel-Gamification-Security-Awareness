@@ -38,9 +38,10 @@ export default function ProfilePage() {
     const earnedBadges = user?.badges || []
     const earnedBadgeSet = new Set(earnedBadges.map(normalizeBadgeKey).filter(Boolean))
 
-    const xpIntoLevel = (user?.xp || 0) - level.xpRequired
-    const xpForNext = nextLevel ? nextLevel.xpRequired - level.xpRequired : 1
-    const xpPct = nextLevel ? Math.min(100, (xpIntoLevel / xpForNext) * 100) : 100
+    const safeXp = Math.max(0, Number(user?.xp) || 0)
+    const nextLevelXp = nextLevel?.xpRequired ?? safeXp
+    const xpForNext = Math.max(1, nextLevelXp)
+    const xpPct = nextLevel ? Math.min(100, (safeXp / xpForNext) * 100) : 100
     
     const loadChapterStats = async () => {
     try {

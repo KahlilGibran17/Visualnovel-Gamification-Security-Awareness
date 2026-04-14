@@ -103,12 +103,17 @@ router.get('/getLeaderBoard', requireAuth, async (req, res) => {
 
 router.get('/getUserBadges', requireAuth, async (req, res) => {
     try {
-        const userId = req.user.id // sesuaikan dengan cara kamu ambil user id dari token/session
+        const userId = req.user.id
         const result = await pool.query(
-            `SELECT b.badge_key AS id, b.name, b.icon, b.description AS desc
-             FROM user_badges ub
-             JOIN badges b ON b.id = ub.badge_id
-             WHERE ub.user_id = $1`,
+            `SELECT 
+                b.badge_key AS id, 
+                b.name, 
+                b.icon, 
+                b.description AS desc,
+                CASE WHEN ub.badge_id IS NOT NULL THEN true ELSE false END AS earned
+             FROM badges b
+             LEFT JOIN user_badges ub ON b.id = ub.badge_id AND ub.user_id = $1
+             ORDER BY earned DESC, b.sort_order ASC`,
             [userId]
         )
         res.json({ badges: result.rows })
