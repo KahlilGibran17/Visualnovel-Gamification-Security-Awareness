@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Eye, EyeOff, ShieldAlert, Lock, User, Mail, AlertCircle, CheckCircle } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
-import toast from 'react-hot-toast'
+import toast from '../utils/toast.js'
 
 // ─── Cyberpunk Red Shield Icon ────────────────────────────────────────────────
 function CyberShieldIcon() {

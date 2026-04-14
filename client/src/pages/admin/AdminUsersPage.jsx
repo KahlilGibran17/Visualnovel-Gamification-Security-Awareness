@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, Search, UserPlus } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
-import toast from 'react-hot-toast'
+import toast from '../../utils/toast.js'
 import axios from 'axios'
 
 const LEVEL_LABELS = ['', 'Rookie', 'Aware', 'Guardian', 'Expert', 'Cyber Hero']

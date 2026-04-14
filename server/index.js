@@ -26,6 +26,7 @@ app.use('/api/admin', require('./routes/admin'))
 app.use('/api/elearning', require('./routes/elearning'))
 app.use('/api/badges', require('./routes/badges'))
 
+
 // Health
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() })

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthContext.jsx'
 import { GameProvider } from './contexts/GameContext.jsx'
+import { AudioProvider } from './contexts/AudioContext.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 import LoginPage from './pages/LoginPage.jsx'
@@ -25,8 +26,9 @@ export default function App() {
         <BrowserRouter>
             <AuthProvider>
                 <GameProvider>
-                    <div className="min-h-screen bg-dark font-sans">
-                        <Routes>
+                    <AudioProvider>
+                        <div className="min-h-screen bg-dark font-sans">
+                            <Routes>
                             {/* Public */}
                             <Route path="/login" element={<LoginPage />} />
 
@@ -106,20 +108,31 @@ export default function App() {
 
                             <Route path="/" element={<Navigate to="/login" replace />} />
                             <Route path="*" element={<Navigate to="/login" replace />} />
-                        </Routes>
-                    </div>
-                    <Toaster
-                        position="top-right"
-                        toastOptions={{
-                            style: {
-                                background: '#16213E',
-                                color: '#fff',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                            },
-                            success: { iconTheme: { primary: '#FFD60A', secondary: '#1A1A2E' } },
-                            error: { iconTheme: { primary: '#E63946', secondary: '#fff' } },
-                        }}
-                    />
+                            </Routes>
+                        </div>
+                        <Toaster
+                            position="top-right"
+                            reverseOrder={false}
+                            gutter={10}
+                            containerStyle={{
+                                top: 20,
+                                right: 20,
+                            }}
+                            toastOptions={{
+                                duration: 3500,
+                                style: {
+                                    background: '#16213E',
+                                    color: '#fff',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    minWidth: '290px',
+                                    maxWidth: '380px',
+                                    wordBreak: 'break-word',
+                                },
+                                success: { iconTheme: { primary: '#FFD60A', secondary: '#1A1A2E' } },
+                                error: { iconTheme: { primary: '#E63946', secondary: '#fff' } },
+                            }}
+                        />
+                    </AudioProvider>
                 </GameProvider>
             </AuthProvider>
         </BrowserRouter>

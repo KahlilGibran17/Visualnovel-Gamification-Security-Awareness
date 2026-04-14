@@ -37,10 +37,6 @@ router.post('/login', async (req, res) => {
             [newStreak, user.id]
         )
 
-        // // Streak XP
-        // if (lastLogin !== today) {
-        //     await pool.query('UPDATE users SET xp = xp + 25 WHERE id = $1', [user.id])
-        // }
 
         // Get badges
         const badgesResult = await pool.query(

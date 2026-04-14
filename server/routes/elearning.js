@@ -659,20 +659,45 @@ router.post('/admin/lessons', requireAuth, requireRole('admin', 'manager'), asyn
     }
 })
 
+// router.post('/admin/chapters', requireAuth, requireRole('admin'), async (req, res) => {
+//     try {
+//         const { title, description, badge_name, badge_icon, badge_description, badge_color, badge_key } = req.body
+
+//         // 1. Insert badge baru dulu
+//         const badgeInsert = await pool.query(
+//             `INSERT INTO badges (badge_key, name, description, icon, color)
+//              VALUES ($1, $2, $3, $4, $5)
+//              RETURNING id`,
+//             [badge_key, badge_name, badge_description || '', badge_icon || '🏆', badge_color || '#FFD60A']
+//         )
+//         const badgeId = badgeInsert.rows[0].id
+
+//         // 2. Insert chapter dengan badges_id
+//         const chapterInsert = await pool.query(
+//             `INSERT INTO chapters (ch_title, ch_description, created_at, badges_id)
+//              VALUES ($1, $2, NOW(), $3)
+//              RETURNING ch_id, ch_title, ch_description, badges_id`,
+//             [title || '', description || '', badgeId]
+//         )
+
+//         return res.json({ chapter: chapterInsert.rows[0] })
+//     } catch (err) {
+//         console.error('POST /admin/chapters error:', err.message)
+//         return res.status(500).json({ message: err.message })
+//     }
+// })
 router.post('/admin/chapters', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { title, description, badge_name, badge_icon, badge_description, badge_color, badge_key } = req.body
+        const { title, description, badge_name, badge_icon, badge_description, badge_color, badge_key, category_id } = req.body  // ← tambah category_id
 
-        // 1. Insert badge baru dulu
         const badgeInsert = await pool.query(
-            `INSERT INTO badges (badge_key, name, description, icon, color)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO badges (badge_key, name, description, icon, color, category_id)
+             VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING id`,
-            [badge_key, badge_name, badge_description || '', badge_icon || '🏆', badge_color || '#FFD60A']
+            [badge_key, badge_name, badge_description || '', badge_icon || '🏆', badge_color || '#FFD60A', category_id || null]  // ← tambah category_id
         )
         const badgeId = badgeInsert.rows[0].id
 
-        // 2. Insert chapter dengan badges_id
         const chapterInsert = await pool.query(
             `INSERT INTO chapters (ch_title, ch_description, created_at, badges_id)
              VALUES ($1, $2, NOW(), $3)
@@ -908,6 +933,31 @@ router.get('/getChapters', async (_req, res) => {
         return res.status(500).json({ message: err.message })
     }
 })
+
+// router.get('/getChapterProgress', requireAuth, async (req, res) => {
+//     try {
+//         const userId = req.user.id
+
+//         const completed = await pool.query(
+//             `SELECT COUNT(DISTINCT chapter_id) 
+//              FROM chapter_progress 
+//              WHERE user_id = $1 AND completed = true`,
+//             [userId]
+//         )
+
+//         const total = await pool.query(
+//             `SELECT COUNT(*) FROM chapters`
+//         )
+
+//         res.json({
+//             completed: parseInt(completed.rows[0].count),
+//             total: parseInt(total.rows[0].count)
+//         })
+//     } catch (err) {
+//         console.error('GET /getChapterProgress failed:', err)
+//         res.status(500).json({ message: err.message })
+//     }
+// })
 
 router.post('/admin/lessons-with-questions', requireAuth, requireRole('admin'), async (req, res) => {
     const {

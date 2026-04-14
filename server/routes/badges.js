@@ -101,4 +101,41 @@ router.get('/getLeaderBoard', requireAuth, async (req, res) => {
     
 })
 
+router.get('/getUserBadges', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.id // sesuaikan dengan cara kamu ambil user id dari token/session
+        const result = await pool.query(
+            `SELECT b.badge_key AS id, b.name, b.icon, b.description AS desc
+             FROM user_badges ub
+             JOIN badges b ON b.id = ub.badge_id
+             WHERE ub.user_id = $1`,
+            [userId]
+        )
+        res.json({ badges: result.rows })
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
+router.get('/getChapterProgress', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.id
+        const completed = await pool.query(
+            `SELECT COUNT(*) FROM chapter_progress WHERE user_id = $1 AND completed = true`,
+            [userId]
+        )
+        const total = await pool.query(
+            `SELECT COUNT(*) FROM chapters`
+        )
+        res.json({ 
+            completed: parseInt(completed.rows[0].count),
+            total: parseInt(total.rows[0].count)
+        })
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
 module.exports = router

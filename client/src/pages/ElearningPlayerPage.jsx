@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
-import toast from 'react-hot-toast'
+import toast from '../utils/toast.js'
 import Layout from '../components/Layout.jsx'
 import {
     ArrowLeft, Star, CheckCircle, XCircle, Play, Pause,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useGame } from '../contexts/GameContext.jsx'
+import { useAudio } from '../contexts/AudioContext.jsx'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -39,13 +40,14 @@ function parseDurationToSeconds(value) {
 
 // ── Question Overlay ───────────────────────────────────────────────────────
 
-function QuestionOverlay({ question, onSubmit, onDismiss, submitting }) {
+function QuestionOverlay({ question, onSubmit, onDismiss, submitting, onUiClick }) {
     const [selected, setSelected] = useState(null)
     const [showResult, setShowResult] = useState(false)
     const [resultData, setResultData] = useState(null)
 
     const handleSubmit = async () => {
         if (!selected || submitting) return
+        onUiClick?.('click')
         const result = await onSubmit(selected)
         if (result) {
             setResultData(result)
@@ -90,7 +92,10 @@ function QuestionOverlay({ question, onSubmit, onDismiss, submitting }) {
                                 {question.options.map((opt) => (
                                     <button
                                         key={opt.id}
-                                        onClick={() => setSelected(opt.id)}
+                                        onClick={() => {
+                                            onUiClick?.('click')
+                                            setSelected(opt.id)
+                                        }}
                                         className={`w-full text-left px-4 py-3.5 rounded-xl border transition-all duration-200 text-sm leading-snug ${
                                             selected === opt.id
                                                 ? 'border-primary bg-primary/20 text-white shadow-lg shadow-primary/20'
@@ -145,7 +150,13 @@ function QuestionOverlay({ question, onSubmit, onDismiss, submitting }) {
                                     </p>
                                 </>
                             )}
-                            <button onClick={onDismiss} className="btn-primary w-full flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => {
+                                    onUiClick?.('click')
+                                    onDismiss()
+                                }}
+                                className="btn-primary w-full flex items-center justify-center gap-2"
+                            >
                                 <Play className="w-4 h-4" />
                                 Lanjutkan Video
                             </button>
@@ -159,7 +170,17 @@ function QuestionOverlay({ question, onSubmit, onDismiss, submitting }) {
 
 // ── Custom Video Controls ──────────────────────────────────────────────────
 
-function VideoControls({ videoRef, duration, muted, setMuted, onFullscreen, paused, setPaused }) {
+function VideoControls({
+    videoRef,
+    duration,
+    muted,
+    setMuted,
+    onFullscreen,
+    paused,
+    setPaused,
+    showTimeline = true,
+    onUiClick,
+}) {
     const [currentTime, setCurrentTime] = useState(0)
     const [buffered, setBuffered] = useState(0)
     const [showControls, setShowControls] = useState(true)
@@ -197,6 +218,7 @@ function VideoControls({ videoRef, duration, muted, setMuted, onFullscreen, paus
     }, [])
 
     const handleSeek = (e) => {
+        if (!showTimeline) return
         const rect = e.currentTarget.getBoundingClientRect()
         const ratio = (e.clientX - rect.left) / rect.width
         const newTime = ratio * (duration || 0)
@@ -207,6 +229,7 @@ function VideoControls({ videoRef, duration, muted, setMuted, onFullscreen, paus
     const togglePlay = () => {
         const v = videoRef.current
         if (!v) return
+        onUiClick?.('click')
         if (v.paused) { v.play(); setPaused(false) }
         else { v.pause(); setPaused(true) }
     }
@@ -260,26 +283,28 @@ function VideoControls({ videoRef, duration, muted, setMuted, onFullscreen, paus
                 onClick={e => e.stopPropagation()}
             >
                 {/* Progress bar */}
-                <div
-                    className="w-full h-1.5 rounded-full bg-white/20 mb-3 cursor-pointer relative group"
-                    onClick={handleSeek}
-                >
-                    {/* Buffered */}
+                {showTimeline && (
                     <div
-                        className="absolute top-0 left-0 h-full rounded-full bg-white/30 transition-all"
-                        style={{ width: `${bufferedPct}%` }}
-                    />
-                    {/* Played */}
-                    <div
-                        className="absolute top-0 left-0 h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${progressPct}%` }}
-                    />
-                    {/* Thumb */}
-                    <div
-                        className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ left: `calc(${progressPct}% - 7px)` }}
-                    />
-                </div>
+                        className="w-full h-1.5 rounded-full bg-white/20 mb-3 cursor-pointer relative group"
+                        onClick={handleSeek}
+                    >
+                        {/* Buffered */}
+                        <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-white/30 transition-all"
+                            style={{ width: `${bufferedPct}%` }}
+                        />
+                        {/* Played */}
+                        <div
+                            className="absolute top-0 left-0 h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${progressPct}%` }}
+                        />
+                        {/* Thumb */}
+                        <div
+                            className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ left: `calc(${progressPct}% - 7px)` }}
+                        />
+                    </div>
+                )}
 
                 {/* Buttons row */}
                 <div className="flex items-center justify-between">
@@ -296,6 +321,7 @@ function VideoControls({ videoRef, duration, muted, setMuted, onFullscreen, paus
 
                         <button
                             onClick={() => {
+                                onUiClick?.('click')
                                 setMuted(m => !m)
                                 if (videoRef.current) videoRef.current.muted = !muted
                             }}
@@ -313,7 +339,10 @@ function VideoControls({ videoRef, duration, muted, setMuted, onFullscreen, paus
                     </div>
 
                     <button
-                        onClick={onFullscreen}
+                        onClick={() => {
+                            onUiClick?.('click')
+                            onFullscreen()
+                        }}
                         className="text-white hover:text-primary transition-colors"
                     >
                         <Maximize className="w-4 h-4" />
@@ -331,6 +360,7 @@ export default function ElearningPlayerPage() {
     const navigate = useNavigate()
     const { user, updateUser } = useAuth()
     const { getLevelFromXP } = useGame()
+    const { playSfx, unlockAudio } = useAudio()
 
     const [lesson, setLesson] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -361,6 +391,7 @@ export default function ElearningPlayerPage() {
     const saveProgressRef = useRef(null)
     const isPollingRef = useRef(false)
     const activeQuestionRef = useRef(null)
+    const allowFullscreenExitRef = useRef(false)
 
     const answeredMapRef = useRef({})
 
@@ -431,6 +462,7 @@ export default function ElearningPlayerPage() {
 
        const onCanPlay = () => {
             setVideoLoading(false)
+            // requestFullscreen()
             v.play()
                 .then(() => {
                     setPaused(false)
@@ -479,13 +511,52 @@ export default function ElearningPlayerPage() {
 
     useEffect(() => {
         const onFullscreenChange = () => {
-            if (!document.fullscreenElement) {
+            if (document.fullscreenElement) {
                 setFallbackFullscreen(false)
+                return
             }
+
+            if (allowFullscreenExitRef.current || videoCompletedRef.current) {
+                allowFullscreenExitRef.current = false
+                setFallbackFullscreen(false)
+                return
+            }
+
+            const el = containerRef.current
+            if (!el) return
+
+            const req = el.requestFullscreen
+                || el.webkitRequestFullscreen
+                || el.mozRequestFullScreen
+                || el.msRequestFullscreen
+
+            if (!req) {
+                setFallbackFullscreen(true)
+                return
+            }
+
+            Promise.resolve(req.call(el))
+                .then(() => setFallbackFullscreen(false))
+                .catch(() => setFallbackFullscreen(true))
         }
 
         document.addEventListener('fullscreenchange', onFullscreenChange)
         return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+    }, [])
+
+    useEffect(() => {
+        const onKeyDown = (e) => {
+            if (e.key !== 'Escape' || videoCompletedRef.current) return
+
+            e.preventDefault()
+            e.stopPropagation()
+            if (typeof e.stopImmediatePropagation === 'function') {
+                e.stopImmediatePropagation()
+            }
+        }
+
+        window.addEventListener('keydown', onKeyDown, true)
+        return () => window.removeEventListener('keydown', onKeyDown, true)
     }, [])
 
     // ── Polling: check quiz timestamps ─────────────────────────────────────
@@ -577,6 +648,7 @@ export default function ElearningPlayerPage() {
             }
 
             if (totalXp > 0) {
+                playSfx('success')
                 toast.success(`🎉 Video selesai! +${totalXp} XP Total!`, { duration: 5000 })
             } else {
                 toast.success('Video selesai ditonton!', { duration: 3000 })
@@ -600,6 +672,8 @@ export default function ElearningPlayerPage() {
                 { selectedOptionId }
             )
             const { isCorrect, xpAwarded } = res.data
+
+            playSfx(isCorrect ? 'correct' : 'wrong')
 
             if (isCorrect) answeredRef.current.add(activeQuestion.id)
 
@@ -632,6 +706,8 @@ export default function ElearningPlayerPage() {
 
     // ── Fullscreen helper ──────────────────────────────────────────────────
     const requestFullscreen = useCallback(async () => {
+        if (document.fullscreenElement) return
+
         const el = containerRef.current
         if (!el) return
         const req = el.requestFullscreen
@@ -657,7 +733,15 @@ export default function ElearningPlayerPage() {
 
     const exitFullscreen = useCallback(() => {
         if (document.fullscreenElement) {
-            document.exitFullscreen().catch(() => {})
+            allowFullscreenExitRef.current = true
+        } else {
+            allowFullscreenExitRef.current = false
+        }
+
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {
+                allowFullscreenExitRef.current = false
+            })
         }
         setFallbackFullscreen(false)
     }, [])
@@ -692,6 +776,7 @@ export default function ElearningPlayerPage() {
     }
 
     const lessonDurationSeconds = parseDurationToSeconds(lesson?.duration)
+    const showTimeline = lesson?.progress?.completed === true || videoCompleted
 
     // ── Render ─────────────────────────────────────────────────────────────
     return (
@@ -701,7 +786,11 @@ export default function ElearningPlayerPage() {
                 {/* Top Bar */}
                 <div className="flex items-center gap-4 mb-6">
                     <button
-                        onClick={() => navigate('/elearning')}
+                        onClick={() => {
+                            unlockAudio()
+                            playSfx('click')
+                            navigate('/elearning')
+                        }}
                         className="nav-item p-2 flex-shrink-0"
                         title="Kembali ke E-Learning"
                     >
@@ -775,6 +864,8 @@ export default function ElearningPlayerPage() {
                                             onFullscreen={requestFullscreen}
                                             paused={paused}
                                             setPaused={setPaused}
+                                            showTimeline={showTimeline}
+                                            onUiClick={playSfx}
                                         />
                                     )}
 
@@ -787,6 +878,7 @@ export default function ElearningPlayerPage() {
                                                 onSubmit={submitAnswer}
                                                 onDismiss={dismissQuestion}
                                                 submitting={submitting}
+                                                onUiClick={playSfx}
                                             />
                                         )}
                                     </AnimatePresence>
@@ -921,7 +1013,14 @@ export default function ElearningPlayerPage() {
                                                 Kuis: <span className="text-white font-bold">{correctCount}/{totalQuestions}</span> benar
                                             </div>
                                         )}
-                                        <button onClick={() => navigate('/elearning')} className="btn-primary w-full text-sm">
+                                        <button
+                                            onClick={() => {
+                                                unlockAudio()
+                                                playSfx('click')
+                                                navigate('/elearning')
+                                            }}
+                                            className="btn-primary w-full text-sm"
+                                        >
                                             Kembali ke E-Learning
                                         </button>
                                     </div>

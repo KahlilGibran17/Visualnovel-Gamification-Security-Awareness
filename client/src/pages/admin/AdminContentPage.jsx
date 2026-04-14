@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Edit2, Trash2, BookOpen, MessageSquare, HelpCircle } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
-import toast from 'react-hot-toast'
+import toast from '../../utils/toast.js'
 
 const DEMO_CHAPTERS_CONFIG = [
     { id: 1, title: 'First Day', subtitle: 'Phishing Email', scenes: 16, choices: 2, status: 'Published' },

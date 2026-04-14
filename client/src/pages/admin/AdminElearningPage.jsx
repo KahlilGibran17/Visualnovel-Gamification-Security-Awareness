@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
-import toast from 'react-hot-toast'
+import toast from '../../utils/toast.js'
 import Layout from '../../components/Layout.jsx'
 import {
     Plus, Trash2, Upload, Film, HelpCircle, ChevronDown,
@@ -333,7 +333,7 @@ function AddChapterModal({ onClose, onSaved }) {
     const [badgeDescription, setBadgeDescription] = useState('')
     const [badgeColor, setBadgeColor] = useState('#FFD60A')
     const [saving, setSaving] = useState(false)
-    const [categoryId, setCategoryId] = useState('')
+    const [categoryId, setCategoryId] = useState('2')
 
     const handleSave = async () => {
         if (!title.trim()) { toast.error('Judul chapter wajib diisi'); return }
@@ -440,17 +440,15 @@ function AddChapterModal({ onClose, onSaved }) {
                             placeholder="cth: Menyelesaikan semua lesson chapter 1"
                             className="input-field text-sm w-full" />
                     </div>
-                   <div>
-                        <label className="label-text">Kategori Badge</label>
-                        <select
-                            className="w-full mt-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:border-accent appearance-none cursor-pointer"
-                            value={categoryId}
-                            onChange={(e) => setCategoryId(e.target.value)}
-                        >
-                            <option value="" disabled className="bg-gray-900 text-white/40">-- Pilih Kategori --</option>
-                            <option value="1" className="bg-gray-900 text-white">Badge Game</option>
-                            <option value="2" className="bg-gray-900 text-white">Badge E-Learning</option>
-                        </select>
+                  <div>
+                    <label className="label-text">Kategori Badge</label>
+                        <input
+                            type="text"
+                            className="w-full mt-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/50 cursor-not-allowed"
+                            value="Badge E-Learning"
+                            disabled
+                        />
+                        <input type="hidden" value="2" />
                     </div>
 
                     <div className="flex gap-3 pt-1">

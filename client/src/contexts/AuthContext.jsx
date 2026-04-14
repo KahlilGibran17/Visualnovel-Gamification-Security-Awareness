@@ -1,16 +1,16 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import axios from 'axios'
-import toast from 'react-hot-toast'
+import toast from '../utils/toast.js'
 
 const AuthContext = createContext(null)
 
 // Demo users for when backend is offline
-const DEMO_USERS = [
-    { id: 1, nik: '10001', name: 'Budi Santoso', department: 'Engineering', position: 'Senior Engineer', role: 'employee', xp: 2850, level: 3, rank: 2, chaptersCompleted: 4, badges: ['phishing-hunter', 'tidy-desk', 'social-shield'], avatarId: 1, setupDone: true },
-    { id: 2, nik: '10002', name: 'Siti Rahayu', department: 'HR', position: 'HR Manager', role: 'manager', xp: 1900, level: 2, rank: 5, chaptersCompleted: 3, badges: ['phishing-hunter', 'tidy-desk'], avatarId: 3, setupDone: true },
-    { id: 3, nik: 'admin001', name: 'Ahmad Fauzi', department: 'IT', position: 'IT Admin', role: 'admin', xp: 5600, level: 4, rank: 1, chaptersCompleted: 6, badges: ['phishing-hunter', 'tidy-desk', 'social-shield', 'password-master', 'first-responder', 'cyber-hero'], avatarId: 5, setupDone: true },
-    { id: 4, nik: '10003', name: 'Dewi Kusuma', department: 'Finance', position: 'Finance Analyst', role: 'employee', xp: 0, level: 1, rank: 20, chaptersCompleted: 0, badges: [], avatarId: 2, setupDone: false },
-]
+// const DEMO_USERS = [
+//     { id: 1, nik: '10001', name: 'Budi Santoso', department: 'Engineering', position: 'Senior Engineer', role: 'employee', xp: 2850, level: 3, rank: 2, chaptersCompleted: 4, badges: ['phishing-hunter', 'tidy-desk', 'social-shield'], avatarId: 1, setupDone: true },
+//     { id: 2, nik: '10002', name: 'Siti Rahayu', department: 'HR', position: 'HR Manager', role: 'manager', xp: 1900, level: 2, rank: 5, chaptersCompleted: 3, badges: ['phishing-hunter', 'tidy-desk'], avatarId: 3, setupDone: true },
+//     { id: 3, nik: 'admin001', name: 'Ahmad Fauzi', department: 'IT', position: 'IT Admin', role: 'admin', xp: 5600, level: 4, rank: 1, chaptersCompleted: 6, badges: ['phishing-hunter', 'tidy-desk', 'social-shield', 'password-master', 'first-responder', 'cyber-hero'], avatarId: 5, setupDone: true },
+//     { id: 4, nik: '10003', name: 'Dewi Kusuma', department: 'Finance', position: 'Finance Analyst', role: 'employee', xp: 0, level: 1, rank: 20, chaptersCompleted: 0, badges: [], avatarId: 2, setupDone: false },
+// ]
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
@@ -56,15 +56,15 @@ export function AuthProvider({ children }) {
             return { success: true, user: userData }
         } catch (err) {
             // Demo mode fallback
-            const demo = DEMO_USERS.find(u => u.nik === nik && password === (nik === 'admin001' ? 'admin123' : 'password123'))
-            if (demo) {
-                const fakeToken = 'demo_' + demo.nik
-                setToken(fakeToken)
-                setUser(demo)
-                if (remember) localStorage.setItem('ake_token', fakeToken)
-                localStorage.setItem('ake_demo_user', JSON.stringify(demo))
-                return { success: true, user: demo }
-            }
+            // const demo = DEMO_USERS.find(u => u.nik === nik && password === (nik === 'admin001' ? 'admin123' : 'password123'))
+            // if (demo) {
+            //     const fakeToken = 'demo_' + demo.nik
+            //     setToken(fakeToken)
+            //     setUser(demo)
+            //     if (remember) localStorage.setItem('ake_token', fakeToken)
+            //     localStorage.setItem('ake_demo_user', JSON.stringify(demo))
+            //     return { success: true, user: demo }
+            // }
             return { success: false, error: err.response?.data?.message || 'Invalid NIK or password' }
         }
     }

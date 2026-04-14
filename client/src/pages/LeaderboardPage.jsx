@@ -101,39 +101,9 @@ function LevelBadge({ badge }) {
     )
 }
 
-function useChapterCount(moduleId) {
-    const [count, setCount] = useState(0)
-    const [total, setTotal] = useState(0)  // total semua chapter = jumlah dots
-    const [loading, setLoading] = useState(true)
-
-    useEffect(() => {
-        async function fetchChapters() {
-            try {
-                const res = await fetch('/api/elearning/getChapters')
-                const data = await res.json()
-
-                setTotal(data.length)  // jumlah dots mengikuti total chapter di DB
-
-                const filtered = moduleId
-                    ? data.filter(ch => ch.module_id === moduleId)
-                    : data
-
-                setCount(filtered.length)
-            } catch (err) {
-                console.error('Failed to fetch chapters:', err)
-            } finally {
-                setLoading(false)
-            }
-        }
-
-        fetchChapters()
-    }, [moduleId])
-
-    return { count, total, loading }
-}
-
-function ChapterDots({ moduleId }) {
-    const { count, total, loading } = useChapterCount(moduleId)
+function ChapterDots({ completed = 0, total = 0, loading = false }) {
+    const safeTotal = Math.max(0, Number(total) || 0)
+    const safeCompleted = Math.min(safeTotal, Math.max(0, Number(completed) || 0))
 
     if (loading) {
         return (
@@ -147,10 +117,10 @@ function ChapterDots({ moduleId }) {
 
     return (
         <div className="flex items-center gap-1">
-            {Array.from({ length: total }).map((_, i) => (  // total dari DB
+            {Array.from({ length: safeTotal }).map((_, i) => (
                 <div
                     key={i}
-                    className={`w-2.5 h-2.5 rounded-full ${i < count ? 'bg-accent' : 'bg-white/10'}`}
+                    className={`w-2.5 h-2.5 rounded-full ${i < safeCompleted ? 'bg-accent' : 'bg-white/10'}`}
                 />
             ))}
         </div>
@@ -168,6 +138,8 @@ export default function LeaderboardPage() {
     const [leaderboardRows, setLeaderboardRows] = useState([])
     const [deptStats, setDeptStats] = useState([])
     const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
+    const [totalChapters, setTotalChapters] = useState(0)
+    const [loadingTotalChapters, setLoadingTotalChapters] = useState(true)
 
     const departmentOptions = ['All Departments', ...Array.from(new Set(deptStats.map(d => d.dept).filter(Boolean)))]
 
@@ -205,6 +177,24 @@ export default function LeaderboardPage() {
         }
 
         loadDepartmentStats()
+    }, [])
+
+    useEffect(() => {
+        const loadTotalChapters = async () => {
+            setLoadingTotalChapters(true)
+            try {
+                const res = await axios.get('/api/elearning/getChapters')
+                const chapterRows = Array.isArray(res.data) ? res.data : []
+                setTotalChapters(chapterRows.length)
+            } catch (e) {
+                console.error('Failed to load chapters total', e)
+                setTotalChapters(0)
+            } finally {
+                setLoadingTotalChapters(false)
+            }
+        }
+
+        loadTotalChapters()
     }, [])
 
     const myEntry = leaderboardRows.find(u => u.nik === user?.nik) || null
@@ -492,8 +482,15 @@ export default function LeaderboardPage() {
 
                                             {/* Chapters */}
                                             <div className="col-span-3">
-                                                <ChapterDots count={entry.chaptersCompleted} />
-                                                <p className="text-xs text-white/30 mt-1">{entry.chaptersCompleted} chapters completed</p>
+                                                <ChapterDots
+                                                    completed={entry.chaptersCompleted}
+                                                    total={totalChapters}
+                                                    loading={loadingTotalChapters}
+                                                />
+                                                <p className="text-xs text-white/30 mt-1">
+                                                    {entry.chaptersCompleted}
+                                                    {!loadingTotalChapters ? `/${totalChapters}` : ''} chapters completed
+                                                </p>
                                             </div>
                                         </motion.div>
                                     )

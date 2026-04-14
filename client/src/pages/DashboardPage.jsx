@@ -6,18 +6,13 @@ import { useAuth } from '../contexts/AuthContext.jsx'
 import { useGame } from '../contexts/GameContext.jsx'
 import Layout from '../components/Layout.jsx'
 import AvatarDisplay from '../components/AvatarDisplay.jsx'
+import axios from 'axios'
 
 function XPBar({ xp, level, nextLevel }) {
-    const currentLevelXp = level?.xpRequired || 0
-    const nextLevelXp = nextLevel?.xpRequired || currentLevelXp + 1000
-    
-    const xpIntoLevel = Math.max(0, xp - currentLevelXp)
-    
-    // Total XP yang dibutuhkan untuk naik level
-    const xpForNextLevel = Math.max(1, nextLevelXp - currentLevelXp)
-    
-    // Persentase progress (0-100%)
-    const pct = Math.min(100, (xpIntoLevel / xpForNextLevel) * 100)
+    const safeXp = Math.max(0, Number(xp) || 0)
+    const nextLevelXp = nextLevel?.xpRequired ?? safeXp
+    const xpForNextLevel = Math.max(1, nextLevelXp)
+    const pct = nextLevel ? Math.min(100, (safeXp / xpForNextLevel) * 100) : 100
 
     return (
         <div>
@@ -35,11 +30,11 @@ function XPBar({ xp, level, nextLevel }) {
             </div>
             <div className="flex justify-between text-xs mt-1">
                 <span className="text-accent font-semibold">
-                    {xpIntoLevel.toLocaleString()}  XP
+                    {safeXp.toLocaleString()} XP
                 </span>
                 {nextLevel && (
                     <span className="text-white/30">
-                        {Math.max(0, nextLevelXp - xp).toLocaleString()} to next
+                        {Math.max(0, nextLevelXp - safeXp).toLocaleString()} to next
                     </span>
                 )}
             </div>
@@ -169,9 +164,18 @@ export default function DashboardPage() {
     const { chapterProgress, getLevelFromXP, getNextLevel, CHAPTERS, badges,loadBadges,levels,loading,error ,leaderboard, getUserRank, getNextRankGap } = useGame()
     const navigate = useNavigate()
     const [showWelcome, setShowWelcome] = useState(true)
+    const [userBadges, setUserBadges] = useState([]) 
 
     const level = getLevelFromXP(user?.xp || 0)
     const nextLevel = getNextLevel(user?.xp || 0)
+    const loadUserBadges = async () => {
+        try {
+            const data = await axios.get('/api/badges/getUserBadges')
+            setUserBadges(data.data.badges)
+        } catch (error) {
+            console.error('Error loading user badges:', error)
+        }
+    }
 
     if (!level) {
         return (
@@ -192,8 +196,8 @@ export default function DashboardPage() {
     }
 
     const earnedBadges = user?.badges || []
-    const earnedBadgeSet = new Set(earnedBadges.map(normalizeBadgeKey).filter(Boolean))
-    const displayedBadges = badges.slice(0, 6)
+    const earnedBadgeSet = new Set(userBadges.map(normalizeBadgeKey).filter(Boolean))
+    const displayedBadges = badges.slice(0,6)
 
     const completedChapters = Object.values(chapterProgress).filter(p => p.completed).length
     const totalXP = user?.xp || 0
@@ -201,6 +205,7 @@ export default function DashboardPage() {
     useEffect(() => {
         loadBadges()
         refreshUser()
+        loadUserBadges()
     }, [])
 
     useEffect(() => {
@@ -211,24 +216,6 @@ export default function DashboardPage() {
 
     return (
         <Layout>
-            {/* Welcome toast */}
-            <AnimatePresence>
-                {showWelcome && (
-                    <motion.div
-                        className="fixed top-4 right-4 z-50 glass-card p-4 flex items-center gap-3 max-w-xs"
-                        initial={{ opacity: 0, x: 50, scale: 0.9 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: 50, scale: 0.9 }}
-                    >
-                        <span className="text-2xl">🤖</span>
-                        <div>
-                            <p className="text-accent font-bold text-sm">AKE-BOT</p>
-                            <p className="text-white/70 text-xs">Welcome back, {user?.name?.split(' ')[0]}! Ready to level up today?</p>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
             <div className="p-6 space-y-6 max-w-7xl mx-auto">
                 {/* Profile Header */}
                 <motion.div
@@ -297,7 +284,8 @@ export default function DashboardPage() {
                     <StatWidget icon={Star} label="Total XP" value={totalXP.toLocaleString()} color="#FFD60A" delay={0.1} />
                     <StatWidget icon={Trophy} label="Global Rank" value={`#${myRank || '—'}`} color="#E63946" delay={0.15} />
                     <StatWidget icon={BookOpen} label="Chapters Done" value={`${completedChapters}`} color="#60a5fa" delay={0.2} />
-                    <StatWidget icon={Award} label="Badges" value={`${[...earnedBadgeSet].filter(b => displayedBadges.some(db => normalizeBadgeKey(db) === b)).length}/${displayedBadges.length}`} color="#a78bfa" delay={0.25} />
+                     <StatWidget icon={Award} label="Badges" value={`${earnedBadgeSet.size}/${badges.length}`} delay={0.25}
+    />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

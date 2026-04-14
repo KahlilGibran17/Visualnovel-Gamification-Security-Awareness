@@ -4,7 +4,7 @@ import { FileText, Table, CheckCircle, XCircle } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
-import toast from 'react-hot-toast'
+import toast from '../../utils/toast.js'
 import axios from 'axios'
 
 const normalizeLeaderboardRows = (rows) => {

@@ -1,7 +1,7 @@
 import { useEffect, useState,useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'react-hot-toast'
+import toast from '../utils/toast.js'
 import axios from 'axios'
 import Layout from '../components/Layout.jsx'
 import {
@@ -88,7 +88,7 @@ function LessonRow({ lesson, index, onClick }) {
 }
 
 function ChapterCard({ chapter, chapterIndex, onLessonClick }) {
-    const [isOpen, setIsOpen] = useState(chapterIndex === 0)
+    const [isOpen, setIsOpen] = useState(false)
     const [badgeAwarded, setBadgeAwarded] = useState(false)
     const hasCalled = useRef(false)
 
@@ -266,8 +266,8 @@ export default function ElearningPage() {
     // Stats
     const completedCount = lessons.filter(l => l.completed).length
     const totalXpEarned = lessons.reduce((sum, l) => sum + (parseInt(l.xp_earned) || 0), 0)
-    const totalQuestions = lessons.reduce((sum, l) => sum + (parseInt(l.total_questions) || 0), 0)
-    const inProgressCount = lessons.filter(l => !l.completed && l.watch_time_seconds > 0).length
+
+    
 
     return (
         <Layout>
@@ -312,9 +312,7 @@ export default function ElearningPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
                     {[
                         { label: 'Video Selesai', value: `${completedCount}/${lessons.length}`, icon: CheckCircle, color: '#22c55e' },
-                        { label: 'Sedang Ditonton', value: inProgressCount, icon: Play, color: '#E63946' },
                         { label: 'Total XP Diraih', value: `${totalXpEarned.toLocaleString()} XP`, icon: Star, color: '#FFD60A' },
-                        { label: 'Kuis Tersedia', value: `${totalQuestions} soal`, icon: HelpCircle, color: '#8b5cf6' },
                     ].map((stat, i) => (
                         <motion.div
                             key={i}

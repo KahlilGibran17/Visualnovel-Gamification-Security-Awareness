@@ -5,7 +5,7 @@ import Layout from '../components/Layout.jsx'
 import AvatarDisplay, { AvatarPicker } from '../components/AvatarDisplay.jsx'
 import { useState, useEffect } from 'react'
 import { Edit3, Save } from 'lucide-react'
-import toast from 'react-hot-toast'
+import toast from '../utils/toast.js'
 import axios from 'axios'
 
 export default function ProfilePage() {
@@ -15,6 +15,7 @@ export default function ProfilePage() {
     const [displayName, setDisplayName] = useState(user?.name || '')
     const [avatarId, setAvatarId] = useState(user?.avatarId || 1)
     const [badgesByCategory, setBadgesByCategory] = useState({})
+    const [chapterStats, setChapterStats] = useState({ completed: 0, total: 0 })
 
     const level = getLevelFromXP(user?.xp || 0)
     const nextLevel = getNextLevel(user?.xp || 0)
@@ -41,7 +42,14 @@ export default function ProfilePage() {
     const xpForNext = nextLevel ? nextLevel.xpRequired - level.xpRequired : 1
     const xpPct = nextLevel ? Math.min(100, (xpIntoLevel / xpForNext) * 100) : 100
     
-    
+    const loadChapterStats = async () => {
+    try {
+        const data = await axios.get('/api/badges/getChapterProgress')
+        setChapterStats(data.data)
+    } catch (error) {
+        console.error('Error loading chapter stats:', error)
+    }
+}    
     
     const loadBadgesByCategory = async () => {
         try {
@@ -62,7 +70,7 @@ export default function ProfilePage() {
     useEffect(() => {
         loadBadgesByCategory()
         refreshUser()
-
+        loadChapterStats()
     }, [])
 
     const groupedBadges = Object.keys(badgesByCategory).length
@@ -160,7 +168,7 @@ export default function ProfilePage() {
                     {[
                         { label: 'Total XP', value: (user?.xp || 0).toLocaleString(), icon: '⭐' },
                         { label: 'Global Rank', value: `#${myRank || '—'}`, icon: '🏆' },
-                        { label: 'Chapters Done', value: `${user?.chaptersCompleted || 0}/6`, icon: '📚' },
+                        { label: 'Chapters Done', value: `${chapterStats.completed}/${chapterStats.total}`, icon: '📚' },
                         { label: 'Login Streak', value: `${user?.streak || 1} days`, icon: '🔥' },
                     ].map((s, i) => (
                         <motion.div key={s.label} className="stat-widget text-center"
