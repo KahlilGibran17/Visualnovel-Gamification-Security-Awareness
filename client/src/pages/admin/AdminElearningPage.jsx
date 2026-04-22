@@ -713,6 +713,93 @@ function LessonFormModal({ lesson, chapters, defaultChapterId, onClose, onSaved 
     )
 }
 
+function ToggleLessonConfirmModal({ data, loading, onCancel, onConfirm }) {
+    const isActivating = Boolean(data?.nextActive)
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+            style={{ background: 'rgba(3, 10, 20, 0.78)', backdropFilter: 'blur(8px)' }}
+        >
+            <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.96 }}
+                transition={{ duration: 0.2 }}
+                className="w-full max-w-md glass-card border border-white/15 overflow-hidden"
+            >
+                <div className={`h-1.5 w-full ${isActivating ? 'bg-gradient-to-r from-emerald-400 to-cyan-400' : 'bg-gradient-to-r from-amber-400 to-rose-400'}`} />
+
+                <div className="p-5">
+                    <div className="flex items-start gap-3">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${isActivating ? 'bg-emerald-500/15 border border-emerald-400/30' : 'bg-rose-500/15 border border-rose-400/30'}`}>
+                            {isActivating
+                                ? <Eye className="w-5 h-5 text-emerald-300" />
+                                : <EyeOff className="w-5 h-5 text-rose-300" />}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                            <h3 className="text-lg font-bold text-white">
+                                {isActivating ? 'Aktifkan Lesson?' : 'Nonaktifkan Lesson?'}
+                            </h3>
+                            <p className="text-sm text-white/55 mt-1 leading-relaxed">
+                                {isActivating
+                                    ? 'Lesson ini akan tampil kembali untuk user di halaman e-learning.'
+                                    : 'Lesson ini akan disembunyikan dari user di halaman e-learning.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3">
+                        <p className="text-sm font-semibold text-white truncate">{data?.title || 'Untitled lesson'}</p>
+                        <div className="mt-2 flex items-center gap-3 text-xs text-white/45">
+                            <span className="flex items-center gap-1">
+                                <HelpCircle className="w-3 h-3" />{data?.questionCount || 0} kuis
+                            </span>
+                            <span className="flex items-center gap-1 text-accent/80">
+                                <Star className="w-3 h-3" />{data?.xpReward || 0} XP
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3 mt-6">
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            disabled={loading}
+                            className="flex-1 nav-item py-2.5 text-sm font-semibold disabled:opacity-50"
+                        >
+                            Batal
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            disabled={loading}
+                            className={`flex-1 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${isActivating
+                                ? 'bg-emerald-500/20 border border-emerald-400/35 text-emerald-200 hover:bg-emerald-500/30'
+                                : 'bg-rose-500/20 border border-rose-400/35 text-rose-200 hover:bg-rose-500/30'
+                                }`}
+                        >
+                            {loading
+                                ? <><Loader2 className="w-4 h-4 animate-spin" />Memproses...</>
+                                : <>
+                                    {isActivating ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                    {isActivating ? 'Aktifkan' : 'Nonaktifkan'}
+                                </>}
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </motion.div>
+    )
+}
+
+
+
 // ── Main Admin Page ────────────────────────────────────────────────────────
 
 export default function AdminElearningPage() {
@@ -723,9 +810,11 @@ export default function AdminElearningPage() {
     const [modalLesson,      setModalLesson]      = useState(null)  
     const [showAddChapter,   setShowAddChapter]   = useState(false)
     const [deleting,         setDeleting]         = useState(null)
+    const [toggleConfirm,    setToggleConfirm]    = useState(null)
     const [collapsedChapters, setCollapsedChapters] = useState({})
-
     useEffect(() => { fetchAll() }, [])
+
+
 
     const fetchAll = async () => {
         setLoading(true)
@@ -747,6 +836,7 @@ export default function AdminElearningPage() {
                 ...l,
                 id: l.id ?? l.lesson_id ?? l.le_id,
                 chapter_id: l.chapter_id ?? l.chapterId ?? l.ch_id ?? l.chapter?.id,
+                is_active: l.is_active ?? true,
             })))
 
             setChapters(chaptersRaw.map(c => ({
@@ -770,6 +860,60 @@ export default function AdminElearningPage() {
             setModalLesson({ ...res.data, _isEdit: true })
         } catch {
             toast.error('Gagal memuat detail lesson')
+        }
+    }
+
+    const openToggleConfirm = (lesson) => {
+        if (!lesson?.id) return
+
+        setToggleConfirm({
+            lessonId: lesson.id,
+            title: lesson.title,
+            questionCount: Number(lesson.question_count) || 0,
+            xpReward: Number(lesson.xp_reward) || 0,
+            currentActive: Boolean(lesson.is_active),
+            nextActive: !Boolean(lesson.is_active),
+        })
+    }
+
+    const closeToggleConfirm = () => {
+        if (deleting) return
+        setToggleConfirm(null)
+    }
+
+    const handleToggleLesson = async () => {
+        if (!toggleConfirm) return
+
+        const { lessonId, currentActive, nextActive } = toggleConfirm
+
+        setDeleting(lessonId)
+        setLessons(prev => prev.map(l =>
+            l.id === lessonId ? { ...l, is_active: nextActive } : l
+        ))
+
+        try {
+            const res = await axios.put('/api/admin/deleteLesson', {
+                lessonId,
+                isActive: nextActive,
+            })
+
+            const serverActive = res?.data?.lesson?.is_active
+            if (typeof serverActive === 'boolean') {
+                setLessons(prev => prev.map(l =>
+                    l.id === lessonId ? { ...l, is_active: serverActive } : l
+                ))
+            }
+
+            toast.success(`Lesson berhasil ${nextActive ? 'diaktifkan' : 'dinonaktifkan'}`)
+            setToggleConfirm(null)
+        } catch (err) {
+            setLessons(prev => prev.map(l =>
+                l.id === lessonId ? { ...l, is_active: currentActive } : l
+            ))
+            const msg = err?.response?.data?.message || 'Gagal mengubah status lesson'
+            toast.error(msg)
+        } finally {
+            setDeleting(null)
         }
     }
 
@@ -927,8 +1071,8 @@ export default function AdminElearningPage() {
                                                                     key={lesson.id}
                                                                     lesson={lesson}
                                                                     onEdit={() => openEdit(lesson)}
-                                                                    // onDelete={() => handleDelete(lesson.id)}
-                                                                    // deleting={deleting === lesson.id}
+                                                                    onDelete={() => openToggleConfirm(lesson)}
+                                                                    deleting={deleting === lesson.id}
                                                                 />
                                                             ))}
                                                         </>
@@ -953,7 +1097,7 @@ export default function AdminElearningPage() {
                                                 key={lesson.id}
                                                 lesson={lesson}
                                                 onEdit={() => openEdit(lesson)}
-                                                onDelete={() => handleDelete(lesson.id)}
+                                                onDelete={() => openToggleConfirm(lesson)}
                                                 deleting={deleting === lesson.id}
                                             />
                                         ))}
@@ -987,6 +1131,17 @@ export default function AdminElearningPage() {
                     />
                 )}
             </AnimatePresence>
+
+            <AnimatePresence>
+                {toggleConfirm && (
+                    <ToggleLessonConfirmModal
+                        data={toggleConfirm}
+                        loading={deleting === toggleConfirm.lessonId}
+                        onCancel={closeToggleConfirm}
+                        onConfirm={handleToggleLesson}
+                    />
+                )}
+            </AnimatePresence>
         </Layout>
     )
 }
@@ -994,6 +1149,8 @@ export default function AdminElearningPage() {
 // ── Lesson Row (extracted for reuse) ──────────────────────────────────────
 
 function LessonRow({ lesson, onEdit, onDelete, deleting }) {
+    const isEnabled = lesson.is_active ?? true
+
     return (
         <motion.div
             initial={{ opacity: 0, x: -8 }}
@@ -1032,12 +1189,20 @@ function LessonRow({ lesson, onEdit, onDelete, deleting }) {
                 <button onClick={onEdit} className="nav-item p-2 text-white/60 hover:text-white" title="Edit">
                     <Edit2 className="w-4 h-4" />
                 </button>
-                {/* <button onClick={onDelete} disabled={deleting}
-                    className="nav-item p-2 text-white/40 hover:text-red-400 disabled:opacity-50" title="Hapus">
-                    {deleting
-                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                        : <Trash2 className="w-4 h-4" />}
-                </button> */}
+
+                {/* Toggle aktif/nonaktif */}
+                <button
+                    onClick={onDelete}
+                    disabled={deleting}
+                    title={isEnabled ? 'Nonaktifkan lesson' : 'Aktifkan lesson'}
+                    className={`w-10 h-6 rounded-full transition-all duration-300 relative 
+                        ${isEnabled ? 'bg-primary' : 'bg-white/20'}
+                        ${deleting ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all duration-300 
+                        ${isEnabled ? 'left-5' : 'left-1'}`} 
+                    />
+                </button>
             </div>
         </motion.div>
     )

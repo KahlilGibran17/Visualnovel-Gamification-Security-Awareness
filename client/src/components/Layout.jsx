@@ -2,7 +2,7 @@ import { useGame } from '../contexts/GameContext.jsx'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useAudio } from '../contexts/AudioContext.jsx'
-import { Trophy, BookOpen, User, Home, ShieldAlert, LogOut, GraduationCap, Music2, Volume2, VolumeX } from 'lucide-react'
+import { Trophy, BookOpen, User, Home, ShieldAlert, LogOut, GraduationCap, Music2, Volume2, VolumeX, JapaneseYenIcon, BookCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AvatarDisplay from './AvatarDisplay.jsx'
 
@@ -16,6 +16,11 @@ const navItems = [
 
 const adminItems = [
     { path: '/admin', label: 'Admin Panel', icon: ShieldAlert },
+    { path: '/admin/users', label: 'User Management', icon: User },
+    { path: '/admin/content', label: 'Content Management', icon: BookOpen },
+    { path: '/admin/reports', label: 'Reports', icon: BookCheck },
+    { path: '/admin/elearning', label: 'E-Learning Management', icon: GraduationCap }
+
 ]
 
 function SidebarXPBar({ xp, nextLevel }) {

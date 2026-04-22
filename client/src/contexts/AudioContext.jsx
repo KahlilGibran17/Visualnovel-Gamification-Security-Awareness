@@ -66,8 +66,11 @@ export function AudioProvider({ children }) {
     const bgmGainRef = useRef(null)
     const sfxGainRef = useRef(null)
     const bgmLoopTimerRef = useRef(null)
+    const bgmSuppressorsRef = useRef(new Set())
     const beatRef = useRef(0)
     const unlockedRef = useRef(false)
+    const lastClickSfxTimeRef = useRef(0)
+    const [bgmSuppressorsVersion, setBgmSuppressorsVersion] = useState(0)
 
     const stopBgmLoop = useCallback(() => {
         if (bgmLoopTimerRef.current) {
@@ -165,6 +168,20 @@ export function AudioProvider({ children }) {
         bgmLoopTimerRef.current = window.setInterval(tick, beatMs)
     }, [bgmEnabled, ensureAudioGraph])
 
+    const suppressBgm = useCallback((source = 'global') => {
+        const key = String(source || 'global')
+        if (bgmSuppressorsRef.current.has(key)) return
+        bgmSuppressorsRef.current.add(key)
+        setBgmSuppressorsVersion((v) => v + 1)
+    }, [])
+
+    const unsuppressBgm = useCallback((source = 'global') => {
+        const key = String(source || 'global')
+        if (!bgmSuppressorsRef.current.has(key)) return
+        bgmSuppressorsRef.current.delete(key)
+        setBgmSuppressorsVersion((v) => v + 1)
+    }, [])
+
     const unlockAudio = useCallback(async () => {
         if (unlockedRef.current) return
 
@@ -179,6 +196,15 @@ export function AudioProvider({ children }) {
 
     const playSfx = useCallback(async (kind = 'click') => {
         if (!sfxEnabled) return
+
+        if (kind === 'click') {
+            const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+                ? performance.now()
+                : Date.now()
+
+            if (now - lastClickSfxTimeRef.current < 70) return
+            lastClickSfxTimeRef.current = now
+        }
 
         const ctx = await ensureAudioGraph()
         if (!ctx || !sfxGainRef.current) return
@@ -289,16 +315,17 @@ export function AudioProvider({ children }) {
         if (!audioCtxRef.current || !bgmGainRef.current) return
 
         const ctx = audioCtxRef.current
-        const target = bgmEnabled ? clamp(bgmVolume, 0, 1) : 0
+        const shouldPlayBgm = bgmEnabled && bgmSuppressorsRef.current.size === 0
+        const target = shouldPlayBgm ? clamp(bgmVolume, 0, 1) : 0
         bgmGainRef.current.gain.cancelScheduledValues(ctx.currentTime)
         bgmGainRef.current.gain.setTargetAtTime(target, ctx.currentTime, 0.08)
 
-        if (bgmEnabled) {
+        if (shouldPlayBgm) {
             startBgmLoop()
         } else {
             stopBgmLoop()
         }
-    }, [bgmEnabled, bgmVolume, startBgmLoop, stopBgmLoop])
+    }, [bgmEnabled, bgmVolume, bgmSuppressorsVersion, startBgmLoop, stopBgmLoop])
 
     useEffect(() => {
         if (!audioCtxRef.current || !sfxGainRef.current) return
@@ -324,6 +351,39 @@ export function AudioProvider({ children }) {
     }, [unlockAudio])
 
     useEffect(() => {
+        const isInteractiveTarget = (target) => {
+            if (!(target instanceof Element)) return false
+            if (target.closest('[data-no-global-sfx="true"]')) return false
+
+            return Boolean(target.closest(
+                'button, a, summary, [role="button"], input[type="button"], input[type="submit"], input[type="checkbox"], input[type="radio"], input[type="range"], [data-sfx-click="true"]'
+            ))
+        }
+
+        const handlePointerDown = (event) => {
+            if (!isInteractiveTarget(event.target)) return
+            unlockAudio()
+            playSfx('click')
+        }
+
+        const handleKeyDown = (event) => {
+            if (event.defaultPrevented || event.repeat) return
+            if (event.key !== 'Enter' && event.key !== ' ') return
+            if (!isInteractiveTarget(event.target)) return
+            unlockAudio()
+            playSfx('click')
+        }
+
+        window.addEventListener('pointerdown', handlePointerDown, true)
+        window.addEventListener('keydown', handleKeyDown, true)
+
+        return () => {
+            window.removeEventListener('pointerdown', handlePointerDown, true)
+            window.removeEventListener('keydown', handleKeyDown, true)
+        }
+    }, [playSfx, unlockAudio])
+
+    useEffect(() => {
         return () => {
             stopBgmLoop()
             if (audioCtxRef.current) {
@@ -343,7 +403,9 @@ export function AudioProvider({ children }) {
         setSfxVolume,
         unlockAudio,
         playSfx,
-    }), [bgmEnabled, sfxEnabled, bgmVolume, sfxVolume, unlockAudio, playSfx])
+        suppressBgm,
+        unsuppressBgm,
+    }), [bgmEnabled, sfxEnabled, bgmVolume, sfxVolume, unlockAudio, playSfx, suppressBgm, unsuppressBgm])
 
     return <AudioContext.Provider value={value}>{children}</AudioContext.Provider>
 }

@@ -9,7 +9,7 @@ const { requireAuth, requireRole } = require('../middleware/auth')
 router.get('/getBadges',requireAuth, async (req, res) => {
     try {
         const badgesResult = await pool.query(
-            `SELECT badge_key AS id, name, icon, description AS desc FROM badges`,
+            `SELECT badge_key AS id, name, icon, description AS desc, color FROM badges`,
         )
         res.json({ badges: badgesResult.rows })
     } catch (err) {
@@ -41,8 +41,14 @@ router.post('/postBadgeUser', requireAuth, async (req, res) => {
 
         // 2. Insert idempotent (aman dari request ganda/race condition)
         const result = await pool.query(
-            `INSERT INTO user_badges (user_id, badge_id, earned_at)
-             VALUES ($1, $2, NOW())
+            `INSERT INTO user_badges (user_id, badge_id, xp, streak, earned_at)
+             VALUES (
+                $1,
+                $2,
+                (SELECT COALESCE(MAX(xp), 0) FROM user_badges WHERE user_id = $1),
+                (SELECT COALESCE(MAX(streak), 1) FROM user_badges WHERE user_id = $1),
+                NOW()
+             )
              ON CONFLICT (user_id, badge_id) DO NOTHING
              RETURNING *`,
             [user_id, badge_id]
@@ -67,6 +73,7 @@ router.get('/getBadgesByCategory', requireAuth, async (req, res) => {
                 b.name, 
                 b.icon, 
                 b.description AS desc,
+                b.color,
                 c.category_name
              FROM badges b
              LEFT JOIN category_badge c ON b.category_id = c.category_id
@@ -103,22 +110,19 @@ router.get('/getLeaderBoard', requireAuth, async (req, res) => {
 
 router.get('/getUserBadges', requireAuth, async (req, res) => {
     try {
+        console.log('req.user:', req.user) // <-- tambah ini
+        
         const userId = req.user.id
         const result = await pool.query(
-            `SELECT 
-                b.badge_key AS id, 
-                b.name, 
-                b.icon, 
-                b.description AS desc,
-                CASE WHEN ub.badge_id IS NOT NULL THEN true ELSE false END AS earned
-             FROM badges b
-             LEFT JOIN user_badges ub ON b.id = ub.badge_id AND ub.user_id = $1
-             ORDER BY earned DESC, b.sort_order ASC`,
+            `SELECT b.badge_key AS id, b.name, b.icon, b.description AS desc, b.color
+             FROM user_badges ub
+             JOIN badges b ON b.id = ub.badge_id
+             WHERE ub.user_id = $1`,
             [userId]
         )
         res.json({ badges: result.rows })
     } catch (err) {
-        console.error(err)
+        console.error('Error detail:', err.message) // <-- dan ini
         res.status(500).json({ message: 'Server error' })
     }
 })

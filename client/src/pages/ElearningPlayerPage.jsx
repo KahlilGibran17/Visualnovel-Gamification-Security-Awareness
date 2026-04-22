@@ -360,7 +360,7 @@ export default function ElearningPlayerPage() {
     const navigate = useNavigate()
     const { user, updateUser } = useAuth()
     const { getLevelFromXP } = useGame()
-    const { playSfx, unlockAudio } = useAudio()
+    const { playSfx, unlockAudio, suppressBgm, unsuppressBgm } = useAudio()
 
     const [lesson, setLesson] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -392,12 +392,86 @@ export default function ElearningPlayerPage() {
     const isPollingRef = useRef(false)
     const activeQuestionRef = useRef(null)
     const allowFullscreenExitRef = useRef(false)
+    const bgmSuppressedByVideoRef = useRef(false)
+    const pausingForQuestionRef = useRef(false)
 
     const answeredMapRef = useRef({})
 
     useEffect(() => {
         answeredMapRef.current = answeredMap
     }, [answeredMap])
+
+    const suppressBgmForVideo = useCallback(() => {
+        if (bgmSuppressedByVideoRef.current) return
+        suppressBgm('elearning-video')
+        bgmSuppressedByVideoRef.current = true
+    }, [suppressBgm])
+
+    const restoreBgmAfterVideo = useCallback(() => {
+        if (!bgmSuppressedByVideoRef.current) return
+        unsuppressBgm('elearning-video')
+        bgmSuppressedByVideoRef.current = false
+    }, [unsuppressBgm])
+
+    const saveProgress = useCallback(async (watchTime) => {
+        try {
+            await axios.post(`/api/elearning/lessons/${id}/progress`, {
+                watchTimeSeconds: Math.round(watchTime),
+            })
+        } catch { /* ignore */ }
+    }, [id])
+
+    const stopPolling = useCallback(() => {
+        if (pollRef.current) {
+            clearInterval(pollRef.current)
+            pollRef.current = null
+        }
+        if (saveProgressRef.current) {
+            clearInterval(saveProgressRef.current)
+            saveProgressRef.current = null
+        }
+        isPollingRef.current = false
+    }, [])
+
+    // ── Polling: check quiz timestamps ─────────────────────────────────────
+    const startPolling = useCallback(() => {
+        if (isPollingRef.current) return
+        isPollingRef.current = true
+
+        if (pollRef.current) clearInterval(pollRef.current)
+        if (saveProgressRef.current) clearInterval(saveProgressRef.current)
+
+        pollRef.current = setInterval(() => {
+            const v = videoRef.current
+            if (!v || v.paused) return
+
+            const currentTime = v.currentTime
+            const questions = lessonRef.current?.questions || []
+
+            const nextQ = questions.find(q =>
+                !triggeredRef.current.has(q.id) &&
+                !answeredRef.current.has(q.id) &&
+                currentTime >= q.timestamp_seconds
+            )
+
+            if (nextQ) {
+                console.log('Trigger soal:', nextQ.id, 'di detik:', currentTime)
+                triggeredRef.current.add(nextQ.id)
+                pausingForQuestionRef.current = true
+                v.pause()
+                setActiveQuestion(nextQ)
+                console.log('activeQuestion set:', nextQ.id)
+            }
+        }, 500)
+
+        saveProgressRef.current = setInterval(() => {
+            const v = videoRef.current
+            if (v && !v.paused && !videoCompletedRef.current) {
+                saveProgress(v.currentTime)
+            }
+        }, 15000)
+    }, [saveProgress])
+
     // Update setiap kali activeQuestion berubah
     useEffect(() => {
         activeQuestionRef.current = activeQuestion
@@ -419,8 +493,9 @@ export default function ElearningPlayerPage() {
         return () => {
             stopPolling()
             clearInterval(saveProgressRef.current)
+            restoreBgmAfterVideo()
         }
-    }, [id])
+    }, [id, stopPolling, restoreBgmAfterVideo])
 
     const fetchLesson = async () => {
         try {
@@ -474,6 +549,7 @@ export default function ElearningPlayerPage() {
         const onPlaying = () => {
             setVideoLoading(false)
             setPaused(false)
+            suppressBgmForVideo()
             startPolling()
         }
 
@@ -482,15 +558,23 @@ export default function ElearningPlayerPage() {
             stopPolling()
         }
         //const onPlaying  = () => { setVideoLoading(false); setPaused(false); startPolling() }
-        const onPause    = () => { 
-            setPaused(true) 
-            if (!activeQuestionRef.current){
-                stopPolling()
+        const onPause    = () => {
+            setPaused(true)
+            const pausedForQuestion = pausingForQuestionRef.current || Boolean(activeQuestionRef.current)
+            pausingForQuestionRef.current = false
+            stopPolling()
+            if (!pausedForQuestion) {
+                restoreBgmAfterVideo()
             }
-            stopPolling() 
         }
-        const onEnded    = () => handleVideoEnd()
-        const onError    = () => toast.error('Gagal memuat file video')
+        const onEnded    = () => {
+            restoreBgmAfterVideo()
+            handleVideoEnd()
+        }
+        const onError    = () => {
+            restoreBgmAfterVideo()
+            toast.error('Gagal memuat file video')
+        }
 
         v.addEventListener('canplay', onCanPlay)
         v.addEventListener('waiting', onWaiting)
@@ -506,8 +590,9 @@ export default function ElearningPlayerPage() {
             v.removeEventListener('pause', onPause)
             v.removeEventListener('ended', onEnded)
             v.removeEventListener('error', onError)
+            restoreBgmAfterVideo()
         }
-    }, [lesson])
+    }, [lesson, restoreBgmAfterVideo, startPolling, suppressBgmForVideo])
 
     useEffect(() => {
         const onFullscreenChange = () => {
@@ -558,67 +643,6 @@ export default function ElearningPlayerPage() {
         window.addEventListener('keydown', onKeyDown, true)
         return () => window.removeEventListener('keydown', onKeyDown, true)
     }, [])
-
-    // ── Polling: check quiz timestamps ─────────────────────────────────────
-    const startPolling = useCallback(() => {
-        // ✅ Jangan buat interval baru kalau sudah jalan
-        if (isPollingRef.current) return
-        isPollingRef.current = true
-
-        if (pollRef.current) clearInterval(pollRef.current)
-        if (saveProgressRef.current) clearInterval(saveProgressRef.current)
-
-        pollRef.current = setInterval(() => {
-        const v = videoRef.current
-        if (!v || v.paused) return
-
-        const currentTime = v.currentTime
-        const questions = lessonRef.current?.questions || []
-
-        const nextQ = questions.find(q =>
-            !triggeredRef.current.has(q.id) &&
-            !answeredRef.current.has(q.id) &&
-            currentTime >= q.timestamp_seconds
-        )
-
-        if (nextQ) {
-            console.log('Trigger soal:', nextQ.id, 'di detik:', currentTime) // ← tambah ini
-            triggeredRef.current.add(nextQ.id)
-            v.pause()
-            setActiveQuestion(nextQ)
-            console.log('activeQuestion set:', nextQ.id) // ← dan ini
-        }
-    }, 500)
-
-        saveProgressRef.current = setInterval(() => {
-            const v = videoRef.current
-            if (v && !v.paused && !videoCompletedRef.current) {
-                saveProgress(v.currentTime)
-            }
-        }, 15000)
-    }, [])
-
-
-
-    const stopPolling = useCallback(() => {
-        if (pollRef.current) {
-            clearInterval(pollRef.current)
-            pollRef.current = null
-        }
-        if (saveProgressRef.current) {
-            clearInterval(saveProgressRef.current)
-            saveProgressRef.current = null
-        }
-        isPollingRef.current = false
-    }, [])
-
-    const saveProgress = async (watchTime) => {
-        try {
-            await axios.post(`/api/elearning/lessons/${id}/progress`, {
-                watchTimeSeconds: Math.round(watchTime),
-            })
-        } catch { /* ignore */ }
-    }
 
     // ── Video ended ────────────────────────────────────────────────────────
    const handleVideoEnd = async () => {

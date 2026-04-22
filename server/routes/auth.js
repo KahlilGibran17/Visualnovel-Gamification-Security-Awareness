@@ -12,9 +12,19 @@ router.post('/login', async (req, res) => {
 
     try {
         const result = await pool.query(
-            `SELECT u.*, r.name as role FROM users u
-       JOIN roles r ON u.role_id = r.id
-       WHERE u.nik = $1`,
+            `SELECT
+                u.*, 
+                r.name as role,
+                COALESCE(ub_stats.xp, 0)::int as xp,
+                COALESCE(ub_stats.streak, 1)::int as streak
+             FROM users u
+             JOIN roles r ON u.role_id = r.id
+             LEFT JOIN (
+                SELECT user_id, MAX(xp) AS xp, MAX(streak) AS streak
+                FROM user_badges
+                GROUP BY user_id
+             ) ub_stats ON ub_stats.user_id = u.id
+             WHERE u.nik = $1`,
             [nik]
         )
 
@@ -30,10 +40,26 @@ router.post('/login', async (req, res) => {
         const today = new Date().toDateString()
         const lastLogin = user.last_login ? new Date(user.last_login).toDateString() : null
         const yesterday = new Date(Date.now() - 86400000).toDateString()
-        const newStreak = lastLogin === yesterday ? user.streak + 1 : lastLogin === today ? user.streak : 1
+        const newStreak =
+            lastLogin === today
+                ? user.streak
+                : lastLogin === yesterday
+                    ? user.streak + 1
+                    : 1
+
+         await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id])
 
         await pool.query(
-            'UPDATE users SET last_login = NOW(), streak = $1 WHERE id = $2',
+            `WITH updated AS (
+                UPDATE user_badges
+                SET streak = $1,
+                    xp = COALESCE(xp, 0)
+                WHERE user_id = $2
+                RETURNING id
+            )
+            INSERT INTO user_badges (user_id, badge_id, xp, streak, earned_at)
+            SELECT $2, NULL, 0, $1, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM updated)`,
             [newStreak, user.id]
         )
 

@@ -26,7 +26,15 @@ router.get('/overview', requireAuth, requireRole('admin', 'manager'), async (req
                 WHERE ct.total_chapters > 0
                   AND uc.completed_chapters >= ct.total_chapters
             `),
-            pool.query('SELECT ROUND(AVG(xp)) as avg FROM users'),
+            pool.query(`
+                SELECT ROUND(AVG(COALESCE(ub_stats.xp, 0))) as avg
+                FROM users u
+                LEFT JOIN (
+                    SELECT user_id, MAX(xp) AS xp
+                    FROM user_badges
+                    GROUP BY user_id
+                ) ub_stats ON ub_stats.user_id = u.id
+            `),
         ])
         res.json({
             totalUsers: parseInt(usersRes.rows[0].total),
@@ -61,12 +69,21 @@ router.get('/compliance', requireAuth, requireRole('admin', 'manager'), async (r
     try {
         const result = await pool.query(`
       SELECT
-        u.id, u.nik, COALESCE(u.display_name, u.name) as name, u.department, u.xp,
+                u.id,
+                u.nik,
+                COALESCE(u.display_name, u.name) as name,
+                u.department,
+                COALESCE(ub_stats.xp, 0)::int as xp,
         COUNT(cp.id) FILTER (WHERE cp.completed) as chapters_completed
       FROM users u
       LEFT JOIN chapter_progress cp ON cp.user_id = u.id
-      GROUP BY u.id
-      ORDER BY chapters_completed DESC, u.xp DESC
+            LEFT JOIN (
+                SELECT user_id, MAX(xp) AS xp
+                FROM user_badges
+                GROUP BY user_id
+            ) ub_stats ON ub_stats.user_id = u.id
+            GROUP BY u.id, ub_stats.xp
+            ORDER BY chapters_completed DESC, COALESCE(ub_stats.xp, 0) DESC
     `)
         res.json(result.rows)
     } catch (err) {
@@ -74,4 +91,45 @@ router.get('/compliance', requireAuth, requireRole('admin', 'manager'), async (r
     }
 })
 
+router.put('/deleteLesson', requireAuth, requireRole('admin'), async (req, res) => {
+    const { lessonId, isActive } = req.body
+    const parsedLessonId = Number(lessonId)
+
+    if (!Number.isInteger(parsedLessonId) || parsedLessonId <= 0) {
+        return res.status(400).json({ message: 'Invalid lessonId' })
+    }
+
+    try {
+        const explicitActive = typeof isActive === 'boolean' ? isActive : null
+        const result = await pool.query(
+            `UPDATE elearning_lessons
+             SET is_active = COALESCE($2::boolean, NOT is_active),
+                 updated_at = NOW()
+             WHERE id = $1
+             RETURNING id, is_active`,
+            [parsedLessonId, explicitActive]
+        )
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Lesson not found' })
+        }
+
+        res.json({
+            message: `Lesson berhasil ${result.rows[0].is_active ? 'diaktifkan' : 'dinonaktifkan'}`,
+            lesson: result.rows[0],
+        })
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
+router.put('/deleteChapter', requireAuth, requireRole('admin'), async (req, res) => {
+    const { chapterId } = req.body
+    try {
+        await pool.query('UPDATE chapters SET is_active = FALSE WHERE id = $1', [chapterId])
+        res.json({ message: 'Chapter deleted successfully.' })
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' })
+    }
+})
 module.exports = router

@@ -136,25 +136,36 @@ function MiniPodium({ entries, ownNik }) {
     )
 }
 
-function StreakCalendar({ streak = 0 }) {
-    const today = new Date()
-    const days = Array.from({ length: 14 }, (_, i) => {
-        const d = new Date(today)
-        d.setDate(today.getDate() - (13 - i))
-        const isActive = i >= (14 - streak)
-        return { date: d, active: isActive && i < 14 }
-    })
-
+function StreakSummary({ streak = 1, monthLabel = '' }) {
     return (
-        <div className="flex gap-1 flex-wrap">
-            {days.map((d, i) => (
-                <div
-                    key={d.date.toISOString()}
-                    title={d.date.toLocaleDateString()}
-                    className={`w-7 h-7 rounded-md transition-all ${d.active ? 'bg-primary/70' : 'bg-white/5 border border-white/10'
-                        }`}
+        <div className="flex items-center gap-4">
+            <div className="relative w-16 h-16 flex items-center justify-center flex-shrink-0">
+                <motion.div
+                    className="absolute inset-0 rounded-full bg-orange-500/30 blur-xl"
+                    animate={{ scale: [0.8, 1.15, 0.8], opacity: [0.35, 0.75, 0.35] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                 />
-            ))}
+                <motion.span
+                    className="text-5xl leading-none"
+                    animate={{ scale: [1, 1.12, 1], y: [0, -3, 0], rotate: [-2, 2, -2] }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                    🔥
+                </motion.span>
+                <motion.div
+                    className="absolute -top-1 -right-1"
+                    animate={{ opacity: [0.2, 1, 0.2], y: [2, -3, 2], scale: [0.8, 1.1, 0.8] }}
+                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+                >
+                    <Flame className="w-4 h-4 text-yellow-300" />
+                </motion.div>
+            </div>
+
+            <div className="leading-tight">
+                <p className="text-4xl font-extrabold text-white">{streak}</p>
+                <p className="text-orange-300 text-2xl font-semibold">Hari Berturut-turut</p>
+                <p className="text-white/70 text-xl mt-0.5">di bulan {monthLabel}</p>
+            </div>
         </div>
     )
 }
@@ -190,17 +201,43 @@ export default function DashboardPage() {
     const myRank = getUserRank()
     const rankGap = getNextRankGap()
     const normalizeBadgeKey = (value) => {
-        if (typeof value === 'string') return value.trim().toLowerCase()
+        if (typeof value === 'string' || typeof value === 'number') {
+            return String(value).trim().toLowerCase()
+        }
         if (!value || typeof value !== 'object') return ''
-        return String(value.id ?? value.badge_key ?? '').trim().toLowerCase()
+        return String(value.id ?? value.badge_key ?? value.badgeId ?? value.badge_id ?? '').trim().toLowerCase()
+    }
+
+    const normalizeBadgeColor = (badge) => {
+        const rawColor = typeof badge?.color === 'string' ? badge.color.trim() : ''
+        const prefixed = rawColor && !rawColor.startsWith('#') ? `#${rawColor}` : rawColor
+        return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(prefixed) ? prefixed : '#FFD60A'
+    }
+
+    const withAlpha = (hexColor, alphaHex) => {
+        const clean = hexColor.replace('#', '')
+        const sixDigit = clean.length === 3
+            ? clean.split('').map((c) => c + c).join('')
+            : clean
+        return `#${sixDigit}${alphaHex}`
     }
 
     const earnedBadges = user?.badges || []
-    const earnedBadgeSet = new Set(userBadges.map(normalizeBadgeKey).filter(Boolean))
-    const displayedBadges = badges.slice(0,6)
+    const earnedBadgeSet = new Set([...userBadges, ...earnedBadges].map(normalizeBadgeKey).filter(Boolean))
+    const displayedBadges = [...badges]
+        .sort((a, b) => {
+            const aEarned = earnedBadgeSet.has(normalizeBadgeKey(a))
+            const bEarned = earnedBadgeSet.has(normalizeBadgeKey(b))
+            if (aEarned === bEarned) return 0
+            return aEarned ? -1 : 1
+        })
+        .slice(0, 6)
 
     const completedChapters = Object.values(chapterProgress).filter(p => p.completed).length
     const totalXP = user?.xp || 0
+    const safeStreak = Math.max(1, Number(user?.streak) || 1)
+    const monthRaw = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date())
+    const currentMonthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)
 
     useEffect(() => {
         loadBadges()
@@ -348,20 +385,14 @@ export default function DashboardPage() {
                             )}
                         </motion.div>
 
-                        {/* Streak Calendar */}
+                        {/* Streak Summary */}
                         <motion.div
-                            className="glass-card p-4"
+                            className="glass-card p-4 bg-gradient-to-r from-orange-500/10 via-red-500/5 to-transparent border border-orange-400/25"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4 }}
                         >
-                            <div className="flex items-center gap-2 mb-3">
-                                <Flame className="w-4 h-4 text-orange-400" />
-                                <h2 className="text-base font-bold text-white">Login Streak</h2>
-                                <span className="ml-auto text-orange-400 font-bold">{user?.streak || 1} 🔥</span>
-                            </div>
-                            <StreakCalendar streak={user?.streak || 1} />
-                            <p className="text-xs text-white/40 mt-2">Last 14 days</p>
+                            <StreakSummary streak={safeStreak} monthLabel={currentMonthLabel} />
                         </motion.div>
                     </div>
                 </div>
@@ -385,12 +416,21 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {displayedBadges.map((badge, i) => {
                             const earned = earnedBadgeSet.has(normalizeBadgeKey(badge))
+                            const badgeColor = normalizeBadgeColor(badge)
+                            const earnedStyle = earned
+                                ? {
+                                    borderColor: withAlpha(badgeColor, '88'),
+                                    background: `linear-gradient(135deg, ${withAlpha(badgeColor, '30')}, ${withAlpha(badgeColor, '14')})`,
+                                    boxShadow: `0 0 18px ${withAlpha(badgeColor, '5A')}`,
+                                }
+                                : undefined
                             return (
                                 <motion.div
                                     key={badge?.id ?? `${badge?.name ?? 'badge'}-${i}`}
                                     className={`${earned ? 'badge-earned' : 'badge-locked'} w-full aspect-square p-4`}
                                     whileHover={earned ? { scale: 1.1 } : {}}
                                     title={badge.name}
+                                    style={earnedStyle}
                                 >
                                     <div className="flex flex-col items-center justify-center gap-1 h-full">
                                         <span className="text-4xl">{badge.icon}</span>

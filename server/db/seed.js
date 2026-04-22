@@ -34,12 +34,31 @@ async function seed() {
         const hash = await bcrypt.hash(emp.pass, 10)
         const roleId = ROLE_IDS[emp.role || 'employee']
 
-        await pool.query(
-            `INSERT INTO users (nik, name, email, department, position, password_hash, role_id, xp, avatar_id, setup_done, display_name, streak, last_login)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, $2, 5, NOW())
-       ON CONFLICT (nik) DO UPDATE SET xp = $8, role_id = $7`,
-            [emp.nik, emp.name, emp.email, emp.dept, emp.pos, hash, roleId, emp.xp, emp.avatar]
+        const userResult = await pool.query(
+            `INSERT INTO users (nik, name, email, department, position, password_hash, role_id, avatar_id, setup_done, display_name, last_login)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $2, NOW())
+       ON CONFLICT (nik) DO UPDATE SET role_id = $7, avatar_id = $8
+       RETURNING id`,
+            [emp.nik, emp.name, emp.email, emp.dept, emp.pos, hash, roleId, emp.avatar]
         )
+
+        const userId = userResult.rows[0]?.id
+        if (userId) {
+            // Store user progression state in user_badges as the source of truth.
+            await pool.query(
+                `WITH updated AS (
+                    UPDATE user_badges
+                    SET xp = $2,
+                        streak = 5
+                    WHERE user_id = $1
+                    RETURNING id
+                )
+                INSERT INTO user_badges (user_id, badge_id, xp, streak, earned_at)
+                SELECT $1, NULL, $2, 5, NOW()
+                WHERE NOT EXISTS (SELECT 1 FROM updated)`,
+                [userId, emp.xp]
+            )
+        }
         console.log(`  ✅ ${emp.name} (${emp.nik})`)
     }
 

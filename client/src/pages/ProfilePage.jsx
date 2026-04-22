@@ -31,6 +31,20 @@ export default function ProfilePage() {
         ).trim().toLowerCase()
     }
 
+    const normalizeBadgeColor = (badge) => {
+        const rawColor = typeof badge?.color === 'string' ? badge.color.trim() : ''
+        const prefixed = rawColor && !rawColor.startsWith('#') ? `#${rawColor}` : rawColor
+        return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(prefixed) ? prefixed : '#FFD60A'
+    }
+
+    const withAlpha = (hexColor, alphaHex) => {
+        const clean = hexColor.replace('#', '')
+        const sixDigit = clean.length === 3
+            ? clean.split('').map((c) => c + c).join('')
+            : clean
+        return `#${sixDigit}${alphaHex}`
+    }
+
     const getCategoryLabel = (badge) => (
         badge?.category_name || badge?.categoryName || badge?.category || 'Uncategorized'
     )
@@ -237,16 +251,25 @@ export default function ProfilePage() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {categoryBadges.map(badge => {
                                     const earned = earnedBadgeSet.has(normalizeBadgeKey(badge))
+                                    const badgeColor = normalizeBadgeColor(badge)
+                                    const earnedStyle = earned
+                                        ? {
+                                            borderColor: withAlpha(badgeColor, '88'),
+                                            background: `linear-gradient(135deg, ${withAlpha(badgeColor, '30')}, ${withAlpha(badgeColor, '14')})`,
+                                            boxShadow: `0 0 18px ${withAlpha(badgeColor, '5A')}`,
+                                        }
+                                        : undefined
                                     return (
                                         <motion.div
                                             key={badge.id}
                                             className={`${earned ? 'badge-earned' : 'badge-locked'} p-4 flex flex-col items-center gap-2`}
                                             whileHover={earned ? { scale: 1.05 } : {}}
+                                            style={earnedStyle}
                                         >
                                             <span className="text-3xl">{badge.icon}</span>
                                             <p className="text-xs font-bold text-white text-center">{badge.name}</p>
                                             <p className="text-xs text-white/40 text-center">{badge.desc}</p>
-                                            {earned && <span className="text-xs text-accent font-bold">✓ Earned</span>}
+                                            {earned && <span className="text-xs font-bold" style={{ color: badgeColor }}>✓ Earned</span>}
                                         </motion.div>
                                     )
                                 })}

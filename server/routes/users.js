@@ -11,9 +11,19 @@ const upload = multer({ storage: multer.memoryStorage() })
 router.get('/me', requireAuth, async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT u.*, r.name as role FROM users u
-       JOIN roles r ON u.role_id = r.id
-       WHERE u.id = $1`,
+            `SELECT
+                u.*,
+                r.name as role,
+                COALESCE(ub_stats.xp, 0)::int as xp,
+                COALESCE(ub_stats.streak, 1)::int as streak
+             FROM users u
+             JOIN roles r ON u.role_id = r.id
+             LEFT JOIN (
+                SELECT user_id, MAX(xp) AS xp, MAX(streak) AS streak
+                FROM user_badges
+                GROUP BY user_id
+             ) ub_stats ON ub_stats.user_id = u.id
+             WHERE u.id = $1`,
             [req.user.userId]
         )
         if (result.rows.length === 0) return res.status(404).json({ message: 'User not found' })
@@ -68,14 +78,27 @@ router.put('/me', requireAuth, async (req, res) => {
 router.get('/admin', requireAuth, requireRole('admin', 'manager'), async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT u.id, u.nik, u.name, u.display_name, u.department, u.position, u.xp, u.streak,
-              r.name as role,
-              COUNT(cp.id) FILTER (WHERE cp.completed) as chapters_completed
-       FROM users u
-       JOIN roles r ON u.role_id = r.id
-       LEFT JOIN chapter_progress cp ON cp.user_id = u.id
-       GROUP BY u.id, r.name
-       ORDER BY u.xp DESC`
+            `SELECT
+                u.id,
+                u.nik,
+                u.name,
+                u.display_name,
+                u.department,
+                u.position,
+                COALESCE(ub_stats.xp, 0)::int as xp,
+                COALESCE(ub_stats.streak, 1)::int as streak,
+                r.name as role,
+                COUNT(cp.id) FILTER (WHERE cp.completed) as chapters_completed
+             FROM users u
+             JOIN roles r ON u.role_id = r.id
+             LEFT JOIN chapter_progress cp ON cp.user_id = u.id
+             LEFT JOIN (
+                SELECT user_id, MAX(xp) AS xp, MAX(streak) AS streak
+                FROM user_badges
+                GROUP BY user_id
+             ) ub_stats ON ub_stats.user_id = u.id
+             GROUP BY u.id, r.name, ub_stats.xp, ub_stats.streak
+             ORDER BY COALESCE(ub_stats.xp, 0) DESC`
         )
         res.json(result.rows)
     } catch (err) {

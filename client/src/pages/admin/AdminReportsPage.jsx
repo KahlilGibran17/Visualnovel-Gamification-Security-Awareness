@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
 import toast from '../../utils/toast.js'
 import axios from 'axios'
+import { exportToExcel } from '../../utils/exportExcel.js'
 
 const normalizeLeaderboardRows = (rows) => {
     if (!Array.isArray(rows)) return []
@@ -23,6 +24,7 @@ export default function AdminReportsPage() {
     const [leaderboardRows, setLeaderboardRows] = useState([])
     const [totalChapters, setTotalChapters] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [data, setData] = useState([])
 
     useEffect(() => {
         let isMounted = true
@@ -32,7 +34,7 @@ export default function AdminReportsPage() {
             try {
                 const [leaderboardRes, chaptersRes] = await Promise.all([
                     axios.get('/api/leaderboard', {
-                        params: { filter: 'all', dept: 'all', includeZeroXp: 'true' },
+                        params: { filter: 'all', dept: 'all', includeZeroXp: 'true' }
                     }),
                     axios.get('/api/elearning/getChapters'),
                 ])
@@ -101,7 +103,11 @@ export default function AdminReportsPage() {
     const tableColumnCount = 5 + totalChapters
 
     const handleExport = (type) => {
-        toast.success(`Exporting ${type} report... (Demo mode — connect backend for real export)`)
+        if (type === 'Excel') {
+            exportToExcel(leaderboardRows, 'Compliance_Report');
+        } else {
+            toast.success(`Exporting ${type} report... (Demo mode — connect backend for real export)`)
+        }
     }
 
     return (

@@ -4,13 +4,7 @@ import toast from '../utils/toast.js'
 
 const AuthContext = createContext(null)
 
-// Demo users for when backend is offline
-// const DEMO_USERS = [
-//     { id: 1, nik: '10001', name: 'Budi Santoso', department: 'Engineering', position: 'Senior Engineer', role: 'employee', xp: 2850, level: 3, rank: 2, chaptersCompleted: 4, badges: ['phishing-hunter', 'tidy-desk', 'social-shield'], avatarId: 1, setupDone: true },
-//     { id: 2, nik: '10002', name: 'Siti Rahayu', department: 'HR', position: 'HR Manager', role: 'manager', xp: 1900, level: 2, rank: 5, chaptersCompleted: 3, badges: ['phishing-hunter', 'tidy-desk'], avatarId: 3, setupDone: true },
-//     { id: 3, nik: 'admin001', name: 'Ahmad Fauzi', department: 'IT', position: 'IT Admin', role: 'admin', xp: 5600, level: 4, rank: 1, chaptersCompleted: 6, badges: ['phishing-hunter', 'tidy-desk', 'social-shield', 'password-master', 'first-responder', 'cyber-hero'], avatarId: 5, setupDone: true },
-//     { id: 4, nik: '10003', name: 'Dewi Kusuma', department: 'Finance', position: 'Finance Analyst', role: 'employee', xp: 0, level: 1, rank: 20, chaptersCompleted: 0, badges: [], avatarId: 2, setupDone: false },
-// ]
+
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)

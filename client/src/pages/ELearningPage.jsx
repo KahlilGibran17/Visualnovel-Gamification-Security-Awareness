@@ -87,7 +87,7 @@ function LessonRow({ lesson, index, onClick }) {
     )
 }
 
-function ChapterCard({ chapter, chapterIndex, onLessonClick }) {
+function ChapterCard({ chapter, chapterIndex, onLessonClick,isLocked }) {
     const [isOpen, setIsOpen] = useState(false)
     const [badgeAwarded, setBadgeAwarded] = useState(false)
     const hasCalled = useRef(false)
@@ -97,12 +97,6 @@ function ChapterCard({ chapter, chapterIndex, onLessonClick }) {
     const progressPercent = totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0
     const isChapterDone = completedCount === totalLessons && totalLessons > 0
     const totalXp = chapter.lessons.reduce((s, l) => s + (parseInt(l.xp_reward) || 0), 0)
-    useEffect(() => {
-        if (!isChapterDone || !chapter.badge_key || badgeAwarded || hasCalled.current) return
-
-        hasCalled.current = true
-        awardBadge(chapter.badge_key)
-    }, [isChapterDone, chapter.badge_key, badgeAwarded])
 
     const awardBadge = async (badge_key) => {
         try {
@@ -118,30 +112,53 @@ function ChapterCard({ chapter, chapterIndex, onLessonClick }) {
             console.error('Gagal award badge:', err)
         }
     }
+
+    useEffect(() => {
+        if (!isChapterDone || !chapter.badge_key || badgeAwarded || hasCalled.current) return
+
+        hasCalled.current = true
+        awardBadge(chapter.badge_key)
+    }, [isChapterDone, chapter.badge_key, badgeAwarded])
+
+    const handleToggle = () => {
+        if (isLocked) {
+            toast.error('Selesaikan chapter sebelumnya terlebih dahulu!')
+            return
+        }
+        setIsOpen(v => !v)
+    }
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: chapterIndex * 0.1 }}
-            className="glass-card overflow-hidden"
+            className={`glass-card overflow-hidden ${isLocked ? 'opacity-60' : ''}`}
         >
             {/* Chapter Header */}
             <button
-                onClick={() => setIsOpen(v => !v)}
-                className="w-full flex items-center gap-3 p-4 text-left hover:bg-white/5 transition-colors"
+                onClick={handleToggle}
+                className={`w-full flex items-center gap-3 p-4 text-left transition-colors ${isLocked ? 'cursor-not-allowed' : 'hover:bg-white/5'}`}
             >
                 {/* Chapter icon/number */}
                 <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm transition-all"
                     style={{
-                        background: isChapterDone
-                            ? 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.1))'
-                            : 'linear-gradient(135deg, rgba(230,57,70,0.2), rgba(230,57,70,0.1))',
-                        border: `1px solid ${isChapterDone ? 'rgba(34,197,94,0.3)' : 'rgba(230,57,70,0.2)'}`,
-                        color: isChapterDone ? '#22c55e' : '#E63946',
+                        background: isLocked
+                            ? 'rgba(255,255,255,0.05)'
+                            : isChapterDone
+                                ? 'linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.1))'
+                                : 'linear-gradient(135deg, rgba(230,57,70,0.2), rgba(230,57,70,0.1))',
+                        border: `1px solid ${isLocked ? 'rgba(255,255,255,0.1)' : isChapterDone ? 'rgba(34,197,94,0.3)' : 'rgba(230,57,70,0.2)'}`,
+                        color: isLocked ? 'rgba(255,255,255,0.3)' : isChapterDone ? '#22c55e' : '#E63946',
                     }}
                 >
-                    {isChapterDone ? <CheckCircle className="w-5 h-5" /> : chapter.id}
+                    {isLocked
+                        ? <Lock className="w-4 h-4" />
+                        : isChapterDone
+                            ? <CheckCircle className="w-5 h-5" />
+                            : chapter.id
+                    }
                 </div>
 
                 {/* Chapter info */}
@@ -267,6 +284,11 @@ export default function ElearningPage() {
     const completedCount = lessons.filter(l => l.completed).length
     const totalXpEarned = lessons.reduce((sum, l) => sum + (parseInt(l.xp_earned) || 0), 0)
 
+    const isChapterCompleted = (chapter) => {
+        if (!chapter?.lessons?.length) return false
+        return chapter.lessons.every((lesson) => Boolean(lesson?.completed))
+    }
+
     
 
     return (
@@ -379,14 +401,20 @@ export default function ElearningPage() {
                                 {chapterList.length} Chapter · {lessons.length} Video
                             </p>
                         </div>
-                        {chapterList.map((chapter, i) => (
-                            <ChapterCard
-                                key={chapter.id}
-                                chapter={chapter}
-                                chapterIndex={i}
-                                onLessonClick={(id) => navigate(`/elearning/${id}`)}
-                            />
-                        ))}
+                        {chapterList.map((chapter, i) => {
+                            const previousChapters = chapterList.slice(0, i)
+                            const isLocked = i > 0 && previousChapters.some((prev) => !isChapterCompleted(prev))
+
+                            return (
+                                <ChapterCard
+                                    key={chapter.id}
+                                    chapter={chapter}
+                                    chapterIndex={i}
+                                    isLocked={isLocked}
+                                    onLessonClick={(id) => navigate(`/elearning/${id}`)}
+                                />
+                            )
+                        })}
                     </div>
                 )}
             </div>
