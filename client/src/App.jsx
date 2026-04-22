@@ -9,9 +9,10 @@ import CharacterSetupPage from './pages/CharacterSetupPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ChapterSelectPage from './pages/ChapterSelectPage.jsx'
 import ELearningPage from './pages/ELearningPage.jsx'
-import VNEnginePage from './pages/VNEnginePage.jsx'
 import ChapterResultPage from './pages/ChapterResultPage.jsx'
 import LeaderboardPage from './pages/LeaderboardPage.jsx'
+import LandingPage from './pages/LandingPage.jsx'
+import VNEnginePage from './pages/VNEnginePage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
@@ -99,8 +100,8 @@ export default function App() {
                                 </ProtectedRoute>
                             } />
 
-                            <Route path="/" element={<Navigate to="/login" replace />} />
-                            <Route path="*" element={<Navigate to="/login" replace />} />
+                            <Route path="/" element={<LandingPage />} />
+                            <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </div>
                     <Toaster

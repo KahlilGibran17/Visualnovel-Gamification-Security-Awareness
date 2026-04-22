@@ -775,4 +775,74 @@ router.delete('/media/:id', requireAuth, requireRole('admin'), async (req, res) 
     }
 })
 
+// ─── LANDING SLIDES CMS ────────────────────────────────────────────────────────
+router.get('/landing-slides', async (req, res) => {
+    try {
+        const r = await pool.query('SELECT * FROM cms_landing_slides ORDER BY slide_order ASC')
+        res.json(r.rows)
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch landing slides' })
+    }
+})
+
+router.post('/landing-slides', requireAuth, requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+        const { title, description, slide_order } = req.body
+        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null
+        
+        let order = parseInt(slide_order)
+        if (isNaN(order)) {
+            const maxOrder = await pool.query('SELECT MAX(slide_order) FROM cms_landing_slides')
+            order = (parseInt(maxOrder.rows[0].max) || 0) + 1
+        }
+
+        const r = await pool.query(
+            'INSERT INTO cms_landing_slides (title, description, slide_order, image_url) VALUES ($1,$2,$3,$4) RETURNING *',
+            [title, description || '', order, imageUrl]
+        )
+        res.status(201).json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create slide' })
+    }
+})
+
+router.put('/landing-slides/:id', requireAuth, requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+        const { title, description, slide_order } = req.body
+        const r = await pool.query('SELECT * FROM cms_landing_slides WHERE id=$1', [req.params.id])
+        if (!r.rows.length) return res.status(404).json({ error: 'Slide not found' })
+
+        const imageUrl = req.file ? `/uploads/${req.file.filename}` : r.rows[0].image_url
+        
+        const update = await pool.query(
+            'UPDATE cms_landing_slides SET title=$1, description=$2, slide_order=$3, image_url=$4, updated_at=NOW() WHERE id=$5 RETURNING *',
+            [title, description || '', parseInt(slide_order) || 0, imageUrl, req.params.id]
+        )
+        res.json(update.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update slide' })
+    }
+})
+
+router.delete('/landing-slides/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        await pool.query('DELETE FROM cms_landing_slides WHERE id=$1', [req.params.id])
+        res.json({ message: 'Deleted' })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete slide' })
+    }
+})
+
+router.put('/landing-slides/reorder/batch', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { orderedIds } = req.body
+        for (let i = 0; i < orderedIds.length; i++) {
+            await pool.query('UPDATE cms_landing_slides SET slide_order=$1 WHERE id=$2', [i, orderedIds[i]])
+        }
+        res.json({ message: 'Reordered', orderedIds })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to reorder' })
+    }
+})
+
 module.exports = router

@@ -7,12 +7,14 @@ import { useNavigate } from 'react-router-dom'
 import ChapterEditor from './cms/ChapterEditor.jsx'
 import { CharactersTab, BackgroundsTab } from './cms/CharsBgsTabs.jsx'
 import { UITypesTab } from './cms/UITypesTab.jsx'
+import LandingSlidesTab from './cms/LandingSlidesTab.jsx'
 
 const TABS = [
     { id: 'chapters', label: 'Chapters', icon: BookOpen },
     { id: 'characters', label: 'Characters', icon: Users },
     { id: 'backgrounds', label: 'Backgrounds', icon: Image },
     { id: 'ui-types', label: 'UI Types', icon: Monitor },
+    { id: 'landing', label: 'Landing UI', icon: Globe },
     { id: 'media', label: 'Media Library', icon: Film },
 ]
 
@@ -306,6 +308,7 @@ export default function AdminCMSPage() {
                         {activeTab === 'characters' && <CharactersTab />}
                         {activeTab === 'backgrounds' && <BackgroundsTab />}
                         {activeTab === 'ui-types' && <UITypesTab />}
+                        {activeTab === 'landing' && <LandingSlidesTab activeTab={activeTab} />}
                         {activeTab === 'media' && <MediaLibrary />}
                     </motion.div>
                 </AnimatePresence>
