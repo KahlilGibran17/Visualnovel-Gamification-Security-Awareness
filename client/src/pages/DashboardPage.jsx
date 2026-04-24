@@ -15,8 +15,8 @@ function XPBar({ xp, level, nextLevel }) {
     return (
         <div>
             <div className="flex justify-between text-xs mb-1">
-                <span className="text-white/50">{level.title}</span>
-                {nextLevel && <span className="text-white/50">{nextLevel.title}</span>}
+                <span className="text-muted">{level.title}</span>
+                {nextLevel && <span className="text-muted">{nextLevel.title}</span>}
             </div>
             <div className="xp-bar">
                 <motion.div
@@ -28,7 +28,7 @@ function XPBar({ xp, level, nextLevel }) {
             </div>
             <div className="flex justify-between text-xs mt-1">
                 <span className="text-accent font-semibold">{xp.toLocaleString()} XP</span>
-                {nextLevel && <span className="text-white/30">{nextLevel.xpRequired.toLocaleString()} needed</span>}
+                {nextLevel && <span className="text-dim">butuh {nextLevel.xpRequired.toLocaleString()}</span>}
             </div>
         </div>
     )
@@ -46,9 +46,9 @@ function StatWidget({ icon: Icon, label, value, color = '#E63946', delay = 0 }) 
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}22` }}>
                     <Icon className="w-4 h-4" style={{ color }} />
                 </div>
-                <span className="text-white/50 text-xs font-medium uppercase tracking-wider">{label}</span>
+                <span className="text-muted text-xs font-medium uppercase tracking-wider">{label}</span>
             </div>
-            <p className="text-2xl font-bold text-white">{value}</p>
+            <p className="text-2xl font-bold text-main">{value}</p>
         </motion.div>
     )
 }
@@ -84,16 +84,16 @@ function ChapterMapNode({ chapter, progress, locked, onPlay, index }) {
                     </motion.div>
                 )}
                 {locked && (
-                    <div className="absolute inset-0 bg-dark/50 rounded-full flex items-center justify-center">
-                        <Lock className="w-5 h-5 text-white/30" />
+                    <div className="absolute inset-0 bg-dark/40 rounded-full flex items-center justify-center">
+                        <Lock className="w-5 h-5 text-dim/50" />
                     </div>
                 )}
                 <span>{chapter.icon}</span>
             </motion.button>
 
             <div className="text-center max-w-[80px]">
-                <p className="text-xs font-semibold text-white/80 leading-tight">{chapter.title}</p>
-                <p className="text-xs text-white/40">{chapter.subtitle}</p>
+                <p className="text-xs font-semibold text-main leading-tight">{chapter.title}</p>
+                <p className="text-xs text-dim">{chapter.subtitle}</p>
                 {isComplete && (
                     <p className="text-xs text-accent font-bold mt-0.5">+{progress.xpEarned} XP</p>
                 )}
@@ -117,10 +117,10 @@ function MiniPodium({ entries, ownNik }) {
                 <div key={place} className="flex flex-col items-center gap-1">
                     <span className="text-lg">{crown}</span>
                     <AvatarDisplay avatarId={user.avatarId} size="sm" showRing={user.nik === ownNik} />
-                    <p className="text-xs font-semibold text-white/90 max-w-[60px] text-center leading-tight truncate">{user.name.split(' ')[0]}</p>
+                    <p className="text-xs font-semibold text-main max-w-[60px] text-center leading-tight truncate">{user.name.split(' ')[0]}</p>
                     <p className="text-xs text-accent font-bold">{user.xp.toLocaleString()}</p>
                     <div className={`${height} w-14 rounded-t-lg border ${color} flex items-center justify-center`}>
-                        <span className="font-bold text-white/80 text-sm">#{place}</span>
+                        <span className="font-bold text-main text-sm">#{place}</span>
                     </div>
                 </div>
             ))}
@@ -143,7 +143,7 @@ function StreakCalendar({ streak = 0 }) {
                 <div
                     key={i}
                     title={d.date.toLocaleDateString()}
-                    className={`w-7 h-7 rounded-md transition-all ${d.active ? 'bg-primary/70' : 'bg-white/5 border border-white/10'
+                    className={`w-7 h-7 rounded-md transition-all ${d.active ? 'bg-primary/70' : 'bg-card-bg border border-card-border'
                         }`}
                 />
             ))}
@@ -153,7 +153,7 @@ function StreakCalendar({ streak = 0 }) {
 
 export default function DashboardPage() {
     const { user } = useAuth()
-    const { chapterProgress, getLevelFromXP, getNextLevel, CHAPTERS, BADGES, leaderboard, getUserRank, getNextRankGap } = useGame()
+    const { chapterProgress, getLevelFromXP, getNextLevel, CHAPTERS, BADGES, leaderboard, getUserRank, getNextRankGap, elearningCompleted } = useGame()
     const navigate = useNavigate()
     const [showWelcome, setShowWelcome] = useState(true)
 
@@ -185,7 +185,7 @@ export default function DashboardPage() {
                         <span className="text-2xl">🤖</span>
                         <div>
                             <p className="text-accent font-bold text-sm">AKE-BOT</p>
-                            <p className="text-white/70 text-xs">Welcome back, {user?.name?.split(' ')[0]}! Ready to level up today?</p>
+                            <p className="text-muted text-xs">Selamat datang kembali, {user?.name?.split(' ')[0]}! Siap naik level hari ini?</p>
                         </div>
                     </motion.div>
                 )}
@@ -194,6 +194,7 @@ export default function DashboardPage() {
             <div className="p-6 space-y-6 max-w-7xl mx-auto">
                 {/* Profile Header */}
                 <motion.div
+                    id="dashboard-profile"
                     className="glass-card p-6"
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -203,7 +204,7 @@ export default function DashboardPage() {
 
                         <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-3 mb-1">
-                                <h1 className="text-2xl font-bold text-white font-display">{user?.name}</h1>
+                                <h1 className="text-2xl font-bold text-main font-display">{user?.name}</h1>
                                 <span
                                     className="px-3 py-1 rounded-full text-xs font-bold border"
                                     style={{ color: level.color, borderColor: `${level.color}60`, background: `${level.color}15` }}
@@ -211,10 +212,11 @@ export default function DashboardPage() {
                                     {level.icon} {level.title}
                                 </span>
                             </div>
-                            <p className="text-white/50 text-sm mb-1">NIK: {user?.nik} • {user?.department} • {user?.position}</p>
+                            <p className="text-muted text-sm mb-1">NIK: {user?.nik} • {user?.department} • {user?.position}</p>
                             <div className="max-w-md">
                                 <XPBar xp={totalXP} level={level} nextLevel={nextLevel} />
                             </div>
+                            <p className="text-dim text-xs mt-3 italic">Di sini Anda bisa melihat progres Anda</p>
                         </div>
 
                         {/* Rank badge */}
@@ -225,10 +227,10 @@ export default function DashboardPage() {
                         >
                             <Trophy className="w-8 h-8 text-accent mx-auto mb-1" />
                             <p className="text-3xl font-bold text-accent">#{myRank || '—'}</p>
-                            <p className="text-xs text-white/40">Global Rank</p>
+                            <p className="text-xs text-dim">Peringkat Global</p>
                             {rankGap && (
-                                <p className="text-xs text-white/60 mt-1 max-w-[100px] leading-tight">
-                                    {rankGap.gap} XP to #{rankGap.rank}
+                                <p className="text-xs text-muted mt-1 max-w-[100px] leading-tight">
+                                    Butuh {rankGap.gap} XP ke #{rankGap.rank}
                                 </p>
                             )}
                         </motion.div>
@@ -244,12 +246,12 @@ export default function DashboardPage() {
                         transition={{ delay: 0.2 }}
                     >
                         <TrendingUp className="w-5 h-5 text-accent flex-shrink-0" />
-                        <p className="text-white/80 text-sm">
-                            <span className="text-accent font-bold">You're ranked #{myRank}</span> — only{' '}
-                            <span className="text-white font-bold">{rankGap.gap} XP</span> away from #{rankGap.rank} ({rankGap.name.split(' ')[0]})! 🔥
+                        <p className="text-muted text-sm">
+                            <span className="text-accent font-bold">Peringkat Anda #{myRank}</span> — hanya butuh{' '}
+                            <span className="text-main font-bold">{rankGap.gap} XP</span> lagi untuk menyusul #{rankGap.rank} ({rankGap.name.split(' ')[0]})! 🔥
                         </p>
                         <button onClick={() => navigate('/leaderboard')} className="btn-accent text-xs px-3 py-1.5 ml-auto flex-shrink-0">
-                            View Leaderboard
+                            Lihat Papan Peringkat
                         </button>
                     </motion.div>
                 )}
@@ -257,9 +259,9 @@ export default function DashboardPage() {
                 {/* Stat Widgets */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatWidget icon={Star} label="Total XP" value={totalXP.toLocaleString()} color="#FFD60A" delay={0.1} />
-                    <StatWidget icon={Trophy} label="Global Rank" value={`#${myRank || '—'}`} color="#E63946" delay={0.15} />
-                    <StatWidget icon={BookOpen} label="Chapters Done" value={`${completedChapters}/6`} color="#60a5fa" delay={0.2} />
-                    <StatWidget icon={Award} label="Badges" value={`${earnedBadges.length}/${BADGES.length}`} color="#a78bfa" delay={0.25} />
+                    <StatWidget icon={Trophy} label="Peringkat Global" value={`#${myRank || '—'}`} color="#E63946" delay={0.15} />
+                    <StatWidget icon={BookOpen} label="Modul Selesai" value={`${completedChapters}/6`} color="#60a5fa" delay={0.2} />
+                    <StatWidget icon={Award} label="Lencana" value={`${earnedBadges.length}/${BADGES.length}`} color="#a78bfa" delay={0.25} />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -270,16 +272,49 @@ export default function DashboardPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
                     >
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-white font-display">📚 Chapter Map</h2>
-                            <button onClick={() => navigate('/chapters')} className="text-accent text-sm hover:underline flex items-center gap-1">
-                                View All <ChevronRight className="w-4 h-4" />
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-main font-display flex items-center gap-2">
+                                    📚 Peta Modul Tantangan
+                                    <span className="bg-primary/20 text-primary text-[10px] px-2 py-0.5 rounded-full border border-primary/30 animate-pulse uppercase tracking-tighter font-black">Kompetisi Aktif</span>
+                                </h2>
+                                <p className="text-xs text-muted mt-1">Selesaikan semua tantangan dan raih skor sempurna!</p>
+                            </div>
+                            <button onClick={() => navigate('/chapters')} className="text-accent text-sm hover:underline flex items-center gap-1 font-bold">
+                                Lihat Semua <ChevronRight className="w-4 h-4" />
                             </button>
+                        </div>
+
+                        {/* Reward Motivation Banner */}
+                        <div className="mb-8 p-4 rounded-2xl bg-gradient-to-br from-accent/20 via-primary/5 to-transparent border border-accent/30 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 blur-3xl -mr-10 -mt-10 group-hover:bg-accent/20 transition-all duration-700" />
+                            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+                                <div className="flex gap-4">
+                                    <div className="w-20 h-20 rounded-2xl bg-dark/60 flex items-center justify-center border border-white/10 shadow-2xl transform group-hover:scale-110 transition-transform duration-500 overflow-hidden relative">
+                                        <img src="/airpods_reward_3d.png" alt="AirPods" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                        <span className="absolute bottom-1 text-[8px] font-black text-accent uppercase tracking-tighter">AirPods</span>
+                                    </div>
+                                    <div className="w-20 h-20 rounded-2xl bg-dark/60 flex items-center justify-center border border-white/10 shadow-2xl transform group-hover:scale-110 transition-transform duration-500 delay-75 overflow-hidden relative">
+                                        <img src="/smartwatch_reward_3d.png" alt="Smartwatch" className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                        <span className="absolute bottom-1 text-[8px] font-black text-accent uppercase tracking-tighter">Watch</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-accent font-black text-sm uppercase tracking-wider mb-1">Hadiah Eksklusif Menanti!</p>
+                                    <p className="text-main font-bold text-lg leading-tight">Selesaikan semua tantangan dan raih hadiah untuk 3 peringkat tertinggi!</p>
+                                    <p className="text-muted text-xs mt-1">Top 3 Global akan mendapatkan reward spesial setiap bulannya.</p>
+                                </div>
+                                <button onClick={() => navigate('/leaderboard')} className="md:ml-auto btn-accent px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-accent/20">
+                                    Cek Peringkat
+                                </button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-3 gap-6 place-items-center py-2">
                             {CHAPTERS.map((ch, idx) => {
-                                const locked = idx > 0 && !chapterProgress[CHAPTERS[idx - 1].id]?.completed
+                                const locked = !elearningCompleted || (idx > 0 && !chapterProgress[CHAPTERS[idx - 1].id]?.completed)
                                 return (
                                     <ChapterMapNode
                                         key={ch.id}
@@ -304,20 +339,20 @@ export default function DashboardPage() {
                             transition={{ delay: 0.35 }}
                         >
                             <div className="flex items-center justify-between mb-3">
-                                <h2 className="text-base font-bold text-white font-display flex items-center gap-2">
+                                <h2 className="text-base font-bold text-main font-display flex items-center gap-2">
                                     <Trophy className="w-4 h-4 text-accent" />
-                                    Leaderboard
+                                    Papan Peringkat
                                 </h2>
                                 <button onClick={() => navigate('/leaderboard')} className="text-accent text-xs hover:underline">
-                                    Full View →
+                                    Lihat Penuh →
                                 </button>
                             </div>
                             <MiniPodium entries={leaderboard.slice(0, 3)} ownNik={user?.nik} />
                             {myRank && myRank > 3 && (
                                 <div className="rank-row-own mt-2 text-sm">
                                     <span className="text-accent font-bold">#{myRank}</span>
-                                    <span className="text-white">{user?.name?.split(' ')[0]}</span>
-                                    <span className="text-white/50 ml-auto">{totalXP.toLocaleString()} XP</span>
+                                    <span className="text-main">{user?.name?.split(' ')[0]}</span>
+                                    <span className="text-dim ml-auto">{totalXP.toLocaleString()} XP</span>
                                 </div>
                             )}
                         </motion.div>
@@ -331,11 +366,11 @@ export default function DashboardPage() {
                         >
                             <div className="flex items-center gap-2 mb-3">
                                 <Flame className="w-4 h-4 text-orange-400" />
-                                <h2 className="text-base font-bold text-white">Login Streak</h2>
+                                <h2 className="text-base font-bold text-main">Login Beruntun</h2>
                                 <span className="ml-auto text-orange-400 font-bold">{user?.streak || 1} 🔥</span>
                             </div>
                             <StreakCalendar streak={user?.streak || 1} />
-                            <p className="text-xs text-white/40 mt-2">Last 14 days</p>
+                            <p className="text-xs text-dim mt-2">14 Hari Terakhir</p>
                         </motion.div>
                     </div>
                 </div>
@@ -348,11 +383,11 @@ export default function DashboardPage() {
                     transition={{ delay: 0.45 }}
                 >
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-white font-display flex items-center gap-2">
-                            🏆 Badge Collection
+                        <h2 className="text-lg font-bold text-main font-display flex items-center gap-2">
+                            🏆 Koleksi Lencana
                         </h2>
                         <button onClick={() => navigate('/profile')} className="text-accent text-sm hover:underline flex items-center gap-1">
-                            View All <ChevronRight className="w-4 h-4" />
+                            Lihat Semua <ChevronRight className="w-4 h-4" />
                         </button>
                     </div>
 
@@ -368,7 +403,7 @@ export default function DashboardPage() {
                                 >
                                     <div className="flex flex-col items-center justify-center gap-1 h-full">
                                         <span className="text-2xl">{badge.icon}</span>
-                                        <span className="text-xs text-center font-medium leading-tight text-white/70" style={{ fontSize: '10px' }}>
+                                        <span className="text-xs text-center font-medium leading-tight text-muted" style={{ fontSize: '10px' }}>
                                             {badge.name}
                                         </span>
                                     </div>

@@ -8,8 +8,11 @@ import ChapterEditor from './cms/ChapterEditor.jsx'
 import { CharactersTab, BackgroundsTab } from './cms/CharsBgsTabs.jsx'
 import { UITypesTab } from './cms/UITypesTab.jsx'
 import LandingSlidesTab from './cms/LandingSlidesTab.jsx'
+import RoadmapTab from './cms/RoadmapTab.jsx'
+import { Map } from 'lucide-react'
 
 const TABS = [
+    { id: 'roadmap', label: 'Roadmap', icon: Map },
     { id: 'chapters', label: 'Chapters', icon: BookOpen },
     { id: 'characters', label: 'Characters', icon: Users },
     { id: 'backgrounds', label: 'Backgrounds', icon: Image },
@@ -20,7 +23,7 @@ const TABS = [
 
 const STATUS_COLOR = {
     Published: 'bg-green-500/20 text-green-400 border border-green-500/30',
-    Draft: 'bg-white/5 text-white/40 border border-white/10',
+    Draft: 'bg-input-bg text-dim border border-card-border',
 }
 
 // ─── Chapter List ────────────────────────────────────────────────────────────
@@ -81,7 +84,7 @@ function ChapterList({ onEdit }) {
         <div>
             <div className="flex items-center gap-3 mb-6 flex-wrap">
                 <div className="relative flex-1 min-w-48">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dim" />
                     <input className="input-field w-full pl-9 text-sm" placeholder="Search chapters..." value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
                 <button onClick={() => setCreating(true)} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> New Chapter</button>
@@ -102,24 +105,24 @@ function ChapterList({ onEdit }) {
             {filtered.length === 0 ? (
                 <div className="glass-card p-16 text-center">
                     <div className="text-6xl mb-4">📚</div>
-                    <h3 className="text-white font-semibold text-lg mb-2">No chapters yet</h3>
-                    <p className="text-white/40 mb-6">Create your first chapter to get started</p>
+                    <h3 className="text-main font-semibold text-lg mb-2">No chapters yet</h3>
+                    <p className="text-muted mb-6">Create your first chapter to get started</p>
                     <button onClick={() => setCreating(true)} className="btn-primary flex items-center gap-2 mx-auto"><Plus className="w-4 h-4" /> Create Chapter</button>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <AnimatePresence>
                         {filtered.map((ch, i) => (
-                            <motion.div key={ch.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0, transition: { delay: i * 0.04 } }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card p-5 group hover:border-white/20 transition-colors">
+                            <motion.div key={ch.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0, transition: { delay: i * 0.04 } }} exit={{ opacity: 0, scale: 0.95 }} className="glass-card p-5 group hover:border-card-border transition-colors">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="text-4xl">{ch.icon || '📖'}</div>
                                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLOR[ch.status] || STATUS_COLOR.Draft}`}>
                                         {ch.status === 'Published' ? '🟢 Live' : '⚪ Draft'}
                                     </span>
                                 </div>
-                                <h3 className="font-bold text-white text-lg leading-tight mb-1">{ch.title}</h3>
-                                <p className="text-white/50 text-sm mb-4">{ch.subtitle || 'No subtitle'}</p>
-                                <div className="flex items-center gap-3 text-xs text-white/30 mb-4">
+                                <h3 className="font-bold text-main text-lg leading-tight mb-1">{ch.title}</h3>
+                                <p className="text-muted text-sm mb-4">{ch.subtitle || 'No subtitle'}</p>
+                                <div className="flex items-center gap-3 text-xs text-dim mb-4">
                                     <span className="flex items-center gap-1"><Film className="w-3 h-3" />{ch.scene_count || 0} scenes</span>
                                     {ch.location && <span className="flex items-center gap-1">📍{ch.location}</span>}
                                 </div>
@@ -131,7 +134,7 @@ function ChapterList({ onEdit }) {
                                         className="btn-secondary flex items-center gap-1.5 text-sm px-3">
                                         <Globe className="w-3.5 h-3.5" /> Play
                                     </a>
-                                    <button onClick={() => deleteChapter(ch.id, ch.title)} className="p-2 rounded-lg hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-all">
+                                    <button onClick={() => deleteChapter(ch.id, ch.title)} className="p-2 rounded-lg hover:bg-red-500/20 text-dim hover:text-red-400 transition-all">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -192,7 +195,7 @@ function MediaLibrary() {
             <div className="flex items-center gap-3 mb-6 flex-wrap">
                 <div className="flex gap-2">
                     {['all', 'image', 'video'].map(f => (
-                        <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${filter === f ? 'bg-primary text-white' : 'bg-white/5 text-white/50 hover:bg-white/10'}`}>
+                        <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${filter === f ? 'bg-primary text-white' : 'bg-card-bg text-muted hover:bg-input-bg'}`}>
                             {f === 'all' ? 'All' : f === 'image' ? '🖼️ Images' : '🎬 Videos'}
                         </button>
                     ))}
@@ -209,13 +212,13 @@ function MediaLibrary() {
             {filtered.length === 0 ? (
                 <div className="glass-card p-16 text-center">
                     <div className="text-6xl mb-4">🖼️</div>
-                    <p className="text-white/40">No media uploaded yet</p>
+                    <p className="text-dim">No media uploaded yet</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {filtered.map(m => (
                         <motion.div key={m.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card overflow-hidden group">
-                            <div className="h-28 bg-white/5 relative overflow-hidden">
+                            <div className="h-28 bg-input-bg relative overflow-hidden">
                                 {m.file_type === 'image'
                                     ? <img src={m.url} alt={m.original_name} className="w-full h-full object-cover" />
                                     : <div className="flex items-center justify-center h-full text-4xl">🎬</div>
@@ -225,8 +228,8 @@ function MediaLibrary() {
                                 </button>
                             </div>
                             <div className="p-2">
-                                <p className="text-xs text-white/60 truncate">{m.original_name}</p>
-                                <p className="text-xs text-white/30">{Math.round((m.file_size || 0) / 1024)}KB</p>
+                                <p className="text-xs text-muted truncate">{m.original_name}</p>
+                                <p className="text-xs text-dim">{Math.round((m.file_size || 0) / 1024)}KB</p>
                             </div>
                         </motion.div>
                     ))}
@@ -249,22 +252,22 @@ export default function AdminCMSPage() {
     }
 
     return (
-        <div className="min-h-screen bg-dark">
+        <div className="min-h-screen bg-main">
             {/* Persistent Top Navigation Bar */}
-            <div className="bg-white/5 border-b border-white/10 px-4 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md">
+            <div className="bg-card-bg border-b border-card-border px-4 py-3 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md">
                 <div className="flex items-center gap-2 sm:gap-4">
                     <button onClick={() => {
                         if (editingChapterId) setEditingChapterId(null)
                         else navigate('/admin')
-                    }} className="btn-secondary py-2 px-3 flex items-center gap-2 text-sm bg-black/20 hover:bg-black/40 border-transparent">
+                    }} className="btn-secondary py-2 px-3 flex items-center gap-2 text-sm">
                         <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">Back</span>
                     </button>
-                    <button onClick={() => navigate('/admin')} className="btn-secondary py-2 px-3 flex items-center gap-2 text-sm bg-black/20 hover:bg-black/40 border-transparent text-primary hover:text-primary-dark">
+                    <button onClick={() => navigate('/admin')} className="btn-secondary py-2 px-3 flex items-center gap-2 text-sm text-primary hover:text-primary-dark">
                         <Home className="w-4 h-4" /> <span className="hidden sm:inline">Admin Dashboard</span>
                     </button>
                 </div>
                 <div className="flex items-center gap-1 md:gap-3">
-                    <span className="text-white/40 text-sm font-semibold hidden lg:block mr-2">Content Studio</span>
+                    <span className="text-dim text-sm font-semibold hidden lg:block mr-2">Content Studio</span>
                     <div className="flex overflow-x-auto no-scrollbar gap-1">
                         {TABS.map(tab => {
                             const Icon = tab.icon
@@ -274,7 +277,7 @@ export default function AdminCMSPage() {
                                 <button key={tab.id} onClick={() => { setActiveTab(tab.id); if (tab.id !== 'chapters') setEditingChapterId(null) }}
                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-semibold text-sm transition-all whitespace-nowrap ${isActive
                                         ? 'bg-primary/20 text-primary'
-                                        : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                                        : 'text-muted hover:text-main hover:bg-input-bg'
                                         }`}>
                                     <Icon className="w-4 h-4" />
                                     <span className="hidden md:inline">{tab.label}</span>
@@ -289,8 +292,8 @@ export default function AdminCMSPage() {
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Page Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold font-display text-white">✏️ Content Studio</h1>
-                    <p className="text-white/40 mt-1">Build and manage Visual Novel chapters without writing any code</p>
+                    <h1 className="text-3xl font-bold font-display text-main">✏️ Content Studio</h1>
+                    <p className="text-muted mt-1">Build and manage Visual Novel chapters without writing any code</p>
                 </div>
 
                 {/* Tab Content */}
@@ -309,6 +312,7 @@ export default function AdminCMSPage() {
                         {activeTab === 'backgrounds' && <BackgroundsTab />}
                         {activeTab === 'ui-types' && <UITypesTab />}
                         {activeTab === 'landing' && <LandingSlidesTab activeTab={activeTab} />}
+                        {activeTab === 'roadmap' && <RoadmapTab />}
                         {activeTab === 'media' && <MediaLibrary />}
                     </motion.div>
                 </AnimatePresence>

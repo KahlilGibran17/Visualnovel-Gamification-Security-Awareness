@@ -31,38 +31,38 @@ function ChoiceRow({ choice, index, scenes, currentSceneId, onUpdate, onDelete }
     }
 
     return (
-        <div className={`rounded-xl border p-4 space-y-3 ${local.is_correct ? 'border-green-500/30 bg-green-500/5' : 'border-white/10 bg-white/3'}`}>
+        <div className={`rounded-xl border p-4 space-y-3 ${local.is_correct ? 'border-green-500/30 bg-green-500/5' : 'border-card-border bg-input-bg'}`}>
             <div className="flex items-center gap-3">
-                <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${local.is_correct ? 'bg-green-500 text-white' : 'bg-white/10 text-white/40'}`}>{LETTERS[index]}</span>
+                <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${local.is_correct ? 'bg-green-500 text-white' : 'bg-card-border text-dim'}`}>{LETTERS[index]}</span>
                 <input className="input-field flex-1 text-sm" placeholder="What the player sees..." value={local.choice_text || ''} onChange={e => field('choice_text', e.target.value)} />
                 <button onClick={() => field('is_correct', !local.is_correct)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${local.is_correct ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'border-white/10 text-white/40 hover:border-white/20'}`}>
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex-shrink-0 ${local.is_correct ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'border-card-border text-dim hover:border-text-dim'}`}>
                     {local.is_correct ? <CheckCircle className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
                     {local.is_correct ? 'Correct' : 'Wrong'}
                 </button>
                 {local.is_correct && (
                     <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="text-xs text-white/40">XP</span>
+                        <span className="text-xs text-dim">XP</span>
                         <input type="number" className="input-field w-14 text-xs py-1.5" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
                     </div>
                 )}
-                <button onClick={onDelete} className="text-white/20 hover:text-red-400 p-1.5 rounded flex-shrink-0 transition-colors"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={onDelete} className="text-dim hover:text-red-400 p-1.5 rounded flex-shrink-0 transition-colors"><X className="w-3.5 h-3.5" /></button>
             </div>
 
             {!local.is_correct && (
                 <div className="grid grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-xs text-white/40 mb-1">💥 Consequence (what happened)</label>
+                        <label className="block text-xs text-dim mb-1">💥 Consequence (what happened)</label>
                         <textarea className="input-field w-full text-xs resize-none" rows={2} placeholder="e.g. You clicked a phishing link..." value={local.consequence_text || ''} onChange={e => field('consequence_text', e.target.value)} />
                     </div>
                     <div>
-                        <label className="block text-xs text-white/40 mb-1">📚 Lesson (what to remember)</label>
+                        <label className="block text-xs text-dim mb-1">📚 Lesson (what to remember)</label>
                         <textarea className="input-field w-full text-xs resize-none" rows={2} placeholder="e.g. Always verify sender email..." value={local.lesson_text || ''} onChange={e => field('lesson_text', e.target.value)} />
                     </div>
                 </div>
             )}
             <div>
-                <label className="block text-xs text-white/40 mb-1">➡️ Next Scene after this choice</label>
+                <label className="block text-xs text-dim mb-1">➡️ Next Scene after this choice</label>
                 <select className="input-field w-full text-xs" value={local.next_scene_id || ''} onChange={e => field('next_scene_id', e.target.value ? parseInt(e.target.value) : null)}>
                     <option value="">— Follow default order —</option>
                     {scenes.filter(s => s.id !== currentSceneId).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
@@ -130,7 +130,7 @@ function TargetVisualPicker({ uiType, targets, onAddTarget, uiTypesData = [] }) 
         <FakeUIScaledWrapper 
             uiType={uiType}
             uiTypesData={uiTypesData}
-            className="mt-3 mb-4 cursor-crosshair rounded-lg border-2 border-white/20 select-none shadow-lg touch-none"
+            className="mt-3 mb-4 cursor-crosshair rounded-lg border-2 border-card-border select-none shadow-lg touch-none"
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -237,22 +237,22 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
     return (
         <motion.div layout initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="glass-card overflow-hidden">
             {/* Header */}
-            <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-white/3 transition-colors" onClick={() => setExpanded(e => !e)}>
-                <GripVertical className="w-4 h-4 text-white/20 flex-shrink-0 cursor-grab" />
+            <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-input-bg transition-colors" onClick={() => setExpanded(e => !e)}>
+                <GripVertical className="w-4 h-4 text-dim flex-shrink-0 cursor-grab" />
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${colorMap[typeInfo.color]}`}>
                     <TypeIcon className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-white truncate">{local.scene_name || `Scene ${index + 1}`}</p>
-                    <p className="text-white/40 text-xs">{typeInfo.label} · {local.background || 'office'}</p>
+                    <p className="font-semibold text-sm text-main truncate">{local.scene_name || `Scene ${index + 1}`}</p>
+                    <p className="text-dim text-xs">{typeInfo.label} · {local.background || 'office'}</p>
                 </div>
                 <div className="flex items-center gap-1 ml-auto flex-shrink-0" onClick={e => e.stopPropagation()}>
                     {saving && <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />}
                     {lastSaved && !saving && <span className="text-xs text-green-400/70 flex items-center gap-1"><Clock className="w-3 h-3" />{lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                    <button onClick={() => onMoveUp(index)} disabled={index === 0} className="p-1.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all"><ChevronUp className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => onMoveDown(index)} disabled={index === scenes.length - 1} className="p-1.5 rounded text-white/30 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all"><ChevronDown className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => onDuplicate(scene)} className="p-1.5 rounded text-white/30 hover:text-yellow-400 hover:bg-yellow-400/10 transition-all"><Copy className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => { if (window.confirm('Delete this scene?')) onDelete(scene.id) }} className="p-1.5 rounded text-white/30 hover:text-red-400 hover:bg-red-400/10 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => onMoveUp(index)} disabled={index === 0} className="p-1.5 rounded text-dim hover:text-main hover:bg-card-border disabled:opacity-20 transition-all"><ChevronUp className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => onMoveDown(index)} disabled={index === scenes.length - 1} className="p-1.5 rounded text-dim hover:text-main hover:bg-card-border disabled:opacity-20 transition-all"><ChevronDown className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => onDuplicate(scene)} className="p-1.5 rounded text-dim hover:text-yellow-400 hover:bg-yellow-400/10 transition-all"><Copy className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { if (window.confirm('Delete this scene?')) onDelete(scene.id) }} className="p-1.5 rounded text-dim hover:text-red-400 hover:bg-red-400/10 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
             </div>
 
@@ -260,7 +260,7 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
             <AnimatePresence>
                 {expanded && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                        <div className="p-5 border-t border-white/5 space-y-5">
+                        <div className="p-5 border-t border-card-border space-y-5">
                             {/* Row 1: Name + Type */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -286,7 +286,7 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                 <div className="flex flex-wrap gap-2 mt-1">
                                     {backgrounds.map(bg => (
                                         <button key={bg.key_name} onClick={() => field('background', bg.key_name)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${local.background === bg.key_name ? 'bg-primary/20 border-primary/50 text-primary' : 'border-white/10 text-white/50 hover:border-white/20'}`}>
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${local.background === bg.key_name ? 'bg-primary/20 border-primary/50 text-primary' : 'border-card-border bg-input-bg hover:border-white/20'}`}>
                                             {bg.name}
                                         </button>
                                     ))}
@@ -298,7 +298,7 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                 {[['Left', 'char_left', 'char_left_expr'], ['Right', 'char_right', 'char_right_expr']].map(([side, ck, ek]) => {
                                     const selChar = characters.find(c => c.key_name === local[ck])
                                     return (
-                                        <div key={side} className="bg-white/3 rounded-xl p-3">
+                                        <div key={side} className="bg-input-bg rounded-xl p-3 border border-card-border">
                                             <label className="label-xs">👤 Character ({side})</label>
                                             <select className="input-field w-full text-sm mt-1 mb-2" value={local[ck] || ''} onChange={e => field(ck, e.target.value || null)}>
                                                 <option value="">— None —</option>
@@ -514,9 +514,9 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                             {(() => {
                                                 const targetsList = (typeof local.custom_data?.targets === 'string' ? (() => { try { return JSON.parse(local.custom_data.targets) } catch { return [] } })() : local.custom_data?.targets) || [];
                                                 return targetsList.map((t, i) => (
-                                                    <div key={t.id || i} className="flex items-center gap-2 bg-white/5 p-2 rounded border border-white/10">
+                                                    <div key={t.id || i} className="flex items-center gap-2 bg-input-bg p-2 rounded border border-card-border">
                                                         <div className="flex flex-col gap-1 w-12">
-                                                            <label className="text-[10px] text-white/40">X (%)</label>
+                                                            <label className="text-[10px] text-dim">X (%)</label>
                                                             <input type="number" className="input-field text-xs py-1 px-1 text-center" value={t.x || 0} onChange={e => {
                                                                 const newTargets = [...targetsList];
                                                                 newTargets[i] = { ...t, x: parseInt(e.target.value) || 0 };
@@ -524,7 +524,7 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                                             }} />
                                                         </div>
                                                         <div className="flex flex-col gap-1 w-12">
-                                                            <label className="text-[10px] text-white/40">Y (%)</label>
+                                                            <label className="text-[10px] text-dim">Y (%)</label>
                                                             <input type="number" className="input-field text-xs py-1 px-1 text-center" value={t.y || 0} onChange={e => {
                                                                 const newTargets = [...targetsList];
                                                                 newTargets[i] = { ...t, y: parseInt(e.target.value) || 0 };
@@ -532,7 +532,7 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                                             }} />
                                                         </div>
                                                         <div className="flex flex-col gap-1 w-12">
-                                                            <label className="text-[10px] text-white/40">W (%)</label>
+                                                            <label className="text-[10px] text-dim">W (%)</label>
                                                             <input type="number" className="input-field text-xs py-1 px-1 text-center" value={t.w || 6} onChange={e => {
                                                                 const newTargets = [...targetsList];
                                                                 newTargets[i] = { ...t, w: parseInt(e.target.value) || 0 };
@@ -540,7 +540,7 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                                             }} />
                                                         </div>
                                                         <div className="flex flex-col gap-1 w-12">
-                                                            <label className="text-[10px] text-white/40">H (%)</label>
+                                                            <label className="text-[10px] text-dim">H (%)</label>
                                                             <input type="number" className="input-field text-xs py-1 px-1 text-center" value={t.h || 10} onChange={e => {
                                                                 const newTargets = [...targetsList];
                                                                 newTargets[i] = { ...t, h: parseInt(e.target.value) || 0 };
@@ -548,7 +548,7 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                                             }} />
                                                         </div>
                                                         <div className="flex flex-col gap-1 flex-1">
-                                                            <label className="text-[10px] text-white/40">Description</label>
+                                                            <label className="text-[10px] text-dim">Description</label>
                                                             <input className="input-field text-xs py-1 px-2" placeholder="e.g. Malicious link" value={t.description || ''} onChange={e => {
                                                                 const newTargets = [...targetsList];
                                                                 newTargets[i] = { ...t, description: e.target.value };
@@ -558,25 +558,25 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                                         <button onClick={() => {
                                                             const newTargets = targetsList.filter((_, idx) => idx !== i);
                                                             field('custom_data', { ...local.custom_data, targets: newTargets });
-                                                        }} className="text-white/20 hover:text-red-400 p-1 mt-4 rounded flex-shrink-0 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                        }} className="text-dim hover:text-red-400 p-1 mt-4 rounded flex-shrink-0 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
                                                     </div>
                                                 ));
                                             })()}
                                             {(!local.custom_data?.targets || (typeof local.custom_data.targets === 'string' ? (() => { try { return JSON.parse(local.custom_data.targets) } catch { return [] } })() : local.custom_data.targets).length === 0) && (
-                                                <div className="text-xs text-white/40 italic p-2 border border-dashed border-white/10 rounded text-center">No targets added yet.</div>
+                                                <div className="text-xs text-dim italic p-2 border border-dashed border-card-border rounded text-center">No targets added yet.</div>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3 border-t border-white/5 pt-4 mt-2">
+                                    <div className="grid grid-cols-2 gap-3 border-t border-card-border pt-4 mt-2">
                                         <div>
-                                            <label className="label-xs text-green-400">✅ Success Next Scene</label>
+                                            <label className="label-xs text-green-500 font-bold">✅ Success Next Scene</label>
                                             <select className="input-field w-full text-sm mt-1" value={local.next_scene_id || ''} onChange={e => field('next_scene_id', e.target.value ? parseInt(e.target.value) : null)}>
                                                 <option value="">— Auto-next —</option>
                                                 {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="label-xs text-red-400">❌ Failure Next Scene</label>
+                                            <label className="label-xs text-red-500 font-bold">❌ Failure Next Scene</label>
                                             <select className="input-field w-full text-sm mt-1" value={local.custom_data?.failSceneId || ''} onChange={e => field('custom_data', { ...local.custom_data, failSceneId: e.target.value ? parseInt(e.target.value) : null })}>
                                                 <option value="">— End Scene / Game Over —</option>
                                                 {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}

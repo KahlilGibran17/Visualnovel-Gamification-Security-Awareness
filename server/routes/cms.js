@@ -118,6 +118,20 @@ async function buildVNJson(chapterId) {
     return vnScenes
 }
 
+// ─── Helper: Sync Chapter JSON for Preview/Game Engine ───────────────────
+async function syncChapterJson(chapterId) {
+    try {
+        const vnJson = await buildVNJson(chapterId)
+        await pool.query(
+            "UPDATE game_chapters SET scenes=$1, updated_at=NOW() WHERE id=$2",
+            [JSON.stringify(vnJson), chapterId]
+        )
+        console.log(`[CMS] Auto-synced Chapter ${chapterId} (${vnJson.length} scenes)`)
+    } catch (err) {
+        console.error(`[CMS] syncChapterJson failed for Chapter ${chapterId}:`, err.message)
+    }
+}
+
 // Helper: Load scenes with choices for a chapter
 async function loadScenesWithChoices(chapterId) {
     const scenesRes = await pool.query(
@@ -292,6 +306,9 @@ router.post('/chapters/:id/scenes', requireAuth, requireRole('admin'), async (re
                 custom_data || {}, nextOrder]
         )
         res.status(201).json({ ...r.rows[0], choices: [] })
+        
+        // Auto-sync for preview
+        syncChapterJson(chapterId)
     } catch (err) {
         console.error('[CMS] POST scene error:', err.message)
         res.status(500).json({ error: 'Failed to create scene', detail: err.message })
@@ -337,6 +354,9 @@ router.put('/scenes/:id', requireAuth, requireRole('admin'), async (req, res) =>
         const saved = { ...r.rows[0], choices: choicesRes.rows }
         console.log(`[CMS] Scene ${req.params.id} updated: "${saved.scene_name}"`)
         res.json(saved)
+
+        // Auto-sync for preview
+        syncChapterJson(saved.chapter_id)
     } catch (err) {
         console.error('[CMS] PUT scene error:', err.message, err.stack)
         res.status(500).json({ error: 'Failed to update scene', detail: err.message })
@@ -345,8 +365,11 @@ router.put('/scenes/:id', requireAuth, requireRole('admin'), async (req, res) =>
 
 router.delete('/scenes/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
+        const info = await pool.query('SELECT chapter_id FROM vn_scenes WHERE id=$1', [req.params.id])
         await pool.query('DELETE FROM vn_scenes WHERE id=$1', [req.params.id])
         res.json({ message: 'Scene deleted' })
+
+        if (info.rows.length) syncChapterJson(info.rows[0].chapter_id)
     } catch (err) {
         console.error('[CMS] DELETE scene error:', err.message)
         res.status(500).json({ error: 'Failed to delete scene' })
@@ -360,6 +383,8 @@ router.put('/chapters/:id/scenes/reorder', requireAuth, requireRole('admin'), as
             await pool.query('UPDATE vn_scenes SET scene_order=$1 WHERE id=$2', [i, orderedIds[i]])
         }
         res.json({ message: 'Reordered', orderedIds })
+
+        syncChapterJson(req.params.id)
     } catch (err) {
         console.error('[CMS] reorder error:', err.message)
         res.status(500).json({ error: 'Failed to reorder' })
@@ -383,6 +408,10 @@ router.post('/scenes/:id/choices', requireAuth, requireRole('admin'), async (req
             next_scene_id || null, nextOrder]
         )
         res.status(201).json(r.rows[0])
+
+        // Auto-sync parent chapter
+        const s = await pool.query('SELECT chapter_id FROM vn_scenes WHERE id=$1', [req.params.id])
+        if (s.rows.length) syncChapterJson(s.rows[0].chapter_id)
     } catch (err) {
         console.error('[CMS] POST choice error:', err.message)
         res.status(500).json({ error: 'Failed to create choice', detail: err.message })
@@ -401,6 +430,10 @@ router.put('/choices/:id', requireAuth, requireRole('admin'), async (req, res) =
         )
         if (!r.rows.length) return res.status(404).json({ error: 'Choice not found' })
         res.json(r.rows[0])
+
+        // Auto-sync parent chapter
+        const s = await pool.query('SELECT chapter_id FROM vn_scenes WHERE id=$1', [r.rows[0].scene_id])
+        if (s.rows.length) syncChapterJson(s.rows[0].chapter_id)
     } catch (err) {
         console.error('[CMS] PUT choice error:', err.message)
         res.status(500).json({ error: 'Failed to update choice', detail: err.message })
@@ -409,8 +442,14 @@ router.put('/choices/:id', requireAuth, requireRole('admin'), async (req, res) =
 
 router.delete('/choices/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
+        const c = await pool.query('SELECT scene_id FROM vn_scene_choices WHERE id=$1', [req.params.id])
         await pool.query('DELETE FROM vn_scene_choices WHERE id=$1', [req.params.id])
         res.json({ message: 'Choice deleted' })
+
+        if (c.rows.length) {
+            const s = await pool.query('SELECT chapter_id FROM vn_scenes WHERE id=$1', [c.rows[0].scene_id])
+            if (s.rows.length) syncChapterJson(s.rows[0].chapter_id)
+        }
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete choice' })
     }
@@ -842,6 +881,68 @@ router.put('/landing-slides/reorder/batch', requireAuth, requireRole('admin'), a
         res.json({ message: 'Reordered', orderedIds })
     } catch (err) {
         res.status(500).json({ error: 'Failed to reorder' })
+    }
+})
+
+// ─── ROADMAP LEVELS CMS ───────────────────────────────────────────────────────
+router.get('/roadmap-levels', requireAuth, async (req, res) => {
+    try {
+        const r = await pool.query('SELECT * FROM roadmap_nodes ORDER BY order_index ASC')
+        res.json(r.rows)
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch roadmap nodes' })
+    }
+})
+
+router.post('/roadmap-levels', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { title, subtitle, node_type, chapter_id, xp_reward, background_image_url, icon, location } = req.body
+        const maxOrder = await pool.query('SELECT MAX(order_index) FROM roadmap_nodes')
+        const order = (parseInt(maxOrder.rows[0].max) || 0) + 1
+
+        const r = await pool.query(
+            `INSERT INTO roadmap_nodes (title, subtitle, node_type, chapter_id, order_index, xp_reward, background_image_url, icon, location)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+            [title, subtitle || '', node_type || 'Game', chapter_id || null, order, parseInt(xp_reward) || 0, background_image_url || null, icon || 'Circle', location || 'Unknown']
+        )
+        res.status(201).json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create roadmap node', detail: err.message })
+    }
+})
+
+router.put('/roadmap-levels/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { title, subtitle, node_type, chapter_id, xp_reward, background_image_url, icon, location } = req.body
+        const r = await pool.query(
+            `UPDATE roadmap_nodes SET title=$1, subtitle=$2, node_type=$3, chapter_id=$4, xp_reward=$5, background_image_url=$6, icon=$7, location=$8 WHERE id=$9 RETURNING *`,
+            [title, subtitle || '', node_type || 'Game', chapter_id || null, parseInt(xp_reward) || 0, background_image_url || null, icon || 'Circle', location || 'Unknown', req.params.id]
+        )
+        if (!r.rows.length) return res.status(404).json({ error: 'Node not found' })
+        res.json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update roadmap node', detail: err.message })
+    }
+})
+
+router.delete('/roadmap-levels/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        await pool.query('DELETE FROM roadmap_nodes WHERE id=$1', [req.params.id])
+        res.json({ message: 'Deleted' })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete roadmap node' })
+    }
+})
+
+router.put('/roadmap-levels/reorder/batch', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { orderedIds } = req.body
+        for (let i = 0; i < orderedIds.length; i++) {
+            await pool.query('UPDATE roadmap_nodes SET order_index=$1 WHERE id=$2', [i, orderedIds[i]])
+        }
+        res.json({ message: 'Reordered', orderedIds })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to reorder roadmap nodes' })
     }
 })
 

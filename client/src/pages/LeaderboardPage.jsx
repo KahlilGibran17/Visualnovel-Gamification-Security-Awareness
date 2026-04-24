@@ -7,8 +7,8 @@ import Layout from '../components/Layout.jsx'
 import AvatarDisplay from '../components/AvatarDisplay.jsx'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-const FILTERS = ['All Time', 'This Week', 'This Month']
-const DEPARTMENTS = ['All Departments', 'Engineering', 'IT', 'Marketing', 'HR', 'Finance', 'Operations']
+const FILTERS = ['Sepanjang Waktu', 'Minggu Ini', 'Bulan Ini']
+const DEPARTMENTS = ['Semua Departemen', 'Engineering', 'IT', 'Marketing', 'HR', 'Finance', 'Operations']
 const LEVEL_COLORS = ['#94a3b8', '#60a5fa', '#a78bfa', '#f59e0b', '#E63946']
 
 function PodiumBlock({ user, place, isOwn }) {
@@ -38,21 +38,21 @@ function PodiumBlock({ user, place, isOwn }) {
                 <AvatarDisplay avatarId={user.avatarId} size={place === 1 ? 'lg' : 'md'} showRing={isOwn} ringColor="#FFD60A" />
                 {isOwn && (
                     <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-xs bg-accent text-dark px-1.5 py-0.5 rounded font-bold whitespace-nowrap">
-                        YOU
+                        ANDA
                     </div>
                 )}
             </div>
 
             {/* Name */}
             <div className="text-center">
-                <p className="font-semibold text-white text-sm max-w-[90px] truncate">{user.name.split(' ')[0]}</p>
-                <p className="text-white/40 text-xs">{user.department}</p>
+                <p className="font-semibold text-main text-sm max-w-[90px] truncate">{user.name.split(' ')[0]}</p>
+                <p className="text-dim text-xs">{user.department}</p>
                 <p className="text-accent font-bold text-sm">{user.xp.toLocaleString()} XP</p>
             </div>
 
             {/* Podium block */}
             <div className={`${heights[place]} w-20 ${crownColors[place]} rounded-t-xl border flex items-center justify-center`}>
-                <span className="text-2xl font-black text-white/70">#{place}</span>
+                <span className="text-2xl font-black text-main opacity-70">#{place}</span>
             </div>
         </motion.div>
     )
@@ -61,7 +61,7 @@ function PodiumBlock({ user, place, isOwn }) {
 function LevelBadge({ level }) {
     const colors = ['#94a3b8', '#60a5fa', '#a78bfa', '#f59e0b', '#E63946']
     const icons = ['🛡️', '👁️', '🛡️', '⚡', '🦸']
-    const titles = ['Rookie', 'Aware', 'Guardian', 'Expert', 'Cyber Hero']
+    const titles = ['Pemula', 'Waspada', 'Pelindung', 'Ahli', 'Pahlawan Siber']
     const color = colors[level - 1] || colors[0]
     return (
         <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border" style={{ color, borderColor: `${color}50`, background: `${color}15` }}>
@@ -76,7 +76,7 @@ function ChapterDots({ count }) {
             {[1, 2, 3, 4, 5, 6].map(n => (
                 <div
                     key={n}
-                    className={`w-2.5 h-2.5 rounded-full ${n <= count ? 'bg-accent' : 'bg-white/10'}`}
+                    className={`w-2.5 h-2.5 rounded-full ${n <= count ? 'bg-accent' : 'bg-input-bg'}`}
                 />
             ))}
         </div>
@@ -86,8 +86,8 @@ function ChapterDots({ count }) {
 export default function LeaderboardPage() {
     const { user } = useAuth()
     const { leaderboard, deptStats, getUserRank, getNextRankGap } = useGame()
-    const [filter, setFilter] = useState('All Time')
-    const [dept, setDept] = useState('All Departments')
+    const [filter, setFilter] = useState('Sepanjang Waktu')
+    const [dept, setDept] = useState('Semua Departemen')
     const [showDeptFilter, setShowDeptFilter] = useState(false)
     const [showDeptChart, setShowDeptChart] = useState(false)
 
@@ -96,7 +96,7 @@ export default function LeaderboardPage() {
 
     // Filter results based on selected filters
     const filtered = leaderboard.filter(u =>
-        dept === 'All Departments' || u.department === dept
+        dept === 'Semua Departemen' || u.department === dept
     ).map((u, i) => ({ ...u, rank: i + 1 }))
 
     const top3 = filtered.slice(0, 3)
@@ -113,11 +113,12 @@ export default function LeaderboardPage() {
                     className="flex flex-col md:flex-row md:items-center gap-4"
                 >
                     <div>
-                        <h1 className="text-3xl font-bold font-display text-white flex items-center gap-3">
+                        <h1 className="text-3xl font-bold font-display text-main flex items-center gap-3">
                             <Trophy className="w-8 h-8 text-accent" />
-                            Leaderboard
+                            Papan Peringkat
                         </h1>
-                        <p className="text-white/50 mt-1">Who's the top Cyber Hero at Akebono this week? 🔥</p>
+                        <p className="text-muted mt-1">Siapa Pahlawan Siber terbaik di Akebono minggu ini? 🔥</p>
+                        <p className="text-dim text-xs mt-1 italic">Lihat peringkat Anda di sini</p>
                     </div>
 
                     {/* Department chart toggle */}
@@ -125,9 +126,9 @@ export default function LeaderboardPage() {
                         <button
                             id="dept-chart-toggle"
                             onClick={() => setShowDeptChart(!showDeptChart)}
-                            className={`btn-secondary text-sm flex items-center gap-2 ${showDeptChart ? 'bg-white/20' : ''}`}
+                            className={`btn-secondary text-sm flex items-center gap-2 ${showDeptChart ? 'bg-primary/20 border-primary/40' : ''}`}
                         >
-                            <Users className="w-4 h-4" /> Dept. View
+                            <Users className="w-4 h-4" /> Tampilan Dept.
                         </button>
                     </div>
                 </motion.div>
@@ -140,9 +141,9 @@ export default function LeaderboardPage() {
                         animate={{ opacity: 1, x: 0 }}
                     >
                         <TrendingUp className="w-5 h-5 text-accent flex-shrink-0" />
-                        <p className="text-white/80 text-sm">
-                            You're ranked <span className="text-accent font-bold">#{myRank}</span> — only{' '}
-                            <span className="text-white font-bold">{rankGap.gap} XP</span> away from #{rankGap.rank} ({rankGap.name.split(' ')[0]})!
+                        <p className="text-muted text-sm">
+                            Anda di peringkat <span className="text-accent font-bold">#{myRank}</span> — hanya butuh{' '}
+                            <span className="text-main font-bold">{rankGap.gap} XP</span> lagi untuk menyusul #{rankGap.rank} ({rankGap.name.split(' ')[0]})!
                         </p>
                     </motion.div>
                 )}
@@ -157,12 +158,12 @@ export default function LeaderboardPage() {
                             exit={{ opacity: 0, height: 0 }}
                         >
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="font-bold text-white text-lg">🏢 Department Rankings</h2>
+                                <h2 className="font-bold text-main text-lg">🏢 Peringkat Departemen</h2>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-white/40">by Average XP</span>
+                                    <span className="text-xs text-dim">berdasarkan Rata-rata XP</span>
                                     {deptStats && deptStats.length > 0 && (
                                         <span className="text-xs bg-accent/20 text-accent border border-accent/30 px-2 py-1 rounded-full font-bold">
-                                            ⭐ Top: {deptStats[0].dept}
+                                            ⭐ Terbaik: {deptStats[0].dept}
                                         </span>
                                     )}
                                 </div>
@@ -173,7 +174,7 @@ export default function LeaderboardPage() {
                                     <YAxis stroke="rgba(255,255,255,0.2)" tick={{ fontSize: 11 }} />
                                     <Tooltip
                                         contentStyle={{ background: '#16213E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                                        formatter={(val) => [`${val.toLocaleString()} avg XP`]}
+                                        formatter={(val) => [`${val.toLocaleString()} rata-rata XP`]}
                                     />
                                     <Bar dataKey="avgXp" radius={[4, 4, 0, 0]}>
                                         {(deptStats || []).map((entry, idx) => (
@@ -193,7 +194,7 @@ export default function LeaderboardPage() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1 }}
                 >
-                    <Filter className="w-4 h-4 text-white/40" />
+                    <Filter className="w-4 h-4 text-dim" />
                     {FILTERS.map(f => (
                         <button
                             key={f}
@@ -201,7 +202,7 @@ export default function LeaderboardPage() {
                             onClick={() => setFilter(f)}
                             className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${filter === f
                                 ? 'bg-primary text-white'
-                                : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                                : 'bg-card-bg text-muted hover:bg-input-bg hover:text-main'
                                 }`}
                         >
                             {f}
@@ -213,7 +214,7 @@ export default function LeaderboardPage() {
                         <button
                             id="dept-filter-btn"
                             onClick={() => setShowDeptFilter(!showDeptFilter)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all duration-200"
+                            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-card-bg border border-card-border text-muted hover:text-main transition-all duration-200"
                         >
                             {dept} <ChevronDown className="w-4 h-4" />
                         </button>
@@ -229,7 +230,7 @@ export default function LeaderboardPage() {
                                         <button
                                             key={d}
                                             onClick={() => { setDept(d); setShowDeptFilter(false) }}
-                                            className={`block w-full text-left px-4 py-2 text-sm transition-colors ${dept === d ? 'text-accent bg-white/5' : 'text-white/70 hover:text-white hover:bg-white/5'
+                                            className={`block w-full text-left px-4 py-2 text-sm transition-colors ${dept === d ? 'text-accent bg-input-bg' : 'text-muted hover:text-main hover:bg-input-bg'
                                                 }`}
                                         >
                                             {d}
@@ -243,6 +244,7 @@ export default function LeaderboardPage() {
 
                 {/* Podium */}
                 <motion.div
+                    id="leaderboard-podium"
                     className="glass-card p-6 overflow-hidden"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -252,7 +254,7 @@ export default function LeaderboardPage() {
                     <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/5 rounded-full blur-3xl" />
                     </div>
-                    <h2 className="text-center font-bold text-white text-lg mb-6">🏆 Top 3 Champions</h2>
+                    <h2 className="text-center font-bold text-main text-lg mb-6">🏆 3 Juara Teratas</h2>
                     <div className="flex items-end justify-center gap-4 relative z-10">
                         {top3.length >= 3 && [
                             { user: top3[1], place: 2 },
@@ -276,21 +278,21 @@ export default function LeaderboardPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                 >
-                    <div className="p-5 border-b border-white/10">
-                        <h2 className="font-bold text-white text-lg">Full Rankings</h2>
+                    <div className="p-5 border-b border-card-border">
+                        <h2 className="font-bold text-main text-lg">Peringkat Lengkap</h2>
                     </div>
 
                     {/* Header */}
-                    <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-white/10 text-xs text-white/40 font-semibold uppercase tracking-wider">
-                        <span className="col-span-1">Rank</span>
-                        <span className="col-span-4">Player</span>
-                        <span className="col-span-2 text-center hidden md:block">Level</span>
+                    <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-card-border text-xs text-dim font-semibold uppercase tracking-wider">
+                        <span className="col-span-1">Peringkat</span>
+                        <span className="col-span-4">Pemain</span>
+                        <span className="col-span-2 text-center hidden md:block">Tingkat</span>
                         <span className="col-span-2 text-center">XP</span>
-                        <span className="col-span-3 hidden lg:block">Chapters</span>
+                        <span className="col-span-3 hidden lg:block">Modul</span>
                     </div>
 
                     {/* Rows */}
-                    <div className="divide-y divide-white/5">
+                                    <div className="divide-y divide-card-border">
                         {filtered.map((entry, idx) => {
                             const isOwn = entry.nik === user?.nik
                             return (
@@ -298,7 +300,7 @@ export default function LeaderboardPage() {
                                     key={entry.id}
                                     className={`grid grid-cols-12 gap-2 px-5 py-3.5 items-center transition-all duration-200 ${isOwn
                                         ? 'bg-gradient-to-r from-accent/10 to-primary/10 border-l-2 border-accent'
-                                        : 'hover:bg-white/5'
+                                        : 'hover:bg-input-bg'
                                         }`}
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
@@ -309,7 +311,7 @@ export default function LeaderboardPage() {
                                         {entry.rank <= 3 ? (
                                             <span className="text-xl">{['👑', '🥈', '🥉'][entry.rank - 1]}</span>
                                         ) : (
-                                            <span className={`font-bold text-sm ${isOwn ? 'text-accent' : 'text-white/60'}`}>#{entry.rank}</span>
+                                            <span className={`font-bold text-sm ${isOwn ? 'text-accent' : 'text-dim'}`}>#{entry.rank}</span>
                                         )}
                                     </div>
 
@@ -317,10 +319,10 @@ export default function LeaderboardPage() {
                                     <div className="col-span-4 flex items-center gap-2 min-w-0">
                                         <AvatarDisplay avatarId={entry.avatarId} size="sm" />
                                         <div className="min-w-0">
-                                            <p className={`font-semibold text-sm truncate ${isOwn ? 'text-accent' : 'text-white'}`}>
-                                                {entry.name} {isOwn && '(You)'}
+                                            <p className={`font-semibold text-sm truncate ${isOwn ? 'text-accent' : 'text-main'}`}>
+                                                {entry.name} {isOwn && '(Anda)'}
                                             </p>
-                                            <p className="text-white/40 text-xs truncate">{entry.department}</p>
+                                            <p className="text-dim text-xs truncate">{entry.department}</p>
                                         </div>
                                     </div>
 
@@ -331,7 +333,7 @@ export default function LeaderboardPage() {
 
                                     {/* XP */}
                                     <div className="col-span-2 text-center">
-                                        <span className={`font-bold text-sm ${isOwn ? 'text-accent' : 'text-white/80'}`}>
+                                        <span className={`font-bold text-sm ${isOwn ? 'text-accent' : 'text-muted'}`}>
                                             {entry.xp.toLocaleString()}
                                         </span>
                                     </div>
@@ -339,7 +341,7 @@ export default function LeaderboardPage() {
                                     {/* Chapters */}
                                     <div className="col-span-3 hidden lg:block">
                                         <ChapterDots count={entry.chaptersCompleted} />
-                                        <p className="text-xs text-white/30 mt-1">{entry.chaptersCompleted}/6 done</p>
+                                        <p className="text-xs text-dim mt-1">{entry.chaptersCompleted}/6 selesai</p>
                                     </div>
                                 </motion.div>
                             )
@@ -349,11 +351,11 @@ export default function LeaderboardPage() {
                     {/* Own row sticky at bottom if not visible */}
                     {ownEntry && myRank > 10 && dept === 'All Departments' && (
                         <div className="border-t-2 border-accent/30 bg-gradient-to-r from-accent/10 to-primary/10 p-4">
-                            <p className="text-xs text-accent font-semibold mb-2">📍 Your Position</p>
+                            <p className="text-xs text-accent font-semibold mb-2">📍 Posisi Anda</p>
                             <div className="flex items-center gap-3">
                                 <span className="font-bold text-accent">#{myRank}</span>
                                 <AvatarDisplay avatarId={user?.avatarId || 1} size="sm" />
-                                <span className="font-semibold text-white">{user?.name} (You)</span>
+                                <span className="font-semibold text-main">{user?.name} (Anda)</span>
                                 <span className="text-accent font-bold ml-auto">{ownEntry.xp.toLocaleString()} XP</span>
                             </div>
                         </div>

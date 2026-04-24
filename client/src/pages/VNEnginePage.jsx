@@ -164,7 +164,7 @@ function EmailDisplay({ email, onContinue }) {
                 onClick={onContinue}
                 className="w-full bg-dark text-white py-3 rounded-lg font-semibold hover:bg-dark-card transition-colors"
             >
-                Continue Reading →
+                Lanjut Membaca →
             </button>
         </motion.div>
     )
@@ -194,7 +194,7 @@ function LessonDisplay({ lesson, onContinue }) {
                 ))}
             </ul>
             <button onClick={onContinue} className="btn-primary w-full mt-4">
-                Got it! Continue →
+                Mengerti! Lanjut →
             </button>
         </motion.div>
     )
@@ -268,16 +268,16 @@ function InvestigateDisplay({ scene, onFound, timer, timerTotal }) {
         <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto pointer-events-auto z-20">
             <div className="bg-dark/80 backdrop-blur-xl border border-white/10 p-4 rounded-xl mb-4 w-full flex items-center justify-between">
                 <div>
-                    <h3 className="text-xl font-bold text-accent mb-1 flex items-center gap-2"><Search className="w-5 h-5" /> Spot the Threats!</h3>
-                    <p className="text-white/70 text-sm">Find and click all {totalItems} security vulnerabilities without making mistakes.</p>
+                    <h3 className="text-xl font-bold text-accent mb-1 flex items-center gap-2"><Search className="w-5 h-5" /> Temukan Ancaman!</h3>
+                    <p className="text-white/70 text-sm">Temukan dan klik semua {totalItems} kerentanan keamanan tanpa membuat kesalahan.</p>
                 </div>
                 <div className="flex gap-4 items-center">
                     <div className="text-right border-r border-white/20 pr-4">
-                        <div className="text-sm text-white/50">Mistakes</div>
+                        <div className="text-sm text-white/50">Kesalahan</div>
                         <div className="text-2xl font-black font-mono text-red-400">{falsePoints}/{maxFalsePoints}</div>
                     </div>
                     <div className="text-right">
-                        <div className="text-sm text-white/50">Found</div>
+                        <div className="text-sm text-white/50">Ditemukan</div>
                         <div className="text-2xl font-black font-mono text-white">{foundItems.length}/{totalItems}</div>
                     </div>
                     {timer > 0 && <TimerRing seconds={timer} total={timerTotal} />}
@@ -453,8 +453,8 @@ export default function VNEnginePage() {
             setWrongChoices(prev => prev + 1)
             setChoiceResult({
                 correct: false,
-                consequence: failMsg || (timedOut ? "Time ran out before you could spot all the threats!" : "Investigation failed."),
-                lesson: "Always inspect URLs carefully and scrutinize unexpected attachments before clicking.",
+                consequence: failMsg || (timedOut ? "Waktu habis sebelum Anda dapat menemukan semua ancaman!" : "Investigasi gagal."),
+                lesson: "Selalu periksa URL dengan cermat dan teliti lampiran tak terduga sebelum mengklik.",
                 xp: 0,
                 next: currentScene.failNext || currentScene.next
             })
@@ -473,8 +473,8 @@ export default function VNEnginePage() {
             setWrongChoices(prev => prev + 1)
             setChoiceResult({
                 correct: false,
-                consequence: timedOut ? "Network breached. Your terminal timed out." : "Invalid commands entered. System compromised.",
-                lesson: "In emergency scenarios, speed and accurate command execution are critical.",
+                consequence: timedOut ? "Jaringan diretas. Waktu terminal Anda habis." : "Perintah yang dimasukkan tidak valid. Sistem disusupi.",
+                lesson: "Dalam skenario darurat, kecepatan dan eksekusi perintah yang akurat sangat penting.",
                 xp: 0,
                 next: currentScene.failNext
             })
@@ -491,7 +491,7 @@ export default function VNEnginePage() {
             setWrongChoices(prev => prev + 1)
             setChoiceResult({
                 correct: false,
-                consequence: timedOut ? "Time's up! You didn't respond in time!" : choice.consequence,
+                consequence: timedOut ? "Waktu habis! Anda tidak merespons tepat waktu!" : choice.consequence,
                 lesson: choice.lesson,
                 xp: choice.xp,
                 next: choice.next,
@@ -539,7 +539,7 @@ export default function VNEnginePage() {
                         animate={{ rotate: 360 }}
                         transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                     />
-                    <p className="text-white text-xl">Loading Mission...</p>
+                    <p className="text-white text-xl">Memuat Misi...</p>
                 </div>
             </div>
         )
@@ -550,9 +550,9 @@ export default function VNEnginePage() {
             <div className="min-h-screen flex items-center justify-center bg-dark">
                 <div className="text-center max-w-md p-8 glass-card">
                     <div className="text-6xl mb-4">🚧</div>
-                    <h2 className="text-2xl font-bold text-white mb-2">Chapter {chapterId} Not Ready</h2>
-                    <p className="text-white/60 mb-6"> This chapter is currently under development or has no playable scenes yet. Please check back later!</p>
-                    <button onClick={() => navigate('/chapters')} className="btn-primary w-full">← Back to Mission Select</button>
+                    <h2 className="text-2xl font-bold text-white mb-2">Modul {chapterId} Belum Siap</h2>
+                    <p className="text-white/60 mb-6"> Modul ini sedang dalam pengembangan atau belum memiliki adegan yang dapat dimainkan. Silakan periksa kembali nanti!</p>
+                    <button onClick={() => navigate('/chapters')} className="btn-primary w-full">← Kembali ke Pilih Misi</button>
                 </div>
             </div>
         )
@@ -588,11 +588,11 @@ export default function VNEnginePage() {
                             <Home className="w-5 h-5" />
                         </button>
                         <div className="flex-1">
-                            <p className="text-xs text-white/40 uppercase tracking-wider">Chapter {chapterId}</p>
-                            <p className="text-sm font-semibold text-white">{chapterData.title}</p>
+                            <p className="text-xs text-dim uppercase tracking-wider">Modul {chapterId}</p>
+                            <p className="text-sm font-semibold text-main">{chapterData.title}</p>
                         </div>
                         {/* Location */}
-                        <div className="hidden md:block text-xs text-white/40">
+                        <div className="hidden md:block text-xs text-dim">
                             {bgLabel}
                         </div>
                         {/* XP counter */}
@@ -601,7 +601,7 @@ export default function VNEnginePage() {
                             <span className="text-accent font-bold text-sm">{xpTotal} XP</span>
                         </div>
                         {/* Mute */}
-                        <button onClick={() => setMute(!mute)} className="text-white/40 hover:text-white transition-colors">
+                        <button onClick={() => setMute(!mute)} className="text-dim hover:text-main transition-colors">
                             {mute ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                         </button>
                     </motion.div>
@@ -703,16 +703,16 @@ export default function VNEnginePage() {
                             transition={{ type: 'spring' }}
                         >
                             <div className="text-6xl mb-4">{currentScene.ending === 'good' ? '🎉' : '💥'}</div>
-                            <h2 className={`text - 2xl font - bold font - display mb - 3 ${currentScene.ending === 'good' ? 'text-accent' : 'text-primary'} `}>
+                            <h2 className={`text-2xl font-bold font-display mb-3 ${currentScene.ending === 'good' ? 'text-accent' : 'text-primary'}`}>
                                 {currentScene.title}
                             </h2>
-                            <p className="text-white/70 mb-4">{currentScene.message}</p>
+                            <p className="text-muted mb-4">{currentScene.message}</p>
                             {currentScene.lesson_recap && (
-                                <div className="bg-white/5 rounded-xl p-4 text-left mb-6">
-                                    <p className="text-accent font-bold text-sm mb-2">📚 Lesson Summary:</p>
+                                <div className="bg-card-bg/50 rounded-xl p-4 text-left mb-6">
+                                    <p className="text-accent font-bold text-sm mb-2">📚 Ringkasan Pelajaran:</p>
                                     {currentScene.lesson_recap.map((l, i) => (
-                                        <p key={i} className="text-white/70 text-sm flex items-start gap-2 mb-1">
-                                            <span className="text-white/40 mt-0.5">•</span> {l}
+                                        <p key={i} className="text-muted text-sm flex items-start gap-2 mb-1">
+                                            <span className="text-dim mt-0.5">•</span> {l}
                                         </p>
                                     ))}
                                 </div>
@@ -724,7 +724,7 @@ export default function VNEnginePage() {
                                         onClick={() => { setSceneId(chapterData.scenes[0].id); setWrongChoices(0); setXpTotal(0) }}
                                         className="btn-secondary flex-1 flex items-center justify-center gap-2"
                                     >
-                                        <RotateCcw className="w-4 h-4" /> Retry Chapter
+                                        <RotateCcw className="w-4 h-4" /> Ulangi Modul
                                     </button>
                                 )}
                                 <button
@@ -732,7 +732,7 @@ export default function VNEnginePage() {
                                     onClick={() => handleEnding(currentScene)}
                                     className="btn-primary flex-1"
                                 >
-                                    {currentScene.ending === 'good' ? '🏆 Collect Reward!' : '📊 See Results'}
+                                    {currentScene.ending === 'good' ? '🏆 Ambil Hadiah!' : '📊 Lihat Hasil'}
                                 </button>
                             </div>
                         </motion.div>
@@ -764,23 +764,23 @@ export default function VNEnginePage() {
                                 <div className="flex items-center gap-3 mb-4">
                                     <AlertTriangle className="w-8 h-8 text-primary flex-shrink-0" />
                                     <div>
-                                        <h3 className="font-bold text-primary text-lg">Security Breach!</h3>
-                                        <p className="text-white/60 text-sm">That wasn't the right choice...</p>
+                                        <h3 className="font-bold text-primary text-lg">Pelanggaran Keamanan!</h3>
+                                        <p className="text-white/60 text-sm">Itu bukan pilihan yang tepat...</p>
                                     </div>
                                 </div>
                                 <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-4">
-                                    <p className="text-white/80 text-sm">{choiceResult.consequence}</p>
+                                    <p className="text-main/80 text-sm">{choiceResult.consequence}</p>
                                 </div>
                                 <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 mb-4">
-                                    <p className="text-accent font-bold text-xs mb-1">📚 What you should know:</p>
-                                    <p className="text-white/70 text-sm">{choiceResult.lesson}</p>
+                                    <p className="text-accent font-bold text-xs mb-1">📚 Apa yang harus Anda ketahui:</p>
+                                    <p className="text-muted text-sm">{choiceResult.lesson}</p>
                                 </div>
                                 <button
                                     id="wrong-choice-continue-btn"
                                     onClick={handleWrongDismiss}
                                     className="btn-primary w-full"
                                 >
-                                    Understood — Continue
+                                    Mengerti — Lanjut
                                 </button>
                             </motion.div>
                         </motion.div>
@@ -802,25 +802,25 @@ export default function VNEnginePage() {
                                 </span>
                             </div>
                             {/* Dialogue text */}
-                            <p className={`text-white text-base md:text-lg leading-relaxed min-h-[3rem] ${!dialogueDone ? 'typewriter-cursor' : ''}`}>
+                            <p className={`text-main text-base md:text-lg leading-relaxed min-h-[3rem] ${!dialogueDone ? 'typewriter-cursor' : ''}`}>
                                 {dialogueText}
                             </p>
                             {/* Continue hint */}
                             <div className="flex items-center justify-between mt-4">
-                                <div className="flex items-center gap-2 text-white/30 text-sm">
+                                <div className="flex items-center gap-2 text-dim text-sm">
                                     {currentScene.xpReward && dialogueDone && (
-                                        <span className="text-accent text-xs font-bold">+{currentScene.xpReward} XP incoming</span>
+                                        <span className="text-accent text-xs font-bold">+{currentScene.xpReward} XP masuk</span>
                                     )}
                                 </div>
                                 <button
                                     id="dialogue-next-btn"
                                     onClick={handleNext}
-                                    className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition-colors"
+                                    className="flex items-center gap-2 text-muted hover:text-main text-sm transition-colors"
                                 >
                                     {dialogueDone ? (
-                                        <><span>Click to continue</span><motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>→</motion.span></>
+                                        <><span>Klik untuk lanjut</span><motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>→</motion.span></>
                                     ) : (
-                                        <><SkipForward className="w-4 h-4" /> Skip</>
+                                        <><SkipForward className="w-4 h-4" /> Lewati</>
                                     )}
                                 </button>
                             </div>
@@ -837,7 +837,7 @@ export default function VNEnginePage() {
                     >
                         <div className="vn-dialogue-box p-5 md:p-6 mx-2 md:mx-4 mb-2 md:mb-4 rounded-2xl">
                             <div className="flex items-start justify-between gap-4 mb-4">
-                                <p className="text-white font-semibold">{currentScene.question}</p>
+                                <p className="text-main font-semibold">{currentScene.question}</p>
                                 {timer !== null && (
                                     <div className="flex-shrink-0">
                                         <TimerRing seconds={timer} total={timerTotal} />
@@ -850,7 +850,7 @@ export default function VNEnginePage() {
                                         key={choice.id}
                                         id={`choice-${choice.id}-btn`}
                                         onClick={() => handleChoice(choice)}
-                                        className="text-left p-4 rounded-xl border border-white/20 bg-white/5 hover:bg-white/15 hover:border-white/40 transition-all duration-200 text-white text-sm font-medium"
+                                        className="text-left p-4 rounded-xl border border-card-border bg-card-bg/50 hover:bg-card-bg hover:border-primary transition-all duration-200 text-main text-sm font-medium"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >

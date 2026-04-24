@@ -7,7 +7,7 @@ import { SceneCard } from './SceneCard.jsx'
 
 const STATUS_BADGE = {
     Published: 'bg-green-500/20 text-green-400 border-green-500/30',
-    Draft: 'bg-white/10 text-white/40 border-white/10',
+    Draft: 'bg-input-bg text-muted border-card-border',
 }
 
 export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
@@ -175,12 +175,12 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
             {/* Top Bar */}
             <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-bold text-white truncate">{chapter?.title}</h2>
-                    <p className="text-xs text-white/40 flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-main truncate">{chapter?.title}</h2>
+                    <p className="text-xs text-muted flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${STATUS_BADGE[headerForm.status] || STATUS_BADGE.Draft}`}>
                             {headerForm.status === 'Published' ? '🟢 LIVE' : '⚪ Draft'}
                         </span>
-                        {lastDraftSave && <span className="text-white/30">Last saved {lastDraftSave.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                        {lastDraftSave && <span className="text-dim">Last saved {lastDraftSave.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                     </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -194,16 +194,20 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
                         {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
                         Publish
                     </button>
-                    <button onClick={() => window.open(`/play/${chapterId}?token=${sessionStorage.getItem('ake_token') || localStorage.getItem('ake_token') || ''}`, '_blank')}
+                    <button onClick={async () => {
+                        await saveDraft();
+                        window.open(`/play/${chapterId}?token=${sessionStorage.getItem('ake_token') || localStorage.getItem('ake_token') || ''}`, '_blank')
+                    }} disabled={savingDraft}
                         className="btn-secondary flex items-center gap-2 text-sm">
-                        <Eye className="w-4 h-4" /> Preview
+                        {savingDraft ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                        Preview
                     </button>
                 </div>
             </div>
 
             {/* Chapter Header Form */}
             <div className="glass-card p-6">
-                <h3 className="text-sm font-bold text-white/60 uppercase tracking-wider mb-4">📋 Chapter Details</h3>
+                <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-4">📋 Chapter Details</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="col-span-2">
                         <label className="label-xs">Chapter Title *</label>
@@ -241,8 +245,8 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
             <div>
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h3 className="text-lg font-bold text-white">🎬 Scene Builder</h3>
-                        <p className="text-white/40 text-sm">{scenes.length} scene{scenes.length !== 1 ? 's' : ''} — changes auto-save</p>
+                        <h3 className="text-lg font-bold text-main">🎬 Scene Builder</h3>
+                        <p className="text-muted text-sm">{scenes.length} scene{scenes.length !== 1 ? 's' : ''} — changes auto-sync with engine</p>
                     </div>
                     <button onClick={addScene} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Scene</button>
                 </div>
@@ -250,8 +254,8 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
                 {scenes.length === 0 ? (
                     <div className="glass-card p-16 text-center">
                         <div className="text-6xl mb-4">🎬</div>
-                        <h3 className="text-white font-semibold text-lg mb-2">No scenes yet</h3>
-                        <p className="text-white/40 mb-6">Start building by adding the first scene</p>
+                        <h3 className="text-main font-semibold text-lg mb-2">No scenes yet</h3>
+                        <p className="text-muted mb-6">Start building by adding the first scene</p>
                         <button onClick={addScene} className="btn-primary flex items-center gap-2 mx-auto"><Plus className="w-4 h-4" /> Add First Scene</button>
                     </div>
                 ) : (
@@ -284,11 +288,11 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
                     <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPublishModal(false)}>
                         <motion.div className="glass-card p-8 max-w-md w-full" initial={{ scale: 0.9 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()}>
                             <div className="text-5xl text-center mb-4">🌐</div>
-                            <h3 className="text-xl font-bold text-white text-center mb-2">Publish Chapter?</h3>
-                            <p className="text-white/60 text-sm text-center mb-2">
-                                <span className="text-white font-semibold">"{headerForm.title}"</span> will be live for all employees immediately.
+                            <h3 className="text-xl font-bold text-main text-center mb-2">Publish Chapter?</h3>
+                            <p className="text-muted text-sm text-center mb-2">
+                                <span className="text-main font-semibold">"{headerForm.title}"</span> will be live for all employees immediately.
                             </p>
-                            <p className="text-white/30 text-xs text-center mb-6">{scenes.length} scenes will be built into the game engine.</p>
+                            <p className="text-dim text-xs text-center mb-6">{scenes.length} scenes will be built into the game engine.</p>
                             <div className="flex gap-3">
                                 <button onClick={() => setShowPublishModal(false)} className="btn-secondary flex-1">Cancel</button>
                                 <button onClick={publish} className="btn-primary flex-1 flex items-center justify-center gap-2"><Globe className="w-4 h-4" /> Publish Now</button>

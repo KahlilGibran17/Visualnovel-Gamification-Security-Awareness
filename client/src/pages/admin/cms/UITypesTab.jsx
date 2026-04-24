@@ -66,15 +66,15 @@ export function UITypesTab() {
         <div>
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h2 className="text-xl font-bold text-white">🔎 Custom Target UI Types</h2>
-                    <p className="text-white/40 text-sm">Create and manage custom layouts for the "Spot the Phish" mechanic using HTML and TailwindCSS.</p>
+                    <h2 className="text-xl font-bold text-main">🔎 Custom Target UI Types</h2>
+                    <p className="text-muted text-sm">Create and manage custom layouts for the "Spot the Phish" mechanic using HTML and TailwindCSS.</p>
                 </div>
                 <button onClick={() => { setShowForm(s => !s); setForm({ id: null, name: '', key_name: '', custom_html: '<div className="w-full h-full bg-slate-900 text-white p-4 flex flex-col items-center justify-center">\n  <h1 className="text-2xl font-bold">Generated Custom UI</h1>\n</div>' }) }} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> New UI Type</button>
             </div>
 
             {showForm && (
-                <div className="glass-card p-5 mb-6 space-y-4 border border-white/20 shadow-2xl">
-                    <h3 className="font-bold text-white text-lg">{form.id ? 'Edit UI Type' : 'New UI Type'}</h3>
+                <div className="glass-card p-5 mb-6 space-y-4 border-card-border shadow-2xl">
+                    <h3 className="font-bold text-main text-lg">{form.id ? 'Edit UI Type' : 'New UI Type'}</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="label-xs">Type Name *</label>
@@ -82,16 +82,16 @@ export function UITypesTab() {
                         </div>
                         <div>
                             <label className="label-xs">Key Name (auto-generated if empty)</label>
-                            <input className="input-field w-full mt-1 bg-white/5 opacity-50 cursor-not-allowed" disabled value={form.id ? form.key_name : form.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')} />
+                            <input className="input-field w-full mt-1 opacity-50 cursor-not-allowed" disabled value={form.id ? form.key_name : form.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')} />
                         </div>
                     </div>
                     
-                    <div className="mt-4 border-t border-white/10 pt-4">
+                    <div className="mt-4 border-t border-card-border pt-4">
                         <div className="flex justify-between items-center mb-2">
                             <label className="label-xs">Custom Template HTML (Supports TailwindCSS classes)</label>
                             <div className="flex gap-2">
-                                <button onClick={() => setPreviewMode(false)} className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${!previewMode ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>Code</button>
-                                <button onClick={() => setPreviewMode(true)} className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${previewMode ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>Preview</button>
+                                <button onClick={() => setPreviewMode(false)} className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${!previewMode ? 'bg-primary text-white' : 'bg-input-bg text-muted'}`}>Code</button>
+                                <button onClick={() => setPreviewMode(true)} className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${previewMode ? 'bg-primary text-white' : 'bg-input-bg text-muted'}`}>Preview</button>
                             </div>
                         </div>
 
@@ -104,12 +104,12 @@ export function UITypesTab() {
                                 onChange={e => setForm(p => ({ ...p, custom_html: e.target.value }))} 
                             />
                         ) : (
-                            <div className="bg-[#1a1a2e] p-4 rounded-xl border border-white/10 flex justify-center items-center overflow-x-auto">
-                                <FakeUIScaledWrapper uiType={form.key_name} uiTypesData={[{...form, key_name: form.key_name || 'preview'}]} className="shadow-2xl border-4 border-gray-700 rounded-lg">
+                            <div className="bg-input-bg p-4 rounded-xl border border-card-border flex justify-center items-center overflow-x-auto">
+                                <FakeUIScaledWrapper uiType={form.key_name} uiTypesData={[{...form, key_name: form.key_name || 'preview'}]} className="shadow-2xl border-4 border-card-border rounded-lg">
                                 </FakeUIScaledWrapper>
                             </div>
                         )}
-                        <p className="text-xs text-white/30 mt-2">Note: Only standard browser HTML and TailwindCSS utility classes are officially supported. Interactive JavaScript requires React modification.</p>
+                        <p className="text-xs text-dim mt-2">Note: Only standard browser HTML and TailwindCSS utility classes are officially supported. Interactive JavaScript requires React modification.</p>
                     </div>
 
                     <div className="flex gap-3 justify-end pt-2">
@@ -123,21 +123,21 @@ export function UITypesTab() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {uiTypes.map(t => (
-                    <motion.div key={t.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card flex flex-col overflow-hidden">
-                        <div className="flex items-center gap-3 p-4 border-b border-white/5 bg-white/5">
-                            <div className="w-10 h-10 bg-indigo-500/20 text-indigo-400 rounded-lg flex items-center justify-center shrink-0 border border-indigo-500/20">
+                    <motion.div key={t.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-card flex flex-col overflow-hidden border-card-border shadow-lg">
+                        <div className="flex items-center gap-3 p-4 border-b border-card-border bg-input-bg">
+                            <div className="w-10 h-10 bg-indigo-500/10 text-indigo-500 rounded-lg flex items-center justify-center shrink-0 border border-indigo-500/20">
                                 <Search className="w-5 h-5" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-white text-base truncate">{t.name}</h3>
-                                <p className="text-white/40 text-xs font-mono">{t.key_name}</p>
+                                <h3 className="font-bold text-main text-base truncate">{t.name}</h3>
+                                <p className="text-muted text-xs font-mono">{t.key_name}</p>
                             </div>
                             <div className="flex gap-1 shrink-0">
-                                <button onClick={() => openEdit(t)} className="p-2 rounded hover:bg-white/10 text-white/40 hover:text-white transition-colors"><Edit3 className="w-4 h-4" /></button>
-                                <button onClick={() => deleteType(t.id, t.name)} className="p-2 rounded hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => openEdit(t)} className="p-2 rounded hover:bg-card-border text-dim hover:text-main transition-colors"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => deleteType(t.id, t.name)} className="p-2 rounded hover:bg-red-500/20 text-dim hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         </div>
-                        <div className="p-4 bg-black/40 flex-1 relative overflow-hidden flex items-center justify-center h-48">
+                        <div className="p-4 bg-input-bg flex-1 relative overflow-hidden flex items-center justify-center h-48 border-t border-card-border">
                             <div className="transform scale-50 origin-center pointer-events-none">
                                 <FakeUIScaledWrapper uiType={t.key_name} uiTypesData={[t]} className="shadow-xl" />
                             </div>
@@ -146,9 +146,9 @@ export function UITypesTab() {
                 ))}
                 
                 {uiTypes.length === 0 && !showForm && (
-                     <div className="col-span-full py-16 text-center border-2 border-dashed border-white/10 rounded-xl bg-white/5">
-                        <h3 className="text-white font-semibold text-lg mb-2 mt-4">No Custom UI Types Yet</h3>
-                        <p className="text-white/40 mb-6 text-sm">Add one to create advanced custom interfaces!</p>
+                     <div className="col-span-full py-16 text-center border-2 border-dashed border-card-border rounded-xl bg-card-bg">
+                        <h3 className="text-main font-semibold text-lg mb-2 mt-4">No Custom UI Types Yet</h3>
+                        <p className="text-muted mb-6 text-sm">Add one to create advanced custom interfaces!</p>
                         <button onClick={() => setShowForm(true)} className="btn-primary mx-auto flex items-center gap-2"><Plus className="w-4 h-4" /> Create First Type</button>
                     </div>
                 )}

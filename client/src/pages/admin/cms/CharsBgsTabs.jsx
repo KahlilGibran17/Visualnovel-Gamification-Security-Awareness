@@ -45,23 +45,23 @@ function ExpressionSlot({ slot, existingExpr, character, onSaved, onDeleted }) {
 
 
     return (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col gap-2 group relative overflow-hidden">
+        <div className="bg-card-bg border border-card-border rounded-xl p-3 flex flex-col gap-2 group relative overflow-hidden">
             <div className="flex justify-between items-center z-10 mb-1">
-                <p className="text-xs font-bold text-white uppercase tracking-wider">{slot.label}</p>
+                <p className="text-xs font-bold text-main uppercase tracking-wider">{slot.label}</p>
                 {existingExpr?.id && (
-                    <button onClick={() => onDeleted(existingExpr.id)} className="p-1 rounded hover:bg-red-500/20 text-white/30 hover:text-red-400">
+                    <button onClick={() => onDeleted(existingExpr.id)} className="p-1 rounded hover:bg-red-500/20 text-dim hover:text-red-400 transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                     </button>
                 )}
             </div>
 
-            <div className="flex-1 min-h-[160px] flex flex-col items-center justify-center bg-black/40 rounded-lg relative overflow-hidden border border-white/5">
+            <div className="flex-1 min-h-[160px] flex flex-col items-center justify-center bg-black/40 rounded-lg relative overflow-hidden border border-card-border">
                 {existingExpr?.image_url ? (
                     <img src={existingExpr.image_url} alt={slot.name} className="absolute inset-0 w-full h-full object-cover object-top transition-transform hover:scale-110" />
                 ) : (
                     <div className="text-center p-2 opacity-30">
                         <div className="text-3xl mb-1">{slot.emoji}</div>
-                        <p className="text-[10px] text-white">No sprite</p>
+                        <p className="text-[10px] text-main">No sprite</p>
                     </div>
                 )}
 
@@ -101,7 +101,7 @@ function CharacterForm({ character, onSaved, onCancel }) {
 
     return (
         <div className="glass-card p-5 space-y-4">
-            <h3 className="font-bold text-white">{character?.id ? 'Edit Character' : 'New Character'}</h3>
+            <h3 className="font-bold text-main">{character?.id ? 'Edit Character' : 'New Character'}</h3>
             <div className="grid grid-cols-2 gap-3">
                 <div>
                     <label className="label-xs">Character Name *</label>
@@ -188,7 +188,7 @@ export function CharactersTab() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <div><h2 className="text-xl font-bold text-white">👥 Character Manager</h2><p className="text-white/40 text-sm">Manage VN characters and expression images</p></div>
+                <div><h2 className="text-xl font-bold text-main">👥 Character Manager</h2><p className="text-muted text-sm">Manage VN characters and expression images</p></div>
                 <button onClick={() => setEditingChar('new')} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> New Character</button>
             </div>
 
@@ -196,17 +196,17 @@ export function CharactersTab() {
                 {chars.map(c => (
                     <div key={c.id} className="glass-card overflow-hidden">
                         <div className="p-4 flex items-center gap-4">
-                            <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-3xl border border-white/10 shrink-0">
+                            <div className="w-14 h-14 bg-input-bg rounded-2xl flex items-center justify-center text-3xl border border-card-border shrink-0">
                                 {c.emoji}
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-3">
-                                    <p className="font-bold text-white text-lg">{c.name}</p>
-                                    <span className="text-[10px] uppercase font-bold bg-white/10 text-white/70 px-2 py-0.5 rounded-full tracking-wider">{c.role}</span>
+                                    <p className="font-bold text-main text-lg">{c.name}</p>
+                                    <span className="text-[10px] uppercase font-bold bg-input-bg text-muted px-2 py-0.5 rounded-full tracking-wider">{c.role}</span>
                                 </div>
                                 <div className="flex items-center gap-4 mt-1">
-                                    <span className="text-xs text-white/40 font-mono">key: {c.key_name}</span>
-                                    <span className="text-xs text-white/40">{(c.expressions || []).length} expressions</span>
+                                    <span className="text-xs text-dim font-mono">key: {c.key_name}</span>
+                                    <span className="text-xs text-dim">{(c.expressions || []).length} expressions</span>
                                 </div>
                             </div>
                             <div className="flex gap-2">
@@ -214,14 +214,14 @@ export function CharactersTab() {
                                     className="btn-secondary text-xs flex items-center gap-1.5">
                                     {expandedExprs === c.id ? 'Close' : '🎬 Studio'}
                                 </button>
-                                <button onClick={() => setEditingChar(c)} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all"><Edit3 className="w-4 h-4" /></button>
-                                <button onClick={() => deleteChar(c.id)} className="p-2 rounded-lg hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-all"><Trash2 className="w-4 h-4" /></button>
+                                <button onClick={() => setEditingChar(c)} className="p-2 rounded-lg bg-input-bg hover:bg-card-bg text-muted hover:text-main transition-all"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => deleteChar(c.id)} className="p-2 rounded-lg hover:bg-red-500/20 text-dim hover:text-red-400 transition-all"><Trash2 className="w-4 h-4" /></button>
                             </div>
                         </div>
 
                         {expandedExprs === c.id && (
-                            <div className="border-t border-white/5 p-5 bg-black/20">
-                                <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Sprite Previews</p>
+                            <div className="border-t border-card-border p-5 bg-card-bg/50">
+                                <p className="text-xs font-semibold text-dim uppercase tracking-wider mb-3">Sprite Previews</p>
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
                                     {PRESET_EXPRESSIONS.map(slot => {
                                         const existing = (c.expressions || []).find(e => e.expression_name === slot.name)
@@ -360,13 +360,13 @@ export function BackgroundsTab() {
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
-                <div><h2 className="text-xl font-bold text-white">🖼️ Background Library</h2><p className="text-white/40 text-sm">Upload and manage scene backgrounds</p></div>
+                <div><h2 className="text-xl font-bold text-main">🖼️ Background Library</h2><p className="text-muted text-sm">Upload and manage scene backgrounds</p></div>
                 <button onClick={() => setShowForm(s => !s)} className="btn-primary flex items-center gap-2"><Plus className="w-4 h-4" /> Add Background</button>
             </div>
 
             {showForm && (
                 <div className="glass-card p-5 mb-6 space-y-4">
-                    <h3 className="font-bold text-white">New Background</h3>
+                    <h3 className="font-bold text-main">New Background</h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="col-span-2">
                             <label className="label-xs">Background Name *</label>
@@ -390,7 +390,7 @@ export function BackgroundsTab() {
                         <div
                             className={`mt-1 border-2 border-dashed rounded-xl p-6 text-center transition-all ${isDragging ? 'border-primary bg-primary/10' :
                                 fileError ? 'border-red-500/50 bg-red-500/5' :
-                                    preview ? 'border-green-500/30 bg-green-500/5' : 'border-white/20 hover:border-white/40 cursor-pointer'
+                                    preview ? 'border-green-500/30 bg-green-500/5' : 'border-card-border hover:border-muted cursor-pointer'
                                 }`}
                             onDragOver={onDragOver}
                             onDragLeave={onDragLeave}
@@ -406,20 +406,20 @@ export function BackgroundsTab() {
                                         </button>
                                     </div>
                                     {fileInfo && (
-                                        <div className="mt-3 text-xs text-white/50 space-y-0.5">
-                                            <p className="font-semibold text-white/70">{fileInfo.name}</p>
+                                        <div className="mt-3 text-xs text-dim space-y-0.5">
+                                            <p className="font-semibold text-main opacity-70">{fileInfo.name}</p>
                                             <p>{fileInfo.width} × {fileInfo.height} px • {(fileInfo.size / 1024).toFixed(1)} KB</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
                                 <div>
-                                    <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragging ? 'text-primary' : fileError ? 'text-red-400' : 'text-white/30'}`} />
-                                    <p className="font-semibold text-white/80 mb-1">
+                                    <Upload className={`w-10 h-10 mx-auto mb-3 ${isDragging ? 'text-primary' : fileError ? 'text-red-400' : 'text-dim'}`} />
+                                    <p className="font-semibold text-main opacity-80 mb-1">
                                         {isDragging ? 'Drop image here...' : 'Drag & drop image here'}
                                     </p>
-                                    <p className="text-white/40 text-sm mb-3">or click to browse</p>
-                                    <div className="text-xs text-white/30 space-y-0.5">
+                                    <p className="text-muted text-sm mb-3">or click to browse</p>
+                                    <div className="text-xs text-dim space-y-0.5">
                                         <p>Supported: JPG, PNG, WEBP</p>
                                         <p>Max size: 5MB</p>
                                         <p>Recommended: 1920 × 1080px (16:9)</p>
@@ -454,8 +454,8 @@ export function BackgroundsTab() {
                             </button>
                         </div>
                         <div className="p-3">
-                            <p className="font-semibold text-white text-sm">{bg.name}</p>
-                            <p className="text-xs text-white/40 font-mono">{bg.key_name}</p>
+                            <p className="font-semibold text-main text-sm">{bg.name}</p>
+                            <p className="text-xs text-dim font-mono">{bg.key_name}</p>
                         </div>
                     </motion.div>
                 ))}

@@ -29,6 +29,7 @@ app.use('/api/admin', require('./routes/admin'))
 app.use('/api/elearning', require('./routes/elearning'))
 app.use('/api/content', require('./routes/content'))
 app.use('/api/cms', require('./routes/cms'))
+app.use('/api/roadmap', require('./routes/roadmap'))
 
 
 // Health

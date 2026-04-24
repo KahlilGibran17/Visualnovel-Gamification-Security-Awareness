@@ -115,14 +115,14 @@ export default function AdminELearningPage() {
         <Layout>
             <div className="p-6 max-w-6xl mx-auto space-y-6">
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-                    <h1 className="text-3xl font-bold font-display text-white">🎓 E-Learning Management</h1>
-                    <p className="text-white/50 mt-1">Add, edit, and organize reading materials for employees before they play</p>
+                    <h1 className="text-3xl font-bold font-display text-main">🎓 E-Learning Management</h1>
+                    <p className="text-muted mt-1">Add, edit, and organize reading materials for employees before they play</p>
                 </motion.div>
 
                 <motion.div className="glass-card overflow-hidden"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                    <div className="p-5 border-b border-white/10 flex items-center justify-between">
-                        <h2 className="font-bold text-white text-lg">E-Learning Modules</h2>
+                    <div className="p-5 border-b border-card-border flex items-center justify-between">
+                        <h2 className="font-bold text-main text-lg">E-Learning Modules</h2>
                         <button
                             className="btn-primary text-sm flex items-center gap-2"
                             onClick={handleCreate}
@@ -134,10 +134,10 @@ export default function AdminELearningPage() {
                     {loading ? (
                         <div className="p-10 flex justify-center"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>
                     ) : (
-                        <div className="divide-y divide-white/5">
+                        <div className="divide-y divide-card-border">
                             {courses.map((course, i) => (
                                 <motion.div key={course.id}
-                                    className={`flex items-center gap-4 p-5 transition-all cursor-pointer ${selected === course.id ? 'bg-primary/10' : 'hover:bg-white/5'}`}
+                                    className={`flex items-center gap-4 p-5 transition-all cursor-pointer ${selected === course.id ? 'bg-primary/10' : 'hover:bg-input-bg'}`}
                                     onClick={() => handleSelect(selected === course.id ? null : course)}
                                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
 
@@ -145,31 +145,31 @@ export default function AdminELearningPage() {
                                         <GraduationCap className="w-5 h-5" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-semibold text-white">{course.title || 'Untitled Module'}</p>
-                                        <div className="flex items-center gap-3 text-white/50 text-sm mt-0.5">
+                                        <p className="font-semibold text-main">{course.title || 'Untitled Module'}</p>
+                                        <div className="flex items-center gap-3 text-muted text-sm mt-0.5">
                                             <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> {course.category || '-'}</span>
                                             <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> {course.duration || '-'}</span>
                                         </div>
                                     </div>
 
-                                    <span className={`text-xs px-3 py-1 rounded-full font-semibold ${course.status === 'Published' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/10 text-white/50 border border-white/10'}`}>
+                                    <span className={`text-xs px-3 py-1 rounded-full font-semibold ${course.status === 'Published' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-input-bg text-muted border border-card-border'}`}>
                                         {course.status || 'Draft'}
                                     </span>
 
                                     <div className="flex gap-2 ml-2">
                                         <button onClick={e => { e.stopPropagation(); handleSelect(course) }}
-                                            className="text-white/40 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all">
+                                            className="text-dim hover:text-main p-1.5 rounded-lg hover:bg-input-bg transition-all">
                                             <Edit2 className="w-4 h-4" />
                                         </button>
                                         <button onClick={e => handleDelete(e, course.id)}
-                                            className="text-white/40 hover:text-primary p-1.5 rounded-lg hover:bg-primary/10 transition-all">
+                                            className="text-dim hover:text-primary p-1.5 rounded-lg hover:bg-primary/10 transition-all">
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 </motion.div>
                             ))}
                             {courses.length === 0 && (
-                                <div className="p-8 text-center text-white/40">
+                                <div className="p-8 text-center text-dim">
                                     No e-learning modules found. Click 'Add Module' to create one.
                                 </div>
                             )}
@@ -182,7 +182,7 @@ export default function AdminELearningPage() {
                     <motion.div className="glass-card p-6"
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                         <div className="flex items-center justify-between mb-6">
-                            <h2 className="font-bold text-white text-lg flex items-center gap-2">
+                            <h2 className="font-bold text-main text-lg flex items-center gap-2">
                                 <Edit2 className="w-5 h-5 text-accent" /> Edit Module Content
                             </h2>
                             <button className="btn-primary text-sm flex items-center gap-2" onClick={handleSave} disabled={isSaving}>
@@ -193,7 +193,7 @@ export default function AdminELearningPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
                             <div>
-                                <label className="block text-xs text-white/50 uppercase tracking-wide mb-2">Module Title</label>
+                                <label className="block text-xs text-muted uppercase tracking-wide mb-2">Module Title</label>
                                 <input
                                     className="input-field w-full"
                                     value={title}
@@ -201,7 +201,7 @@ export default function AdminELearningPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-white/50 uppercase tracking-wide mb-2">Category</label>
+                                <label className="block text-xs text-muted uppercase tracking-wide mb-2">Category</label>
                                 <input
                                     className="input-field w-full"
                                     value={category}
@@ -209,7 +209,7 @@ export default function AdminELearningPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-white/50 uppercase tracking-wide mb-2">Status</label>
+                                <label className="block text-xs text-muted uppercase tracking-wide mb-2">Status</label>
                                 <select
                                     className="input-field w-full"
                                     value={status}
@@ -220,7 +220,7 @@ export default function AdminELearningPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs text-white/50 uppercase tracking-wide mb-2">Duration (e.g. 15 mins)</label>
+                                <label className="block text-xs text-muted uppercase tracking-wide mb-2">Duration (e.g. 15 mins)</label>
                                 <input
                                     className="input-field w-full"
                                     value={duration}
@@ -228,7 +228,7 @@ export default function AdminELearningPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-white/50 uppercase tracking-wide mb-2">Difficulty Level</label>
+                                <label className="block text-xs text-muted uppercase tracking-wide mb-2">Difficulty Level</label>
                                 <select
                                     className="input-field w-full"
                                     value={level}
@@ -242,9 +242,9 @@ export default function AdminELearningPage() {
                         </div>
 
                         <div className="mb-4">
-                            <label className="block text-xs text-white/50 uppercase tracking-wide mb-2">Learning Material (Markdown / HTML)</label>
+                            <label className="block text-xs text-muted uppercase tracking-wide mb-2">Learning Material (Markdown / HTML)</label>
                             <textarea
-                                className="input-field w-full h-40 text-sm resize-none font-mono"
+                                className="input-field w-full h-40 text-sm resize-none font-mono text-main"
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
                                 placeholder="## Your content here..."

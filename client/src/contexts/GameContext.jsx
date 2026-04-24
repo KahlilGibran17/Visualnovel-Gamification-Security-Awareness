@@ -6,31 +6,31 @@ const GameContext = createContext(null)
 
 // Fallback data
 const FALLBACK_CHAPTERS = [
-    { id: 1, title: 'First Day', subtitle: 'Phishing Email', icon: '📧', location: 'Office Lobby', unlockAt: 0, scenes: [] },
-    { id: 2, title: 'The Open Desk', subtitle: 'Clean Desk Policy', icon: '🗂️', location: 'Workstation', unlockAt: 1, scenes: [] },
-    { id: 3, title: 'Stranger in the Elevator', subtitle: 'Social Engineering', icon: '🛗', location: 'Elevator', unlockAt: 2, scenes: [] },
-    { id: 4, title: 'Change Your Password', subtitle: 'Password Security', icon: '🔐', location: 'IT Room', unlockAt: 3, scenes: [] },
-    { id: 5, title: 'Incident!', subtitle: 'Incident Reporting', icon: '🚨', location: 'Server Room', unlockAt: 4, scenes: [] },
-    { id: 6, title: 'Showdown with Ph1sh', subtitle: 'FINALE', icon: '⚔️', location: 'Data Center', unlockAt: 5, scenes: [] },
+    { id: 1, title: 'Hari Pertama', subtitle: 'Email Phishing', icon: '📧', location: 'Lobi Kantor', unlockAt: 0, scenes: [] },
+    { id: 2, title: 'Meja Terbuka', subtitle: 'Kebijakan Meja Bersih', icon: '🗂️', location: 'Ruang Kerja', unlockAt: 1, scenes: [] },
+    { id: 3, title: 'Orang Asing', subtitle: 'Rekayasa Sosial', icon: '🛗', location: 'Lift', unlockAt: 2, scenes: [] },
+    { id: 4, title: 'Ganti Sandi Anda', subtitle: 'Keamanan Kata Sandi', icon: '🔐', location: 'Ruang IT', unlockAt: 3, scenes: [] },
+    { id: 5, title: 'Insiden!', subtitle: 'Pelaporan Insiden', icon: '🚨', location: 'Ruang Server', unlockAt: 4, scenes: [] },
+    { id: 6, title: 'Pertarungan Terakhir', subtitle: 'FINAL', icon: '⚔️', location: 'Pusat Data', unlockAt: 5, scenes: [] },
 ]
 
 const FALLBACK_LEVELS = [
-    { level: 1, title: 'Rookie', xpRequired: 0, color: '#94a3b8', icon: '🛡️' },
-    { level: 2, title: 'Aware', xpRequired: 500, color: '#60a5fa', icon: '👁️' },
-    { level: 3, title: 'Guardian', xpRequired: 1500, color: '#a78bfa', icon: '🛡️' },
-    { level: 4, title: 'Expert', xpRequired: 3000, color: '#f59e0b', icon: '⚡' },
-    { level: 5, title: 'Cyber Hero', xpRequired: 6000, color: '#E63946', icon: '🦸' },
+    { level: 1, title: 'Pemula', xpRequired: 0, color: '#94a3b8', icon: '🛡️' },
+    { level: 2, title: 'Waspada', xpRequired: 500, color: '#60a5fa', icon: '👁️' },
+    { level: 3, title: 'Pelindung', xpRequired: 1500, color: '#a78bfa', icon: '🛡️' },
+    { level: 4, title: 'Ahli', xpRequired: 3000, color: '#f59e0b', icon: '⚡' },
+    { level: 5, title: 'Pahlawan Siber', xpRequired: 6000, color: '#E63946', icon: '🦸' },
 ]
 
 const FALLBACK_BADGES = [
-    { id: 'phishing-hunter', badge_key: 'phishing-hunter', name: 'Phishing Hunter', icon: '🎣', desc: 'Complete Chapter 1 with perfect score', color: '#E63946' },
-    { id: 'tidy-desk', badge_key: 'tidy-desk', name: 'Tidy Desk', icon: '🗂️', desc: 'Complete Chapter 2', color: '#3b82f6' },
-    { id: 'social-shield', badge_key: 'social-shield', name: 'Social Shield', icon: '🛡️', desc: 'Complete Chapter 3', color: '#8b5cf6' },
-    { id: 'password-master', badge_key: 'password-master', name: 'Password Master', icon: '🔐', desc: 'Complete Chapter 4 without mistakes', color: '#22c55e' },
-    { id: 'first-responder', badge_key: 'first-responder', name: 'First Responder', icon: '🚨', desc: 'Complete Chapter 5', color: '#f97316' },
-    { id: 'cyber-hero', badge_key: 'cyber-hero', name: 'Cyber Hero', icon: '🦸', desc: 'Complete all chapters with good endings', color: '#FFD60A' },
-    { id: '7-day-streak', badge_key: '7-day-streak', name: '7-Day Streak', icon: '🔥', desc: 'Log in 7 consecutive days', color: '#ef4444' },
-    { id: 'speed-runner', badge_key: 'speed-runner', name: 'Speed Runner', icon: '⚡', desc: 'Complete a chapter in record time', color: '#06b6d4' },
+    { id: 'phishing-hunter', badge_key: 'phishing-hunter', name: 'Pemburu Phishing', icon: '🎣', desc: 'Selesaikan Chapter 1 dengan nilai sempurna', color: '#E63946' },
+    { id: 'tidy-desk', badge_key: 'tidy-desk', name: 'Meja Rapi', icon: '🗂️', desc: 'Selesaikan Chapter 2', color: '#3b82f6' },
+    { id: 'social-shield', badge_key: 'social-shield', name: 'Perisai Sosial', icon: '🛡️', desc: 'Selesaikan Chapter 3', color: '#8b5cf6' },
+    { id: 'password-master', badge_key: 'password-master', name: 'Master Sandi', icon: '🔐', desc: 'Selesaikan Chapter 4 tanpa kesalahan', color: '#22c55e' },
+    { id: 'first-responder', badge_key: 'first-responder', name: 'Responden Pertama', icon: '🚨', desc: 'Selesaikan Chapter 5', color: '#f97316' },
+    { id: 'cyber-hero', badge_key: 'cyber-hero', name: 'Pahlawan Siber', icon: '🦸', desc: 'Selesaikan semua chapter dengan akhir yang baik', color: '#FFD60A' },
+    { id: '7-day-streak', badge_key: '7-day-streak', name: 'Beruntun 7 Hari', icon: '🔥', desc: 'Login selama 7 hari berturut-turut', color: '#ef4444' },
+    { id: 'speed-runner', badge_key: 'speed-runner', name: 'Si Kilat', icon: '⚡', desc: 'Selesaikan chapter dengan waktu tercepat', color: '#06b6d4' },
 ]
 
 // Demo data for leaderboard
@@ -72,6 +72,9 @@ export function GameProvider({ children }) {
     const [leaderboard, setLeaderboard] = useState(DEMO_LEADERBOARD)
     const [deptStats, setDeptStats] = useState(DEMO_DEPT_STATS)
     const [xpPopups, setXpPopups] = useState([])
+    const [isTourActive, setIsTourActive] = useState(false)
+    const [currentStep, setCurrentStep] = useState(0)
+    const [tourShownThisSession, setTourShownThisSession] = useState(false)
 
     const [chapters, setChapters] = useState(FALLBACK_CHAPTERS)
     const [levels, setLevels] = useState(FALLBACK_LEVELS)
@@ -79,17 +82,19 @@ export function GameProvider({ children }) {
     const [backgrounds, setBackgrounds] = useState([])
     const [characters, setCharacters] = useState([])
     const [uiTypes, setUiTypes] = useState([])
+    const [roadmapNodes, setRoadmapNodes] = useState([])
 
     useEffect(() => {
         const fetchContent = async () => {
             try {
-                const [cRes, lRes, bRes, bgRes, charRes, uiRes] = await Promise.all([
+                const [cRes, lRes, bRes, bgRes, charRes, uiRes, rmRes] = await Promise.all([
                     axios.get('/api/content/chapters'),
                     axios.get('/api/content/levels'),
                     axios.get('/api/content/badges'),
                     axios.get('/api/cms/backgrounds').catch(() => ({ data: [] })),
                     axios.get('/api/cms/characters').catch(() => ({ data: [] })),
-                    axios.get('/api/content/ui-types').catch(() => ({ data: [] }))
+                    axios.get('/api/content/ui-types').catch(() => ({ data: [] })),
+                    axios.get('/api/roadmap').catch(() => ({ data: [] }))
                 ])
                 if (Array.isArray(cRes.data) && cRes.data.length > 0) {
                     setChapters(cRes.data)
@@ -108,6 +113,9 @@ export function GameProvider({ children }) {
                 }
                 if (uiRes?.data && Array.isArray(uiRes.data)) {
                     setUiTypes(uiRes.data)
+                }
+                if (rmRes?.data && Array.isArray(rmRes.data)) {
+                    setRoadmapNodes(rmRes.data)
                 }
             } catch (err) {
                 console.warn('Using fallback content (auth may not be ready):', err.message)
@@ -271,6 +279,50 @@ export function GameProvider({ children }) {
         return { rank: rank - 1, name: above.name, gap }
     }
 
+    const elearningCompleted = chapterProgress[0]?.completed === true
+    
+    const completeElearning = async () => {
+        setChapterProgress(prev => ({
+            ...prev,
+            0: { completed: true, ending: 'good', xpEarned: 0, score: 100 }
+        }))
+        try {
+            await axios.post('/api/progress/chapter/0/complete', {
+                ending: 'good',
+                xpEarned: 0,
+                perfect: true,
+                score: 100,
+                wrongChoices: 0
+            })
+        } catch (err) {
+            console.error('Failed to save elearning progress', err)
+        }
+    }
+
+    const startTour = () => {
+        if (tourShownThisSession && !isTourActive) return // Don't auto-start if already shown
+        setCurrentStep(0)
+        setIsTourActive(true)
+        setTourShownThisSession(true)
+    }
+
+    const forceStartTour = () => {
+        setCurrentStep(0)
+        setIsTourActive(true)
+        setTourShownThisSession(true)
+    }
+
+    const completeTour = (dontShowAgain) => {
+        if (dontShowAgain) {
+            localStorage.setItem('ake_tour_disabled', 'true')
+        }
+        setIsTourActive(false)
+    }
+
+    const setTourStep = (step) => {
+        setCurrentStep(step)
+    }
+
     return (
         <GameContext.Provider value={{
             chapterProgress,
@@ -281,14 +333,23 @@ export function GameProvider({ children }) {
             getNextLevel,
             awardXP,
             completeChapter,
+            completeElearning,
             getUserRank,
             getNextRankGap,
+            elearningCompleted,
             CHAPTERS: chapters,
             LEVELS: levels,
             BADGES: badges,
             BACKGROUNDS: backgrounds,
             CHARACTERS: characters,
             UI_TYPES: uiTypes,
+            ROADMAP_NODES: roadmapNodes,
+            isTourActive,
+            currentStep,
+            startTour,
+            forceStartTour,
+            completeTour,
+            setTourStep
         }}>
             {children}
         </GameContext.Provider>

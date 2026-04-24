@@ -85,35 +85,35 @@ export default function LandingSlidesTab({ activeTab }) {
 
     return (
         <div className="space-y-6">
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6">
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <div className="glass-card p-6">
+                <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-main">
                     <ImageIcon className="w-5 h-5 text-accent" />
                     {editingSlide ? 'Edit Slide' : 'Add New Slide'}
                 </h3>
                 <form onSubmit={handleSave} className="grid md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-xs text-white/50 mb-1">Title</label>
+                        <label className="label-xs">Title</label>
                         <input 
                             type="text" 
                             required
-                            className="w-full bg-dark bg-opacity-50 border border-white/10 rounded px-3 py-2 text-sm"
+                            className="input-field w-full text-sm"
                             value={formData.title} 
                             onChange={e => setFormData({...formData, title: e.target.value})} 
                         />
                     </div>
                     <div>
-                        <label className="block text-xs text-white/50 mb-1">Image Upload (Frontend renders fallback if none)</label>
+                        <label className="label-xs">Image Upload (Frontend renders fallback if none)</label>
                         <input 
                             type="file" 
                             accept="image/*"
-                            className="w-full bg-dark bg-opacity-50 border border-white/10 rounded px-3 py-1.5 text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-primary file:text-white"
+                            className="input-field w-full text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-primary file:text-white"
                             onChange={e => setFormData({...formData, image: e.target.files[0]})} 
                         />
                     </div>
                     <div className="md:col-span-2">
-                        <label className="block text-xs text-white/50 mb-1">Description</label>
+                        <label className="label-xs">Description</label>
                         <textarea 
-                            className="w-full bg-dark bg-opacity-50 border border-white/10 rounded px-3 py-2 text-sm"
+                            className="input-field w-full text-sm"
                             rows="2"
                             value={formData.description} 
                             onChange={e => setFormData({...formData, description: e.target.value})} 
@@ -134,30 +134,30 @@ export default function LandingSlidesTab({ activeTab }) {
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {slides.map((slide, idx) => (
-                    <div key={slide.id} className="bg-white/5 border border-white/10 rounded-lg p-4 relative overflow-hidden group">
+                    <div key={slide.id} className="glass-card p-4 relative overflow-hidden group border-card-border">
                         {slide.image_url ? (
-                            <img src={slide.image_url} alt={slide.title} className="w-full h-40 object-cover rounded mb-4 border border-white/10" />
+                            <img src={slide.image_url} alt={slide.title} className="w-full h-40 object-cover rounded mb-4 border border-card-border" />
                         ) : (
-                            <div className="w-full h-40 bg-dark/50 flex flex-col items-center justify-center rounded mb-4 border border-white/5">
-                                <ImageIcon className="w-8 h-8 text-white/20 mb-2" />
-                                <span className="text-xs text-white/40">Default Component UI</span>
+                            <div className="w-full h-40 bg-input-bg flex flex-col items-center justify-center rounded mb-4 border border-card-border">
+                                <ImageIcon className="w-8 h-8 text-dim mb-2" />
+                                <span className="text-xs text-dim">Default Component UI</span>
                             </div>
                         )}
-                        <h4 className="font-bold text-lg mb-1">{slide.title}</h4>
-                        <p className="text-xs text-white/60 mb-4 line-clamp-2">{slide.description}</p>
+                        <h4 className="font-bold text-lg mb-1 text-main">{slide.title}</h4>
+                        <p className="text-xs text-muted mb-4 line-clamp-2">{slide.description}</p>
                         
                         <div className="flex items-center justify-between mt-auto">
                             <div className="flex gap-1">
-                                <button onClick={() => handleMove(idx, 'up')} disabled={idx === 0} className="p-1.5 bg-white/10 rounded disabled:opacity-30 hover:bg-white/20"><ArrowUp className="w-4 h-4" /></button>
-                                <button onClick={() => handleMove(idx, 'down')} disabled={idx === slides.length - 1} className="p-1.5 bg-white/10 rounded disabled:opacity-30 hover:bg-white/20"><ArrowDown className="w-4 h-4" /></button>
+                                <button onClick={() => handleMove(idx, 'up')} disabled={idx === 0} className="p-1.5 bg-input-bg rounded disabled:opacity-30 hover:bg-card-border text-main transition-colors"><ArrowUp className="w-4 h-4" /></button>
+                                <button onClick={() => handleMove(idx, 'down')} disabled={idx === slides.length - 1} className="p-1.5 bg-input-bg rounded disabled:opacity-30 hover:bg-card-border text-main transition-colors"><ArrowDown className="w-4 h-4" /></button>
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => {
                                     setEditingSlide(slide.id)
                                     setFormData({ title: slide.title, description: slide.description, image: null })
                                     window.scrollTo({ top: 0, behavior: 'smooth' })
-                                }} className="text-primary text-sm hover:underline">Edit</button>
-                                <button onClick={() => handleDelete(slide.id)} className="text-red-400 hover:text-red-300"><Trash className="w-4 h-4" /></button>
+                                }} className="text-primary text-sm hover:underline font-semibold">Edit</button>
+                                <button onClick={() => handleDelete(slide.id)} className="text-red-400 hover:text-red-300 transition-colors"><Trash className="w-4 h-4" /></button>
                             </div>
                         </div>
                     </div>
