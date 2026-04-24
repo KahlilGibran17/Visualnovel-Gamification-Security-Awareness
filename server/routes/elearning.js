@@ -441,16 +441,10 @@ router.post('/lessons/:id/complete', requireAuth, async (req, res) => {
         const chapterCompleted = await syncChapterProgressIfChapterDone(client, chapterId)
 
         await client.query(
-            `WITH updated AS (
-                UPDATE user_badges
-                SET xp = COALESCE(xp, 0) + $1,
-                    streak = COALESCE(streak, 1)
-                WHERE user_id = $2
-                RETURNING id
-            )
-            INSERT INTO user_badges (user_id, badge_id, xp, streak, earned_at)
-            SELECT $2, NULL, $1, 1, NOW()
-            WHERE NOT EXISTS (SELECT 1 FROM updated)`,
+            `UPDATE users
+             SET xp = COALESCE(xp, 0) + $1,
+                 updated_at = NOW()
+             WHERE id = $2`,
             [totalXp, userId]
         )
 

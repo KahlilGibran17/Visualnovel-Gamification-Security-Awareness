@@ -27,13 +27,8 @@ router.get('/overview', requireAuth, requireRole('admin', 'manager'), async (req
                   AND uc.completed_chapters >= ct.total_chapters
             `),
             pool.query(`
-                SELECT ROUND(AVG(COALESCE(ub_stats.xp, 0))) as avg
+                SELECT ROUND(AVG(COALESCE(u.xp, 0))) as avg
                 FROM users u
-                LEFT JOIN (
-                    SELECT user_id, MAX(xp) AS xp
-                    FROM user_badges
-                    GROUP BY user_id
-                ) ub_stats ON ub_stats.user_id = u.id
             `),
         ])
         res.json({
@@ -169,17 +164,12 @@ router.get('/compliance', requireAuth, requireRole('admin', 'manager'), async (r
                 u.nik,
                 COALESCE(u.display_name, u.name) as name,
                 u.department,
-                COALESCE(ub_stats.xp, 0)::int as xp,
+                COALESCE(u.xp, 0)::int as xp,
         COUNT(cp.id) FILTER (WHERE cp.completed) as chapters_completed
       FROM users u
       LEFT JOIN chapter_progress cp ON cp.user_id = u.id
-            LEFT JOIN (
-                SELECT user_id, MAX(xp) AS xp
-                FROM user_badges
-                GROUP BY user_id
-            ) ub_stats ON ub_stats.user_id = u.id
-            GROUP BY u.id, ub_stats.xp
-            ORDER BY chapters_completed DESC, COALESCE(ub_stats.xp, 0) DESC
+            GROUP BY u.id
+            ORDER BY chapters_completed DESC, COALESCE(u.xp, 0) DESC
     `)
         res.json(result.rows)
     } catch (err) {

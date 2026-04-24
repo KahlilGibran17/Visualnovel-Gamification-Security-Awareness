@@ -10,7 +10,7 @@ router.get('/', requireAuth, async (req, res) => {
   const values = []
 
   if (!includeZeroXp) {
-    whereConditions.push('COALESCE(ub_stats.xp, 0) > 0')
+    whereConditions.push('COALESCE(u.xp, 0) > 0')
   }
 
   if (filter === 'weekly') {
@@ -35,27 +35,22 @@ router.get('/', requireAuth, async (req, res) => {
         u.nik,
         COALESCE(u.display_name, u.name) as name,
         u.department,
-        COALESCE(ub_stats.xp, 0)::int as xp,
+        COALESCE(u.xp, 0)::int as xp,
         u.avatar_id as "avatarId",
         r.name as role,
         (SELECT COUNT(*)::int FROM chapter_progress cp WHERE cp.user_id = u.id AND cp.completed = TRUE) as "chaptersCompleted",
-        (RANK() OVER (ORDER BY COALESCE(ub_stats.xp, 0) DESC, u.id ASC))::int as rank,
+        (RANK() OVER (ORDER BY COALESCE(u.xp, 0) DESC, u.id ASC))::int as rank,
         CASE
-          WHEN COALESCE(ub_stats.xp, 0) >= 6000 THEN 5
-          WHEN COALESCE(ub_stats.xp, 0) >= 3000 THEN 4
-          WHEN COALESCE(ub_stats.xp, 0) >= 1500 THEN 3
-          WHEN COALESCE(ub_stats.xp, 0) >= 500 THEN 2
+          WHEN COALESCE(u.xp, 0) >= 6000 THEN 5
+          WHEN COALESCE(u.xp, 0) >= 3000 THEN 4
+          WHEN COALESCE(u.xp, 0) >= 1500 THEN 3
+          WHEN COALESCE(u.xp, 0) >= 500 THEN 2
           ELSE 1
         END as level
       FROM users u
       JOIN roles r ON u.role_id = r.id
-      LEFT JOIN (
-        SELECT user_id, MAX(xp) AS xp
-        FROM user_badges
-        GROUP BY user_id
-      ) ub_stats ON ub_stats.user_id = u.id
       ${whereClause}
-      ORDER BY COALESCE(ub_stats.xp, 0) DESC, u.id ASC
+      ORDER BY COALESCE(u.xp, 0) DESC, u.id ASC
       LIMIT 100
     `, values)
         res.json(result.rows)
@@ -72,13 +67,8 @@ router.get('/departments', requireAuth, async (req, res) => {
       SELECT
         department as dept,
         COUNT(*)::int as members,
-        COALESCE(ROUND(AVG(COALESCE(ub_stats.xp, 0)))::int, 0) as "avgXp"
+        COALESCE(ROUND(AVG(COALESCE(u.xp, 0)))::int, 0) as "avgXp"
       FROM users u
-      LEFT JOIN (
-        SELECT user_id, MAX(xp) AS xp
-        FROM user_badges
-        GROUP BY user_id
-      ) ub_stats ON ub_stats.user_id = u.id
       WHERE u.department IS NOT NULL AND u.department != ''
       GROUP BY u.department
       ORDER BY "avgXp" DESC

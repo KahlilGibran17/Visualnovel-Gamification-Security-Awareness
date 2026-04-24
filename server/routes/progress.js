@@ -57,16 +57,10 @@ router.post('/xp', requireAuth, async (req, res) => {
     const { amount, reason } = req.body
     try {
         await pool.query(
-            `WITH updated AS (
-                UPDATE user_badges
-                SET xp = COALESCE(xp, 0) + $1,
-                    streak = COALESCE(streak, 1)
-                WHERE user_id = $2
-                RETURNING id
-            )
-            INSERT INTO user_badges (user_id, badge_id, xp, streak, earned_at)
-            SELECT $2, NULL, $1, 1, NOW()
-            WHERE NOT EXISTS (SELECT 1 FROM updated)`,
+            `UPDATE users
+             SET xp = COALESCE(xp, 0) + $1,
+                 updated_at = NOW()
+             WHERE id = $2`,
             [amount, req.user.userId]
         )
         res.json({ message: 'XP awarded', amount })
@@ -93,16 +87,10 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
 
         // Award XP
         await pool.query(
-            `WITH updated AS (
-                UPDATE user_badges
-                SET xp = COALESCE(xp, 0) + $1,
-                    streak = COALESCE(streak, 1)
-                WHERE user_id = $2
-                RETURNING id
-            )
-            INSERT INTO user_badges (user_id, badge_id, xp, streak, earned_at)
-            SELECT $2, NULL, $1, 1, NOW()
-            WHERE NOT EXISTS (SELECT 1 FROM updated)`,
+            `UPDATE users
+             SET xp = COALESCE(xp, 0) + $1,
+                 updated_at = NOW()
+             WHERE id = $2`,
             [xpEarned, req.user.userId]
         )
 
@@ -114,13 +102,8 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
                 const badge = await pool.query('SELECT id FROM badges WHERE badge_key = $1', [badgeRule.good])
                 if (badge.rows.length > 0) {
                     await pool.query(
-                        `INSERT INTO user_badges (user_id, badge_id, xp, streak)
-                         VALUES (
-                            $1,
-                            $2,
-                            (SELECT COALESCE(MAX(xp), 0) FROM user_badges WHERE user_id = $1),
-                            (SELECT COALESCE(MAX(streak), 1) FROM user_badges WHERE user_id = $1)
-                         )
+                        `INSERT INTO user_badges (user_id, badge_id, earned_at)
+                         VALUES ($1, $2, NOW())
                          ON CONFLICT DO NOTHING`,
                         [req.user.userId, badge.rows[0].id]
                     )
@@ -130,20 +113,15 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
 
         // Check streak badge (7 days)
         const streakResult = await pool.query(
-            'SELECT COALESCE(MAX(streak), 1)::int AS streak FROM user_badges WHERE user_id = $1',
+            'SELECT COALESCE(streak, 1)::int AS streak FROM users WHERE id = $1',
             [req.user.userId]
         )
         if (streakResult.rows[0]?.streak >= 7) {
             const streakBadge = await pool.query("SELECT id FROM badges WHERE badge_key = '7-day-streak'")
             if (streakBadge.rows.length > 0) {
                 await pool.query(
-                    `INSERT INTO user_badges (user_id, badge_id, xp, streak)
-                     VALUES (
-                        $1,
-                        $2,
-                        (SELECT COALESCE(MAX(xp), 0) FROM user_badges WHERE user_id = $1),
-                        (SELECT COALESCE(MAX(streak), 1) FROM user_badges WHERE user_id = $1)
-                     )
+                    `INSERT INTO user_badges (user_id, badge_id, earned_at)
+                     VALUES ($1, $2, NOW())
                      ON CONFLICT DO NOTHING`,
                     [req.user.userId, streakBadge.rows[0].id]
                 )
@@ -154,7 +132,7 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
         const io = req.app.get('io')
         if (io) {
             const userResult = await pool.query(
-                'SELECT COALESCE(MAX(xp), 0)::int AS xp FROM user_badges WHERE user_id = $1',
+                'SELECT COALESCE(xp, 0)::int AS xp FROM users WHERE id = $1',
                 [req.user.userId]
             )
             io.to('leaderboard').emit('rank-update', {

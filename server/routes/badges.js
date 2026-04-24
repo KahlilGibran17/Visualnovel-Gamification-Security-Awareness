@@ -41,14 +41,8 @@ router.post('/postBadgeUser', requireAuth, async (req, res) => {
 
         // 2. Insert idempotent (aman dari request ganda/race condition)
         const result = await pool.query(
-            `INSERT INTO user_badges (user_id, badge_id, xp, streak, earned_at)
-             VALUES (
-                $1,
-                $2,
-                (SELECT COALESCE(MAX(xp), 0) FROM user_badges WHERE user_id = $1),
-                (SELECT COALESCE(MAX(streak), 1) FROM user_badges WHERE user_id = $1),
-                NOW()
-             )
+            `INSERT INTO user_badges (user_id, badge_id, earned_at)
+             VALUES ($1, $2, NOW())
              ON CONFLICT (user_id, badge_id) DO NOTHING
              RETURNING *`,
             [user_id, badge_id]

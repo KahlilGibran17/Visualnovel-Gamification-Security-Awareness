@@ -14,15 +14,10 @@ router.get('/me', requireAuth, async (req, res) => {
             `SELECT
                 u.*,
                 r.name as role,
-                COALESCE(ub_stats.xp, 0)::int as xp,
-                COALESCE(ub_stats.streak, 1)::int as streak
+                COALESCE(u.xp, 0)::int as xp,
+                COALESCE(u.streak, 1)::int as streak
              FROM users u
              JOIN roles r ON u.role_id = r.id
-             LEFT JOIN (
-                SELECT user_id, MAX(xp) AS xp, MAX(streak) AS streak
-                FROM user_badges
-                GROUP BY user_id
-             ) ub_stats ON ub_stats.user_id = u.id
              WHERE u.id = $1`,
             [req.user.userId]
         )
@@ -85,20 +80,15 @@ router.get('/admin', requireAuth, requireRole('admin', 'manager'), async (req, r
                 u.display_name,
                 u.department,
                 u.position,
-                COALESCE(ub_stats.xp, 0)::int as xp,
-                COALESCE(ub_stats.streak, 1)::int as streak,
+                     COALESCE(u.xp, 0)::int as xp,
+                     COALESCE(u.streak, 1)::int as streak,
                 r.name as role,
                 COUNT(cp.id) FILTER (WHERE cp.completed) as chapters_completed
              FROM users u
              JOIN roles r ON u.role_id = r.id
              LEFT JOIN chapter_progress cp ON cp.user_id = u.id
-             LEFT JOIN (
-                SELECT user_id, MAX(xp) AS xp, MAX(streak) AS streak
-                FROM user_badges
-                GROUP BY user_id
-             ) ub_stats ON ub_stats.user_id = u.id
-             GROUP BY u.id, r.name, ub_stats.xp, ub_stats.streak
-             ORDER BY COALESCE(ub_stats.xp, 0) DESC`
+                 GROUP BY u.id, r.name
+                 ORDER BY COALESCE(u.xp, 0) DESC`
         )
         res.json(result.rows)
     } catch (err) {
