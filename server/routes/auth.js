@@ -52,12 +52,51 @@ router.post('/login', async (req, res) => {
 
     try {
         // ══════════════════════════════════════════════════════════════════════
-        // MODE SUNFISH — diaktifkan jika SUNFISH_AUTH_URL diisi di .env
+        // 1. CEK LOKAL TERLEBIH DAHULU
+        // ══════════════════════════════════════════════════════════════════════
+        const localUserResult = await pool.query(
+            `SELECT u.*, r.name as role FROM users u
+             JOIN roles r ON u.role_id = r.id
+             WHERE u.nik = $1`,
+            [nik]
+        )
+
+        if (localUserResult.rows.length > 0) {
+            const user = localUserResult.rows[0]
+            
+            // Jika user punya password_hash (bukan placeholder dari Sunfish), 
+            // kita coba autentikasi lokal dulu.
+            // Placeholder Sunfish biasanya diawali dengan '$2a$12$' dan sangat panjang/acak.
+            // Tapi yang lebih pasti: jika bcrypt.compare berhasil, berarti ini user lokal yang valid.
+            const isMatch = await bcrypt.compare(password, user.password_hash)
+            
+            if (isMatch) {
+                console.log(`[Auth] Local login successful for: ${nik}`)
+                const streak = await updateLoginMeta(user.id, user.streak || 0, user.last_login)
+                const badgesRes = await pool.query(
+                    `SELECT b.badge_key FROM user_badges ub JOIN badges b ON ub.badge_id = b.id WHERE ub.user_id = $1`,
+                    [user.id]
+                )
+
+                const token = jwt.sign(
+                    { userId: user.id, nik: user.nik, role: user.role },
+                    SECRET,
+                    { expiresIn: '7d' }
+                )
+
+                return res.json({
+                    token,
+                    user: buildUserPayload(user, badgesRes.rows.map(b => b.badge_key), streak),
+                })
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // 2. MODE SUNFISH — jika lokal tidak cocok dan Sunfish aktif
         // ══════════════════════════════════════════════════════════════════════
         if (isSunfishEnabled()) {
             console.log(`[Auth] Attempting Sunfish login for NPK: ${nik}`)
 
-            // ── STEP 1: Validasi login ke Sunfish ──────────────────────────
             let authResult
             try {
                 authResult = await validateLogin(nik, password)
@@ -73,23 +112,14 @@ router.post('/login', async (req, res) => {
 
             console.log(`[Auth] Sunfish login successful for NPK: ${nik}`)
 
-            // ── STEP 2: Ambil data karyawan dari Sunfish ───────────────────
             const employeeData = await fetchEmployee(nik)
             const sunfishName  = employeeData?.name       || nik
             const sunfishDept  = employeeData?.department || 'Umum'
             const sunfishPos   = employeeData?.position   || 'Karyawan'
 
-            // ── Cari / buat user di database lokal ────────────────────────
             let userRow
-            const existing = await pool.query(
-                `SELECT u.*, r.name as role FROM users u
-                 JOIN roles r ON u.role_id = r.id
-                 WHERE u.nik = $1`,
-                [nik]
-            )
-
-            if (existing.rows.length > 0) {
-                userRow = existing.rows[0]
+            if (localUserResult.rows.length > 0) {
+                userRow = localUserResult.rows[0]
                 await pool.query(
                     `UPDATE users SET name = $1, department = $2, position = $3 WHERE nik = $4`,
                     [sunfishName, sunfishDept, sunfishPos, nik]
@@ -132,48 +162,8 @@ router.post('/login', async (req, res) => {
             })
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        // MODE LOKAL — fallback jika Sunfish tidak dikonfigurasi
-        // ══════════════════════════════════════════════════════════════════════
-        console.log(`[Auth] Attempting local login for NPK: ${nik}`)
-
-        const result = await pool.query(
-            `SELECT u.*, r.name as role FROM users u
-             JOIN roles r ON u.role_id = r.id
-             WHERE u.nik = $1`,
-            [nik]
-        )
-
-        if (result.rows.length === 0) {
-            console.warn(`[Auth] Local login failed: NPK ${nik} not found`)
-            return res.status(401).json({ message: 'NPK atau kata sandi salah' })
-        }
-
-        const user  = result.rows[0]
-        const match = await bcrypt.compare(password, user.password_hash)
-        if (!match) {
-            console.warn(`[Auth] Local login failed: Password mismatch for NPK ${nik}`)
-            return res.status(401).json({ message: 'NPK atau kata sandi salah' })
-        }
-
-        console.log(`[Auth] Local login successful for NPK: ${nik}`)
-
-        const streak = await updateLoginMeta(user.id, user.streak || 0, user.last_login)
-        const badgesRes = await pool.query(
-            `SELECT b.badge_key FROM user_badges ub JOIN badges b ON ub.badge_id = b.id WHERE ub.user_id = $1`,
-            [user.id]
-        )
-
-        const token = jwt.sign(
-            { userId: user.id, nik: user.nik, role: user.role },
-            SECRET,
-            { expiresIn: '7d' }
-        )
-
-        return res.json({
-            token,
-            user: buildUserPayload(user, badgesRes.rows.map(b => b.badge_key), streak),
-        })
+        // Jika Sunfish tidak aktif dan login lokal gagal
+        return res.status(401).json({ message: 'NPK atau kata sandi salah' })
 
     } catch (err) {
         console.error('[Auth] Unexpected login error:', err)
