@@ -7,6 +7,7 @@ import AvatarDisplay from '../../components/AvatarDisplay.jsx'
 import toast from '../../utils/toast.js'
 import axios from 'axios'
 import { exportToExcel } from '../../utils/exportExcel.js'
+import { exportToPdf } from '../../utils/exportPdf.js'
 
 const normalizeLeaderboardRows = (rows) => {
     if (!Array.isArray(rows)) return []
@@ -105,6 +106,8 @@ export default function AdminReportsPage() {
     const handleExport = (type) => {
         if (type === 'Excel') {
             exportToExcel(leaderboardRows, 'Compliance_Report');
+        } else if (type === 'PDF') {
+            exportToPdf(leaderboardRows, 'Compliance_Report');
         } else {
             toast.success(`Exporting ${type} report... (Demo mode — connect backend for real export)`)
         }
@@ -121,7 +124,7 @@ export default function AdminReportsPage() {
                     </div>
                     <div className="md:ml-auto flex gap-2">
                         <button id="export-excel-btn" onClick={() => handleExport('Excel')}
-                            className="btn-secondary text-sm flex items-center gap-2">
+                            className="btn-secondary text-sm flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
                             <Table className="w-4 h-4" /> Export Excel
                         </button>
                         <button id="export-pdf-btn" onClick={() => handleExport('PDF')}

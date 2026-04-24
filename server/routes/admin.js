@@ -46,6 +46,98 @@ router.get('/overview', requireAuth, requireRole('admin', 'manager'), async (req
     }
 })
 
+// GET /api/admin/recent-activity
+router.get('/recent-activity', requireAuth, requireRole('admin', 'manager'), async (req, res) => {
+    const parsedLimit = Number(req.query.limit)
+    const limit = Number.isInteger(parsedLimit)
+        ? Math.min(Math.max(parsedLimit, 1), 50)
+        : 8
+
+    try {
+        const result = await pool.query(
+            `SELECT
+                ROW_NUMBER() OVER (ORDER BY activity.created_at DESC)::int AS id,
+                activity.type,
+                activity.icon,
+                activity.user_name AS "userName",
+                activity.action,
+                activity.created_at AS "createdAt"
+             FROM (
+                SELECT
+                    cp.completed_at AS created_at,
+                    'chapter'::text AS type,
+                    CASE
+                        WHEN cp.ending = 'good' THEN '🏆'
+                        WHEN cp.ending = 'bad' THEN '⚠️'
+                        ELSE '✅'
+                    END AS icon,
+                    COALESCE(u.display_name, u.name, 'Unknown User') AS user_name,
+                    CASE
+                        WHEN cp.ending = 'good' THEN 'Completed chapter ' || cp.chapter_id || ' with good ending'
+                        WHEN cp.ending = 'bad' THEN 'Completed chapter ' || cp.chapter_id || ' (bad ending)'
+                        ELSE 'Completed chapter ' || cp.chapter_id
+                    END AS action
+                FROM chapter_progress cp
+                JOIN users u ON u.id = cp.user_id
+                WHERE cp.completed = TRUE
+                  AND cp.completed_at IS NOT NULL
+
+                UNION ALL
+
+                SELECT
+                    ep.completed_at AS created_at,
+                    'elearning'::text AS type,
+                    '🎓'::text AS icon,
+                    COALESCE(u.display_name, u.name, 'Unknown User') AS user_name,
+                    'Completed e-learning: ' || COALESCE(el.title, 'Lesson ' || ep.lesson_id::text) AS action
+                FROM elearning_progress ep
+                JOIN users u ON u.id = ep.user_id
+                LEFT JOIN elearning_lessons el ON el.id = ep.lesson_id
+                WHERE ep.completed = TRUE
+                  AND ep.completed_at IS NOT NULL
+
+                UNION ALL
+
+                SELECT
+                    ub.earned_at AS created_at,
+                    'badge'::text AS type,
+                    COALESCE(b.icon, '🏅') AS icon,
+                    COALESCE(u.display_name, u.name, 'Unknown User') AS user_name,
+                    'Earned badge: ' || COALESCE(b.name, 'Unknown badge') AS action
+                FROM user_badges ub
+                JOIN users u ON u.id = ub.user_id
+                JOIN badges b ON b.id = ub.badge_id
+                WHERE ub.badge_id IS NOT NULL
+                  AND ub.earned_at IS NOT NULL
+
+                UNION ALL
+
+                SELECT
+                    n.created_at AS created_at,
+                    'broadcast'::text AS type,
+                    '📣'::text AS icon,
+                    COALESCE(creator.display_name, creator.name, 'Admin') AS user_name,
+                    'Broadcast: ' ||
+                        CASE
+                            WHEN LENGTH(COALESCE(n.message, '')) > 100 THEN LEFT(n.message, 100) || '...'
+                            ELSE COALESCE(n.message, '')
+                        END AS action
+                FROM notifications n
+                LEFT JOIN users creator ON creator.id = n.created_by
+                WHERE n.created_at IS NOT NULL
+             ) activity
+             ORDER BY activity.created_at DESC
+             LIMIT $1`,
+            [limit]
+        )
+
+        res.json(result.rows)
+    } catch (err) {
+        console.error('GET /api/admin/recent-activity error:', err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
 // POST /api/admin/broadcast
 router.post('/broadcast', requireAuth, requireRole('admin'), async (req, res) => {
     const { message, target = 'all' } = req.body
@@ -57,6 +149,10 @@ router.post('/broadcast', requireAuth, requireRole('admin'), async (req, res) =>
         const io = req.app.get('io')
         if (io) {
             io.emit('notification', { message, target })
+            io.to('admin-activity').emit('admin-activity-updated', {
+                source: 'broadcast',
+                at: new Date().toISOString(),
+            })
         }
         res.json({ message: 'Notification sent!' })
     } catch (err) {

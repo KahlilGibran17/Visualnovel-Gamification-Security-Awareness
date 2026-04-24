@@ -92,6 +92,7 @@ export default function LoginPage() {
             toast.success(`Welcome back, ${result.user.name.split(' ')[0]}! 🎮`)
             if (!result.user.setupDone) navigate('/setup')
             else if (result.user.role === 'admin') navigate('/admin')
+            else if (result.user.role === 'super-admin') navigate('/super-admin')
             else navigate('/dashboard')
         } else {
             setError(result.error || 'Login failed. Please try again.')
@@ -107,12 +108,12 @@ export default function LoginPage() {
         setForgotSent(true)
     }
 
-    const demoCredentials = [
-        { nik: '10001', pass: 'password123', role: 'Employee' },
-        { nik: '10002', pass: 'password123', role: 'Manager' },
-        { nik: 'admin001', pass: 'admin123',  role: 'Admin' },
-        { nik: '10003', pass: 'password123', role: 'New Employee' },
-    ]
+    // const demoCredentials = [
+    //     { nik: '10001', pass: 'password123', role: 'Employee' },
+    //     { nik: '10002', pass: 'password123', role: 'Manager' },
+    //     { nik: 'admin001', pass: 'admin123',  role: 'Admin' },
+    //     { nik: '10003', pass: 'password123', role: 'New Employee' },
+    // ]
 
     return (
         <div className="min-h-screen relative overflow-hidden bg-dark flex items-center justify-center p-4">
@@ -458,7 +459,7 @@ export default function LoginPage() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.8 }}
                 >
-                    <p className="text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">🎮 Demo Credentials</p>
+                    {/* <p className="text-xs text-white/40 font-semibold uppercase tracking-wider mb-2">🎮 Demo Credentials</p>
                     <div className="grid grid-cols-2 gap-2">
                         {demoCredentials.map(c => (
                             <button
@@ -471,7 +472,7 @@ export default function LoginPage() {
                                 <p className="text-white/50">Pass: {c.pass}</p>
                             </button>
                         ))}
-                    </div>
+                    </div> */}
                 </motion.div>
 
                 <p className="text-center text-white/20 text-xs mt-4">

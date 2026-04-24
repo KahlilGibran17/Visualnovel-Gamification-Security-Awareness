@@ -1,10 +1,12 @@
 import { useGame } from '../contexts/GameContext.jsx'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation} from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useAudio } from '../contexts/AudioContext.jsx'
-import { Trophy, BookOpen, User, Home, ShieldAlert, LogOut, GraduationCap, Music2, Volume2, VolumeX, JapaneseYenIcon, BookCheck } from 'lucide-react'
+import { Trophy, BookOpen, User, Home, ShieldAlert, LogOut, GraduationCap, Music2, Volume2, VolumeX, JapaneseYenIcon, BookCheck, User2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import AvatarDisplay from './AvatarDisplay.jsx'
+import { ChevronDown as ChevronDownIcon } from 'lucide-react';
 
 const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: Home },
@@ -21,6 +23,11 @@ const adminItems = [
     { path: '/admin/reports', label: 'Reports', icon: BookCheck },
     { path: '/admin/elearning', label: 'E-Learning Management', icon: GraduationCap }
 
+]
+
+const superAdminItems = [
+    {path: '/super-admin', label: 'Super Admin Panel', icon: ShieldAlert},
+    {path: '/super-admin/add-admin', label: 'Add Admin', icon: User2},
 ]
 
 function SidebarXPBar({ xp, nextLevel }) {
@@ -48,8 +55,9 @@ function SidebarXPBar({ xp, nextLevel }) {
     )
 }
 export default function Layout({ children }) {
-    const { user, logout } = useAuth()
-    const { getLevelFromXP, getNextLevel, getUserRank } = useGame()
+    const { user, logout } = useAuth();
+    const [isAdminOpen, setIsAdminOpen] = useState(true);
+    const { getLevelFromXP, getNextLevel, getUserRank } = useGame();
     const {
         bgmEnabled,
         setBgmEnabled,
@@ -61,9 +69,9 @@ export default function Layout({ children }) {
         setSfxVolume,
         unlockAudio,
         playSfx,
-    } = useAudio()
-    const navigate = useNavigate()
-    const location = useLocation()
+    } = useAudio();
+    const navigate = useNavigate();
+    const location = useLocation();
 
     const currentXp = user?.xp || 0
     const level = getLevelFromXP(currentXp)
@@ -122,12 +130,50 @@ export default function Layout({ children }) {
                             <span>{item.label}</span>
                         </button>
                     ))}
-
                     {(user?.role === 'admin' || user?.role === 'manager') && (
                         <>
                             <div className="my-3 border-t border-white/10" />
                             <p className="text-xs text-white/30 px-4 mb-1 uppercase tracking-wider">Admin</p>
-                            {adminItems.map(item => (
+
+                            {/* Admin Panel sebagai toggle */}
+                            <button
+                                onClick={() => {
+                                    handleNavigate('/admin')
+                                    setIsAdminOpen(prev => !prev)
+                                }}
+                                className={`w-full text-left ${isActive('/admin') ? 'nav-item-active' : 'nav-item'}`}
+                            >
+                                <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+                                <span className="flex-1">Admin Panel</span>
+                                <ChevronDownIcon
+                                    className="w-4 h-4 flex-shrink-0 transition-transform duration-200"
+                                    style={{ transform: isAdminOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+                                />
+                            </button>
+
+                            {/* Sub-items */}
+                            {isAdminOpen && (
+                                <div className="ml-3 pl-3 border-l border-white/10 space-y-1 mt-1">
+                                    {adminItems.slice(1).map(item => (
+                                        <button
+                                            key={item.path}
+                                            onClick={() => handleNavigate(item.path)}
+                                            className={`w-full text-left ${isActive(item.path) ? 'nav-item-active' : 'nav-item'}`}
+                                        >
+                                            <item.icon className="w-5 h-5 flex-shrink-0" />
+                                            <span>{item.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {(user?.role === 'super-admin') && (
+                        <>
+                            <div className="my-3 border-t border-white/10" />
+                            <p className="text-xs text-white/30 px-4 mb-1 uppercase tracking-wider">Super Admin</p>
+                            {superAdminItems.map(item => (
                                 <button
                                     key={item.path}
                                     onClick={() => handleNavigate(item.path)}

@@ -161,6 +161,12 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
                 userId: req.user.userId,
                 xp: userResult.rows[0]?.xp,
             })
+            io.to('admin-activity').emit('admin-activity-updated', {
+                source: 'chapter-progress',
+                userId: req.user.userId,
+                chapterId,
+                at: new Date().toISOString(),
+            })
         }
 
         res.json({ message: 'Chapter completed', xpAwarded: xpEarned })

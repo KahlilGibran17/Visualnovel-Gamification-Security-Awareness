@@ -28,8 +28,6 @@ const EMPLOYEES = [
 const ROLE_IDS = { employee: 1, manager: 2, admin: 3 }
 
 async function seed() {
-    console.log('🌱 Starting seed...')
-
     for (const emp of EMPLOYEES) {
         const hash = await bcrypt.hash(emp.pass, 10)
         const roleId = ROLE_IDS[emp.role || 'employee']

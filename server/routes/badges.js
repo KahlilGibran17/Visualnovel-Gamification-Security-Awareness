@@ -58,6 +58,16 @@ router.post('/postBadgeUser', requireAuth, async (req, res) => {
             return res.json({ message: 'Badge already awarded', alreadyEarned: true })
         }
 
+        const io = req.app.get('io')
+        if (io) {
+            io.to('admin-activity').emit('admin-activity-updated', {
+                source: 'badge-earned',
+                userId: user_id,
+                badgeKey: badge_key,
+                at: new Date().toISOString(),
+            })
+        }
+
         res.json({ message: 'Badge awarded successfully', userBadge: result.rows[0] })
     } catch (err) {
         console.error(err)

@@ -455,6 +455,17 @@ router.post('/lessons/:id/complete', requireAuth, async (req, res) => {
         )
 
         await client.query('COMMIT')
+
+        const io = req.app.get('io')
+        if (io) {
+            io.to('admin-activity').emit('admin-activity-updated', {
+                source: 'elearning-complete',
+                userId,
+                lessonId,
+                at: new Date().toISOString(),
+            })
+        }
+
         return res.json({ xpAwarded: totalXp, chapterCompleted })
     } catch (err) {
         try {

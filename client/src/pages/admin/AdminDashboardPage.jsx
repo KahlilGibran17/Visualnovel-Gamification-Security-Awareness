@@ -1,19 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Users, BookOpen, BarChart2, Bell, TrendingUp, AlertCircle, CheckCircle, Clock, PlusCircle } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
 import axios from 'axios'
+import { io } from 'socket.io-client'
 
 const DEPT_COLORS = ['#60a5fa', '#a78bfa', '#f97316', '#22c55e', '#ec4899', '#FFD60A']
-
-const RECENT_ACTIVITY = [
-    { user: 'Ahmad Fauzi', action: 'Completed Chapter 6 — Cyber Hero badge earned', time: '2 min ago', icon: '🏆' },
-    { user: 'Budi Santoso', action: 'Completed Chapter 4 with perfect score', time: '15 min ago', icon: '💎' },
-    { user: 'Maya Sari', action: 'Moved up to Guardian level', time: '1 hour ago', icon: '⬆️' },
-    { user: 'Dewi Kusuma', action: 'First login! Character setup complete', time: '2 hours ago', icon: '👋' },
-    { user: 'Riko Pratama', action: 'Chapter 3 — Bad Ending (retrying)', time: '3 hours ago', icon: '⚠️' },
-]
 
 function KpiCard({ icon: Icon, label, value, sub, color, delay }) {
     return (
@@ -54,12 +47,68 @@ const normalizeDeptStats = (rows) => {
     }))
 }
 
+const normalizeRecentActivityRows = (rows) => {
+    if (!Array.isArray(rows)) return []
+
+    return rows.map((row, index) => ({
+        id: Number(row?.id) || index + 1,
+        userName: row?.userName || row?.user_name || 'Unknown User',
+        action: row?.action || 'Activity updated',
+        icon: typeof row?.icon === 'string' && row.icon.trim() ? row.icon : '📝',
+        createdAt: row?.createdAt || row?.created_at || null,
+    }))
+}
+
+const formatRelativeTime = (dateValue) => {
+    if (!dateValue) return 'just now'
+
+    const date = new Date(dateValue)
+    if (Number.isNaN(date.getTime())) return 'just now'
+
+    const diffSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
+
+    if (diffSeconds < 60) return 'just now'
+
+    const diffMinutes = Math.floor(diffSeconds / 60)
+    if (diffMinutes < 60) return `${diffMinutes} min ago`
+
+    const diffHours = Math.floor(diffMinutes / 60)
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+
+    return date.toLocaleDateString()
+}
+
 export default function AdminDashboardPage() {
     const navigate = useNavigate()
     const [leaderboardRows, setLeaderboardRows] = useState([])
     const [deptStats, setDeptStats] = useState([])
+    const [recentActivity, setRecentActivity] = useState([])
     const [totalChapters, setTotalChapters] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [loadingActivity, setLoadingActivity] = useState(true)
+
+    const loadRecentActivity = useCallback(async (showLoading = false) => {
+        if (showLoading) {
+            setLoadingActivity(true)
+        }
+
+        try {
+            const res = await axios.get('/api/admin/recent-activity', {
+                params: { limit: 8 },
+            })
+            setRecentActivity(normalizeRecentActivityRows(res.data))
+        } catch (err) {
+            console.error('Failed to load recent activity:', err)
+            setRecentActivity([])
+        } finally {
+            if (showLoading) {
+                setLoadingActivity(false)
+            }
+        }
+    }, [])
 
     useEffect(() => {
         let isMounted = true
@@ -100,6 +149,35 @@ export default function AdminDashboardPage() {
             isMounted = false
         }
     }, [])
+
+    useEffect(() => {
+        loadRecentActivity(true)
+    }, [loadRecentActivity])
+
+    useEffect(() => {
+        const socket = io('/', {
+            path: '/socket.io',
+            transports: ['websocket', 'polling'],
+        })
+
+        socket.on('connect', () => {
+            socket.emit('join-admin-activity')
+        })
+
+        socket.on('admin-activity-updated', () => {
+            loadRecentActivity(false)
+        })
+
+        const intervalId = setInterval(() => {
+            loadRecentActivity(false)
+        }, 30000)
+
+        return () => {
+            clearInterval(intervalId)
+            socket.off('admin-activity-updated')
+            socket.disconnect()
+        }
+    }, [loadRecentActivity])
 
     const isAllChaptersDone = (chaptersCompleted) => (
         totalChapters > 0 && chaptersCompleted >= totalChapters
@@ -239,15 +317,23 @@ export default function AdminDashboardPage() {
                             <Bell className="w-4 h-4 text-accent" /> Recent Activity
                         </h2>
                         <div className="space-y-3">
-                            {RECENT_ACTIVITY.map((a, i) => (
-                                <div key={i} className="flex items-start gap-3">
+                            {loadingActivity && (
+                                <p className="text-white/40 text-sm">Loading recent activity...</p>
+                            )}
+
+                            {!loadingActivity && recentActivity.length === 0 && (
+                                <p className="text-white/40 text-sm">No recent activity yet.</p>
+                            )}
+
+                            {!loadingActivity && recentActivity.map((a, i) => (
+                                <div key={`${a.id}-${a.createdAt || i}`} className="flex items-start gap-3">
                                     <span className="text-xl flex-shrink-0">{a.icon}</span>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-white/80 text-sm font-medium">{a.user}</p>
+                                        <p className="text-white/80 text-sm font-medium">{a.userName}</p>
                                         <p className="text-white/50 text-xs">{a.action}</p>
                                     </div>
                                     <span className="text-white/30 text-xs flex-shrink-0 flex items-center gap-1">
-                                        <Clock className="w-3 h-3" /> {a.time}
+                                        <Clock className="w-3 h-3" /> {formatRelativeTime(a.createdAt)}
                                     </span>
                                 </div>
                             ))}
