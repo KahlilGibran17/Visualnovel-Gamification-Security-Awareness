@@ -72,6 +72,7 @@ export default function Layout({ children }) {
     } = useAudio();
     const navigate = useNavigate();
     const location = useLocation();
+    const isSuperAdmin = user?.role === 'super-admin'
 
     const currentXp = user?.xp || 0
     const level = getLevelFromXP(currentXp)
@@ -115,12 +116,12 @@ export default function Layout({ children }) {
                             </div>
                         </div>
                     </div>
-                    <SidebarXPBar xp={currentXp} nextLevel={nextLevel} />
+                    {!isSuperAdmin && <SidebarXPBar xp={currentXp} nextLevel={nextLevel} />}
                 </div>
 
                 {/* Nav */}
                 <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                    {navItems.map(item => (
+                    {!isSuperAdmin && navItems.map(item => (
                         <button
                             key={item.path}
                             onClick={() => handleNavigate(item.path)}
@@ -130,7 +131,7 @@ export default function Layout({ children }) {
                             <span>{item.label}</span>
                         </button>
                     ))}
-                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                    {!isSuperAdmin && (user?.role === 'admin' || user?.role === 'manager') && (
                         <>
                             <div className="my-3 border-t border-white/10" />
                             <p className="text-xs text-white/30 px-4 mb-1 uppercase tracking-wider">Admin</p>
@@ -188,15 +189,17 @@ export default function Layout({ children }) {
                 </nav>
 
                 {/* Rank widget */}
-                <div className="p-4 border-t border-white/10">
-                    <div className="glass-card p-3 flex items-center gap-3">
-                        <Trophy className="w-5 h-5 text-accent flex-shrink-0" />
-                        <div>
-                            <p className="text-xs text-white/40">Your Rank</p>
-                            <p className="font-bold text-accent">#{getUserRank() || '—'}</p>
+                {!isSuperAdmin && (
+                    <div className="p-4 border-t border-white/10">
+                        <div className="glass-card p-3 flex items-center gap-3">
+                            <Trophy className="w-5 h-5 text-accent flex-shrink-0" />
+                            <div>
+                                <p className="text-xs text-white/40">Your Rank</p>
+                                <p className="font-bold text-accent">#{getUserRank() || '—'}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Audio controls */}
                 <div className="p-4 border-t border-white/10">

@@ -16,8 +16,13 @@ export default function ProtectedRoute({ children, roles }) {
     }
 
     if (!user) return <Navigate to="/login" replace />
-    if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />
-    if (!user.setupDone && window.location.pathname !== '/setup') {
+
+    if (roles && !roles.includes(user.role)) {
+        const fallbackPath = user.role === 'super-admin' ? '/super-admin' : '/dashboard'
+        return <Navigate to={fallbackPath} replace />
+    }
+
+    if (!user.setupDone && user.role !== 'super-admin' && window.location.pathname !== '/setup') {
         return <Navigate to="/setup" replace />
     }
 

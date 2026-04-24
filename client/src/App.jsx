@@ -20,6 +20,8 @@ import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
 import AdminContentPage from './pages/admin/AdminContentPage.jsx'
 import AdminReportsPage from './pages/admin/AdminReportsPage.jsx'
 import AdminElearningPage from './pages/admin/AdminElearningPage.jsx'
+import SuperAdminDashboardPage from './pages/super-admin/SuperAdminDashboardPage.jsx'
+import SuperAdminAdminManagePage from './pages/super-admin/SuperAdmin-AdminManagePage.jsx'
 
 export default function App() {
     return (
@@ -103,6 +105,18 @@ export default function App() {
                             <Route path="admin/elearning" element={
                                 <ProtectedRoute roles={['admin', 'manager']}>
                                     <AdminElearningPage />
+                                </ProtectedRoute>
+                            } />
+
+                            {/* Super Admin Routes */}
+                            <Route path="/super-admin" element={
+                                <ProtectedRoute roles={['super-admin']}>
+                                    <SuperAdminDashboardPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/super-admin/add-admin" element={
+                                <ProtectedRoute roles={['super-admin']}>
+                                    <SuperAdminAdminManagePage />
                                 </ProtectedRoute>
                             } />
                             

@@ -25,7 +25,7 @@ app.use('/api/leaderboard', require('./routes/leaderboard'))
 app.use('/api/admin', require('./routes/admin'))
 app.use('/api/elearning', require('./routes/elearning'))
 app.use('/api/badges', require('./routes/badges'))
-// app.use('/api/superAdmin', require('./routes/superAdmin'))
+app.use('/api/superAdmin', require('./routes/superAdmin'))
 
 
 // Health
