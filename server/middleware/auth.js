@@ -8,7 +8,12 @@ function requireAuth(req, res, next) {
     }
     try {
         const payload = jwt.verify(auth.slice(7), SECRET)
-        req.user = payload
+        const normalizedUserId = payload.userId ?? payload.id
+        req.user = {
+            ...payload,
+            userId: normalizedUserId,
+            id: normalizedUserId,
+        }
         next()
     } catch {
         res.status(401).json({ message: 'Invalid or expired token' })

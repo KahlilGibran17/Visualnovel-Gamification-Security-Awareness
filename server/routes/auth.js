@@ -55,7 +55,12 @@ router.post('/login', async (req, res) => {
         // 1. CEK LOKAL TERLEBIH DAHULU
         // ══════════════════════════════════════════════════════════════════════
         const localUserResult = await pool.query(
-            `SELECT u.*, r.name as role FROM users u
+            `SELECT 
+                u.*, 
+                r.name as role,
+                COALESCE(u.xp, 0)::int as xp,
+                COALESCE(u.streak, 1)::int as streak
+             FROM users u
              JOIN roles r ON u.role_id = r.id
              WHERE u.nik = $1`,
             [nik]
@@ -66,8 +71,6 @@ router.post('/login', async (req, res) => {
             
             // Jika user punya password_hash (bukan placeholder dari Sunfish), 
             // kita coba autentikasi lokal dulu.
-            // Placeholder Sunfish biasanya diawali dengan '$2a$12$' dan sangat panjang/acak.
-            // Tapi yang lebih pasti: jika bcrypt.compare berhasil, berarti ini user lokal yang valid.
             const isMatch = await bcrypt.compare(password, user.password_hash)
             
             if (isMatch) {

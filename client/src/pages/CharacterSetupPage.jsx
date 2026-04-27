@@ -5,7 +5,7 @@ import { ShieldAlert, ChevronRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { AvatarPicker } from '../components/AvatarDisplay.jsx'
 import axios from 'axios'
-import toast from 'react-hot-toast'
+import toast from '../utils/toast.js'
 
 export default function CharacterSetupPage() {
     const { user, updateUser } = useAuth()

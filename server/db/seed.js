@@ -28,17 +28,20 @@ const EMPLOYEES = [
 const ROLE_IDS = { employee: 1, manager: 2, admin: 3 }
 
 async function seed() {
-    console.log('🌱 Starting seed...')
-
     for (const emp of EMPLOYEES) {
         const hash = await bcrypt.hash(emp.pass, 10)
         const roleId = ROLE_IDS[emp.role || 'employee']
 
         await pool.query(
-            `INSERT INTO users (nik, name, email, department, position, password_hash, role_id, xp, avatar_id, setup_done, display_name, streak, last_login)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, $2, 5, NOW())
-       ON CONFLICT (nik) DO UPDATE SET xp = $8, role_id = $7`,
-            [emp.nik, emp.name, emp.email, emp.dept, emp.pos, hash, roleId, emp.xp, emp.avatar]
+            `INSERT INTO users (nik, name, email, department, position, password_hash, role_id, avatar_id, setup_done, display_name, last_login, xp, streak)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $2, NOW(), $9, 5)
+       ON CONFLICT (nik) DO UPDATE
+       SET role_id = $7,
+           avatar_id = $8,
+           xp = $9,
+           streak = 5,
+           updated_at = NOW()`,
+            [emp.nik, emp.name, emp.email, emp.dept, emp.pos, hash, roleId, emp.avatar, emp.xp]
         )
         console.log(`  ✅ ${emp.name} (${emp.nik})`)
     }

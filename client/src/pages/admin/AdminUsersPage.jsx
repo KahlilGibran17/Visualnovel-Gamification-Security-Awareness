@@ -1,29 +1,48 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import axios from 'axios'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Search, RefreshCw, UserPlus, MoreVertical, Filter } from 'lucide-react'
+import { Upload, Search, UserPlus, RefreshCw } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext.jsx'
+import { useGame } from '../../contexts/GameContext.jsx'
 import Layout from '../../components/Layout.jsx'
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
-import toast from 'react-hot-toast'
+import toast from '../../utils/toast.js'
 
-const LEVEL_LABELS = ['', 'Rookie', 'Aware', 'Guardian', 'Expert', 'Cyber Hero']
+const normalizeUsersData = (rows) => {
+    if (!Array.isArray(rows)) return []
+    return rows.map((row, index) => ({
+        ...row,
+        id: row?.id || index + 1,
+        xp: Number(row?.xp) || 0,
+        level: Number(row?.level) || 1,
+        chapters_completed: Number(row?.chapters_completed) || 0,
+        avatar_id: Number(row?.avatar_id) || 1,
+    }))
+}
 
 export default function AdminUsersPage() {
+    const { levels } = useGame()
     const [search, setSearch] = useState('')
     const [deptFilter, setDeptFilter] = useState('All')
     const [showImport, setShowImport] = useState(false)
     const [dragging, setDragging] = useState(false)
     const [importFile, setImportFile] = useState(null)
     const [usersData, setUsersData] = useState([])
+    const [totalChapters, setTotalChapters] = useState(0)
     const [loading, setLoading] = useState(true)
     const fileRef = useRef()
 
     const fetchUsers = async () => {
         setLoading(true)
         try {
-            const res = await axios.get('/api/admin/users')
-            setUsersData(res.data)
+            const [usersRes, chaptersRes] = await Promise.all([
+                axios.get('/api/admin/users'),
+                axios.get('/api/progress/chapters/total')
+            ])
+            setUsersData(normalizeUsersData(usersRes.data))
+            setTotalChapters(chaptersRes.data?.total || 0)
         } catch (err) {
+            console.error('Failed to fetch employees', err)
             toast.error('Failed to fetch employees')
         } finally {
             setLoading(false)
@@ -34,21 +53,29 @@ export default function AdminUsersPage() {
         fetchUsers()
     }, [])
 
-    const depts = ['All', 'Engineering', 'IT', 'Marketing', 'HR', 'Finance', 'Operations']
+    const depts = useMemo(() => {
+        const uniqueDepts = Array.from(new Set(usersData.map(u => u.department).filter(Boolean)))
+        return ['All', ...uniqueDepts.sort()]
+    }, [usersData])
 
-    const filteredUsers = usersData.filter(u =>
-        (deptFilter === 'All' || u.department === deptFilter) &&
-        (search === '' || u.name.toLowerCase().includes(search.toLowerCase()) || u.nik.includes(search))
-    )
+    const LEVEL_LABELS = useMemo(() => {
+        const labels = {}
+        levels.forEach(l => { labels[l.level] = l.title })
+        return labels
+    }, [levels])
+
+    const filteredUsers = useMemo(() => {
+        return usersData.filter(u =>
+            (deptFilter === 'All' || u.department === deptFilter) &&
+            (search === '' || u.name.toLowerCase().includes(search.toLowerCase()) || u.nik.includes(search))
+        )
+    }, [deptFilter, usersData, search])
 
     const handleFileDrop = (e) => {
         e.preventDefault()
         setDragging(false)
-        const file = e.dataTransfer?.files?.[0] || e.target.files?.[0]
-        if (file) {
-            setImportFile(file)
-            toast.success(`File "${file.name}" ready to import!`)
-        }
+        const file = e.target.files?.[0] || e.dataTransfer?.files?.[0]
+        if (file) setImportFile(file)
     }
 
     const handleImport = () => {
@@ -66,15 +93,11 @@ export default function AdminUsersPage() {
                     initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
                     <div>
                         <h1 className="text-3xl font-bold font-display text-main">👥 User Management</h1>
-                        <p className="text-muted mt-1">{usersData.length} total employees</p>
+                        <p className="text-muted mt-1">{loading ? 'Loading...' : `${usersData.length} total employees`}</p>
                     </div>
                     <div className="md:ml-auto flex gap-2">
-                        <button
-                            id="bulk-import-btn"
-                            onClick={() => setShowImport(!showImport)}
-                            className="btn-secondary text-sm flex items-center gap-2"
-                        >
-                            <Upload className="w-4 h-4" /> Bulk Import CSV
+                        <button onClick={() => setShowImport(!showImport)} className="btn-secondary text-sm flex items-center gap-2">
+                            <Upload className="w-4 h-4" /> Bulk Import
                         </button>
                         <button className="btn-primary text-sm flex items-center gap-2">
                             <UserPlus className="w-4 h-4" /> Add Employee
@@ -92,8 +115,7 @@ export default function AdminUsersPage() {
                                 Upload a CSV or Excel file with columns: <span className="text-accent">NIK, Full Name, Department, Position, Email, Initial Password</span>
                             </p>
                             <div
-                                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${dragging ? 'border-accent bg-accent/10' : 'border-white/20 hover:border-white/40'
-                                    }`}
+                                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${dragging ? 'border-accent bg-accent/10' : 'border-card-border hover:border-accent/40'}`}
                                 onDragOver={e => { e.preventDefault(); setDragging(true) }}
                                 onDragLeave={() => setDragging(false)}
                                 onDrop={handleFileDrop}
@@ -108,14 +130,6 @@ export default function AdminUsersPage() {
                                 <button id="confirm-import-btn" onClick={handleImport} className="btn-primary flex-1">
                                     Import Employees
                                 </button>
-                            </div>
-                            {/* Sample CSV */}
-                            <div className="mt-4 bg-input-bg rounded-lg p-3">
-                                <p className="text-xs text-dim mb-1 font-semibold">Sample CSV format:</p>
-                                <code className="text-xs text-accent font-mono">
-                                    NIK,Full Name,Department,Position,Email,Initial Password<br />
-                                    10021,John Doe,Engineering,Junior Engineer,john.doe@akebono-brake.co.id,Welcome@2026
-                                </code>
                             </div>
                         </motion.div>
                     )}
@@ -136,8 +150,7 @@ export default function AdminUsersPage() {
                         {depts.map(d => (
                             <button key={d}
                                 onClick={() => setDeptFilter(d)}
-                                className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${deptFilter === d ? 'bg-primary text-white' : 'bg-card-bg text-muted hover:bg-input-bg'
-                                    }`}>
+                                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${deptFilter === d ? 'bg-primary text-white' : 'bg-card-bg text-muted hover:bg-input-bg'}`}>
                                 {d}
                             </button>
                         ))}
@@ -176,7 +189,7 @@ export default function AdminUsersPage() {
                                 ) : (
                                     filteredUsers.map((user, i) => (
                                         <motion.tr key={user.id}
-                                            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
+                                            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.02 }}>
                                             <td>
                                                 <div className="flex items-center gap-3">
                                                     <AvatarDisplay avatarId={user.avatar_id} size="sm" />
@@ -186,27 +199,33 @@ export default function AdminUsersPage() {
                                             <td className="text-muted font-mono">{user.nik}</td>
                                             <td>{user.department}</td>
                                             <td>
-                                                <span className="text-xs px-2 py-0.5 rounded-full bg-input-bg text-muted">
-                                                    Lv.{user.level || 1} {LEVEL_LABELS[user.level || 1]}
-                                                </span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-dim">Lv.{user.level}</span>
+                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-input-bg text-muted w-fit">
+                                                        {LEVEL_LABELS[user.level] || 'Rookie'}
+                                                    </span>
+                                                </div>
                                             </td>
-                                            <td className="font-bold text-accent">{user.xp?.toLocaleString() || 0}</td>
+                                            <td className="font-bold text-accent">{user.xp.toLocaleString()}</td>
                                             <td>
                                                 <div className="flex items-center gap-2">
                                                     <div className="flex gap-0.5">
-                                                        {[1, 2, 3, 4, 5, 6].map(n => (
-                                                            <div key={n} className={`w-2 h-4 rounded-sm ${n <= (user.chapters_completed || 0) ? 'bg-accent' : 'bg-input-bg'}`} />
-                                                        ))}
+                                                        {Array.from({ length: totalChapters || 6 }).map((_, idx) => {
+                                                            const ch = idx + 1
+                                                            return (
+                                                                <div key={ch} className={`w-2 h-4 rounded-sm ${ch <= user.chapters_completed ? 'bg-accent' : 'bg-input-bg'}`} />
+                                                            )
+                                                        })}
                                                     </div>
-                                                    <span className="text-xs text-dim">{user.chapters_completed || 0}/6</span>
+                                                    <span className="text-xs text-dim">{user.chapters_completed}/{totalChapters || 6}</span>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div className="flex gap-2">
-                                                    <button className="text-xs text-muted hover:text-main bg-input-bg hover:bg-card-bg px-2 py-1 rounded transition-colors">
-                                                        Reset PWD
+                                                    <button className="text-[10px] text-muted hover:text-main bg-input-bg hover:bg-card-border px-2 py-1 rounded transition-colors">
+                                                        Reset
                                                     </button>
-                                                    <button className="text-xs text-primary hover:text-red-300 bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded transition-colors">
+                                                    <button className="text-[10px] text-primary hover:text-accent bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded transition-colors">
                                                         Details
                                                     </button>
                                                 </div>
@@ -217,7 +236,7 @@ export default function AdminUsersPage() {
                             </tbody>
                         </table>
                     </div>
-                    <div className="p-4 border-t border-card-border text-xs text-dim flex justify-between items-center">
+                    <div className="p-4 border-t border-card-border text-[10px] text-dim flex justify-between items-center">
                         <div>Showing {filteredUsers.length} of {usersData.length} employees</div>
                         <button onClick={fetchUsers} className="flex items-center gap-1 hover:text-main transition-colors">
                             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Refresh Data

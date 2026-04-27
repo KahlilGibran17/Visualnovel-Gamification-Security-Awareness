@@ -30,6 +30,8 @@ app.use('/api/elearning', require('./routes/elearning'))
 app.use('/api/content', require('./routes/content'))
 app.use('/api/cms', require('./routes/cms'))
 app.use('/api/roadmap', require('./routes/roadmap'))
+app.use('/api/badges', require('./routes/badges'))
+app.use('/api/superAdmin', require('./routes/superAdmin'))
 
 
 // Health
@@ -44,6 +46,11 @@ io.on('connection', (socket) => {
     socket.on('join-leaderboard', () => {
         socket.join('leaderboard')
         console.log(`${socket.id} joined leaderboard room`)
+    })
+
+    socket.on('join-admin-activity', () => {
+        socket.join('admin-activity')
+        console.log(`${socket.id} joined admin activity room`)
     })
 
     socket.on('disconnect', () => {

@@ -57,7 +57,10 @@ router.post('/xp', requireAuth, async (req, res) => {
     const { amount, reason } = req.body
     try {
         await pool.query(
-            'UPDATE users SET xp = xp + $1 WHERE id = $2',
+            `UPDATE users
+             SET xp = COALESCE(xp, 0) + $1,
+                 updated_at = NOW()
+             WHERE id = $2`,
             [amount, req.user.userId]
         )
         res.json({ message: 'XP awarded', amount })
@@ -83,7 +86,13 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
         )
 
         // Award XP
-        await pool.query('UPDATE users SET xp = xp + $1 WHERE id = $2', [xpEarned, req.user.userId])
+        await pool.query(
+            `UPDATE users
+             SET xp = COALESCE(xp, 0) + $1,
+                 updated_at = NOW()
+             WHERE id = $2`,
+            [xpEarned, req.user.userId]
+        )
 
         // Check badges
         const badgeRule = BADGE_RULES[chapterId]
@@ -93,7 +102,9 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
                 const badge = await pool.query('SELECT id FROM badges WHERE badge_key = $1', [badgeRule.good])
                 if (badge.rows.length > 0) {
                     await pool.query(
-                        'INSERT INTO user_badges (user_id, badge_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                        `INSERT INTO user_badges (user_id, badge_id, earned_at)
+                         VALUES ($1, $2, NOW())
+                         ON CONFLICT DO NOTHING`,
                         [req.user.userId, badge.rows[0].id]
                     )
                 }
@@ -101,12 +112,17 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
         }
 
         // Check streak badge (7 days)
-        const streakResult = await pool.query('SELECT streak FROM users WHERE id = $1', [req.user.userId])
+        const streakResult = await pool.query(
+            'SELECT COALESCE(streak, 1)::int AS streak FROM users WHERE id = $1',
+            [req.user.userId]
+        )
         if (streakResult.rows[0]?.streak >= 7) {
             const streakBadge = await pool.query("SELECT id FROM badges WHERE badge_key = '7-day-streak'")
             if (streakBadge.rows.length > 0) {
                 await pool.query(
-                    'INSERT INTO user_badges (user_id, badge_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+                    `INSERT INTO user_badges (user_id, badge_id, earned_at)
+                     VALUES ($1, $2, NOW())
+                     ON CONFLICT DO NOTHING`,
                     [req.user.userId, streakBadge.rows[0].id]
                 )
             }
@@ -115,10 +131,19 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
         // Emit leaderboard update via socket
         const io = req.app.get('io')
         if (io) {
-            const userResult = await pool.query('SELECT xp FROM users WHERE id = $1', [req.user.userId])
+            const userResult = await pool.query(
+                'SELECT COALESCE(xp, 0)::int AS xp FROM users WHERE id = $1',
+                [req.user.userId]
+            )
             io.to('leaderboard').emit('rank-update', {
                 userId: req.user.userId,
                 xp: userResult.rows[0]?.xp,
+            })
+            io.to('admin-activity').emit('admin-activity-updated', {
+                source: 'chapter-progress',
+                userId: req.user.userId,
+                chapterId,
+                at: new Date().toISOString(),
             })
         }
 

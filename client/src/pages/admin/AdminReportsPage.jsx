@@ -1,31 +1,103 @@
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Download, FileText, Table, CheckCircle, XCircle } from 'lucide-react'
+import { FileText, Table, CheckCircle, XCircle } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
-import { DEMO_LEADERBOARD } from '../../contexts/GameContext.jsx'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
-import toast from 'react-hot-toast'
+import toast from '../../utils/toast.js'
+import axios from 'axios'
+import { exportToExcel } from '../../utils/exportExcel.js'
+import { exportToPdf } from '../../utils/exportPdf.js'
 
-const COMPLIANCE = DEMO_LEADERBOARD.map(u => ({
-    ...u,
-    allDone: u.chaptersCompleted === 6,
-}))
-
-const DEPT_SUMMARY = [
-    { dept: 'IT', complete: 2, total: 3, pct: 67 },
-    { dept: 'Engineering', complete: 3, total: 4, pct: 75 },
-    { dept: 'Marketing', complete: 1, total: 3, pct: 33 },
-    { dept: 'Finance', complete: 1, total: 4, pct: 25 },
-    { dept: 'HR', complete: 1, total: 3, pct: 33 },
-    { dept: 'Operations', complete: 0, total: 3, pct: 0 },
-]
+const normalizeLeaderboardRows = (rows) => {
+    if (!Array.isArray(rows)) return []
+    return rows.map((row, index) => ({
+        ...row,
+        id: Number(row?.id) || index + 1,
+        xp: Number(row?.xp) || 0,
+        chaptersCompleted: Number(row?.chaptersCompleted) || 0,
+        avatarId: Number(row?.avatarId) || 1,
+    }))
+}
 
 export default function AdminReportsPage() {
-    const totalComplete = COMPLIANCE.filter(u => u.allDone).length
-    const pct = Math.round((totalComplete / COMPLIANCE.length) * 100)
+    const [leaderboardRows, setLeaderboardRows] = useState([])
+    const [totalChapters, setTotalChapters] = useState(0)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        let isMounted = true
+        const loadComplianceData = async () => {
+            setLoading(true)
+            try {
+                const [leaderboardRes, chaptersRes] = await Promise.all([
+                    axios.get('/api/leaderboard', {
+                        params: { filter: 'all', dept: 'all', includeZeroXp: 'true' }
+                    }),
+                    axios.get('/api/progress/chapters/total'),
+                ])
+
+                if (isMounted) {
+                    setLeaderboardRows(normalizeLeaderboardRows(leaderboardRes.data))
+                    setTotalChapters(chaptersRes.data?.total || 0)
+                }
+            } catch (err) {
+                console.error('Failed to load compliance data:', err)
+                if (isMounted) {
+                    setLeaderboardRows([])
+                    setTotalChapters(0)
+                }
+            } finally {
+                if (isMounted) setLoading(false)
+            }
+        }
+        loadComplianceData()
+        return () => { isMounted = false }
+    }, [])
+
+    const complianceRows = useMemo(
+        () => leaderboardRows.map((user) => ({
+            ...user,
+            allDone: totalChapters > 0 && user.chaptersCompleted >= totalChapters,
+        })),
+        [leaderboardRows, totalChapters]
+    )
+
+    const departmentSummary = useMemo(() => {
+        const grouped = complianceRows.reduce((acc, user) => {
+            const dept = user.department || 'Unknown'
+            if (!acc[dept]) {
+                acc[dept] = { dept, complete: 0, total: 0 }
+            }
+            acc[dept].total += 1
+            if (user.allDone) acc[dept].complete += 1
+            return acc
+        }, {})
+
+        return Object.values(grouped)
+            .map((dept) => ({
+                ...dept,
+                pct: dept.total > 0 ? Math.round((dept.complete / dept.total) * 100) : 0,
+            }))
+            .sort((a, b) => b.pct - a.pct)
+    }, [complianceRows])
+
+    const totalComplete = complianceRows.filter(u => u.allDone).length
+    const pct = complianceRows.length > 0
+        ? Math.round((totalComplete / complianceRows.length) * 100)
+        : 0
+    const inProgressCount = complianceRows.filter(u => u.chaptersCompleted > 0 && !u.allDone).length
+    const notStartedCount = complianceRows.filter(u => u.chaptersCompleted === 0).length
+    const tableColumnCount = 5 + totalChapters
 
     const handleExport = (type) => {
-        toast.success(`Exporting ${type} report... (Demo mode — connect backend for real export)`)
+        if (type === 'Excel') {
+            exportToExcel(leaderboardRows, 'Compliance_Report');
+        } else if (type === 'PDF') {
+            exportToPdf(leaderboardRows, 'Compliance_Report');
+        } else {
+            toast.success(`Exporting ${type} report... (Demo mode — connect backend for real export)`)
+        }
     }
 
     return (
@@ -39,7 +111,7 @@ export default function AdminReportsPage() {
                     </div>
                     <div className="md:ml-auto flex gap-2">
                         <button id="export-excel-btn" onClick={() => handleExport('Excel')}
-                            className="btn-secondary text-sm flex items-center gap-2">
+                            className="btn-secondary text-sm flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
                             <Table className="w-4 h-4" /> Export Excel
                         </button>
                         <button id="export-pdf-btn" onClick={() => handleExport('PDF')}
@@ -52,10 +124,10 @@ export default function AdminReportsPage() {
                 {/* Summary cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                        { label: 'Completion Rate', value: `${pct}%`, color: '#22c55e', icon: '✅' },
-                        { label: 'All Chapters Done', value: totalComplete, color: '#60a5fa', icon: '🏆' },
-                        { label: 'In Progress', value: COMPLIANCE.filter(u => u.chaptersCompleted > 0 && !u.allDone).length, color: '#FFD60A', icon: '📚' },
-                        { label: 'Not Started', value: COMPLIANCE.filter(u => u.chaptersCompleted === 0).length, color: '#E63946', icon: '⚠️' },
+                        { label: 'Completion Rate', value: loading ? '...' : `${pct}%`, color: '#22c55e', icon: '✅' },
+                        { label: 'All Chapters Done', value: loading ? '...' : totalComplete, color: '#60a5fa', icon: '🏆' },
+                        { label: 'In Progress', value: loading ? '...' : inProgressCount, color: '#FFD60A', icon: '📚' },
+                        { label: 'Not Started', value: loading ? '...' : notStartedCount, color: '#E63946', icon: '⚠️' },
                     ].map((s, i) => (
                         <motion.div key={s.label} className="stat-widget text-center"
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
@@ -70,21 +142,27 @@ export default function AdminReportsPage() {
                 <motion.div className="glass-card p-5"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                     <h2 className="font-bold text-main mb-4">🏢 Department Completion Rate</h2>
-                    <ResponsiveContainer width="100%" height={180}>
-                        <BarChart data={DEPT_SUMMARY} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
-                            <XAxis dataKey="dept" stroke="var(--text-dim)" tick={{ fontSize: 12 }} />
-                            <YAxis stroke="var(--text-dim)" opacity={0.5} tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={v => `${v}%`} />
-                            <Tooltip
-                                contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '8px', color: 'var(--text-main)' }}
-                                formatter={(val) => [`${val}%`, 'Completion']}
-                            />
-                            <Bar dataKey="pct" radius={[4, 4, 0, 0]}>
-                                {DEPT_SUMMARY.map((entry, i) => (
-                                    <Cell key={i} fill={entry.pct >= 50 ? '#22c55e' : entry.pct > 0 ? '#FFD60A' : '#E63946'} opacity={0.8} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
+                    {loading ? (
+                        <p className="text-muted text-sm italic mb-3">Loading department chart...</p>
+                    ) : departmentSummary.length === 0 ? (
+                        <p className="text-muted text-sm italic mb-3">No department summary available.</p>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={180}>
+                            <BarChart data={departmentSummary} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
+                                <XAxis dataKey="dept" stroke="var(--text-dim)" tick={{ fontSize: 12 }} />
+                                <YAxis stroke="var(--text-dim)" opacity={0.5} tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={v => `${v}%`} />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '8px', color: 'var(--text-main)' }}
+                                    formatter={(val) => [`${val}%`, 'Completion']}
+                                />
+                                <Bar dataKey="pct" radius={[4, 4, 0, 0]}>
+                                    {departmentSummary.map((entry, i) => (
+                                        <Cell key={i} fill={entry.pct >= 50 ? '#22c55e' : entry.pct > 0 ? '#FFD60A' : '#E63946'} opacity={0.8} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
                 </motion.div>
 
                 {/* Compliance table */}
@@ -92,7 +170,9 @@ export default function AdminReportsPage() {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                     <div className="p-5 border-b border-card-border">
                         <h2 className="font-bold text-main text-lg">Compliance Status — All Employees</h2>
-                        <p className="text-muted text-sm mt-1">Employees who have completed all 6 chapters</p>
+                        <p className="text-muted text-sm mt-1">
+                            Employees who have completed all {loading ? '...' : totalChapters} chapters
+                        </p>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="admin-table w-full">
@@ -102,12 +182,23 @@ export default function AdminReportsPage() {
                                     <th>Department</th>
                                     <th>XP</th>
                                     <th>Chapters</th>
-                                    {[1, 2, 3, 4, 5, 6].map(n => <th key={n} className="text-center">Ch.{n}</th>)}
+                                    {Array.from({ length: totalChapters }).map((_, idx) => {
+                                        const chapterNumber = idx + 1
+                                        return <th key={chapterNumber} className="text-center">Ch.{chapterNumber}</th>
+                                    })}
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {COMPLIANCE.map((u, i) => (
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={tableColumnCount} className="text-center text-muted py-8 italic">Loading compliance report...</td>
+                                    </tr>
+                                ) : complianceRows.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={tableColumnCount} className="text-center text-muted py-8 italic">No compliance data available.</td>
+                                    </tr>
+                                ) : complianceRows.map((u, i) => (
                                     <motion.tr key={u.id}
                                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
                                         <td>
@@ -118,18 +209,24 @@ export default function AdminReportsPage() {
                                         </td>
                                         <td>{u.department}</td>
                                         <td className="font-bold text-accent">{u.xp.toLocaleString()}</td>
-                                        <td>{u.chaptersCompleted}/6</td>
-                                        {[1, 2, 3, 4, 5, 6].map(n => (
-                                            <td key={n} className="text-center">
-                                                {n <= u.chaptersCompleted
-                                                    ? <CheckCircle className="w-4 h-4 text-green-400 mx-auto" />
-                                                    : <XCircle className="w-4 h-4 text-dim opacity-30 mx-auto" />
-                                                }
-                                            </td>
-                                        ))}
+                                        <td>{u.chaptersCompleted}/{totalChapters}</td>
+                                        {Array.from({ length: totalChapters }).map((_, idx) => {
+                                            const chapterNumber = idx + 1
+                                            return (
+                                                <td key={chapterNumber} className="text-center">
+                                                    {chapterNumber <= u.chaptersCompleted
+                                                        ? <CheckCircle className="w-4 h-4 text-green-400 mx-auto" />
+                                                        : <XCircle className="w-4 h-4 text-dim opacity-30 mx-auto" />
+                                                    }
+                                                </td>
+                                            )
+                                        })}
                                         <td>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${u.allDone ? 'bg-green-500/20 text-green-400' : u.chaptersCompleted > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
-                                                }`}>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                                                u.allDone ? 'bg-green-500/20 text-green-400' : 
+                                                u.chaptersCompleted > 0 ? 'bg-yellow-500/20 text-yellow-400' : 
+                                                'bg-red-500/20 text-red-400'
+                                            }`}>
                                                 {u.allDone ? '✅ Complete' : u.chaptersCompleted > 0 ? '🔄 In Progress' : '❌ Not Started'}
                                             </span>
                                         </td>
