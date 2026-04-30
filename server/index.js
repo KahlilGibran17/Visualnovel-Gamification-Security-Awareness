@@ -17,6 +17,9 @@ const io = new Server(server, {
 app.use(cors({ origin: 'http://localhost:5173' }))
 app.use(express.json())
 
+const path = require('path')
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+
 // Routes
 app.use('/api/auth', require('./routes/auth'))
 app.use('/api/users', require('./routes/users'))
@@ -26,6 +29,11 @@ app.use('/api/admin', require('./routes/admin'))
 app.use('/api/elearning', require('./routes/elearning'))
 app.use('/api/badges', require('./routes/badges'))
 app.use('/api/superAdmin', require('./routes/superAdmin'))
+
+app.use('/api/elearning', require('./routes/elearning'))
+app.use('/api/content', require('./routes/content'))
+app.use('/api/cms', require('./routes/cms'))
+app.use('/api/roadmap', require('./routes/roadmap'))
 
 
 // Health

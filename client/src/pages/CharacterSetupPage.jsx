@@ -17,7 +17,7 @@ export default function CharacterSetupPage() {
 
     const handleSave = async () => {
         if (!displayName.trim()) {
-            toast.error('Please enter your display name')
+            toast.error('Silakan masukkan nama tampilan Anda')
             return
         }
         setSaving(true)
@@ -27,13 +27,13 @@ export default function CharacterSetupPage() {
             // demo mode — just update local state
         }
         updateUser({ name: displayName.trim(), avatarId, setupDone: true })
-        toast.success('Character created! Welcome to the Academy! 🎮')
+        toast.success('Karakter dibuat! Selamat datang di Akademi! 🎮')
         setTimeout(() => navigate('/dashboard'), 500)
         setSaving(false)
     }
 
     return (
-        <div className="min-h-screen bg-dark flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen bg-main flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
             {/* Background */}
             <div className="fixed inset-0 pointer-events-none">
                 <div className="absolute top-0 left-0 w-full h-full bg-hero-gradient opacity-50" />
@@ -49,18 +49,18 @@ export default function CharacterSetupPage() {
                 >
                     <div className="flex justify-center mb-4">
                         <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center">
-                            <ShieldAlert className="w-8 h-8 text-white" />
+                            <ShieldAlert className="w-8 h-8 text-main" />
                         </div>
                     </div>
-                    <h1 className="text-3xl font-bold font-display text-white mb-2">Create Your Character</h1>
-                    <p className="text-white/50">Choose how you'll appear in the Cyber Academy</p>
+                    <h1 className="text-3xl font-bold font-display text-main mb-2">Buat Karakter Anda</h1>
+                    <p className="text-muted">Pilih bagaimana Anda akan tampil di Akademi Siber</p>
                 </motion.div>
 
                 {/* Steps indicator */}
                 <div className="flex items-center justify-center gap-3 mb-8">
                     {[1, 2].map(s => (
                         <div key={s} className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step >= s ? 'bg-primary text-white' : 'bg-white/10 text-white/40'
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${step >= s ? 'bg-primary text-main' : 'bg-white/10 text-main/40'
                                 }`}>
                                 {s}
                             </div>
@@ -81,26 +81,26 @@ export default function CharacterSetupPage() {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                         >
-                            <h2 className="text-xl font-bold text-white mb-2">What's your name?</h2>
-                            <p className="text-white/50 text-sm mb-6">This will be shown on the leaderboard. Use your real name for competition!</p>
+                            <h2 className="text-xl font-bold text-main mb-2">Siapa nama Anda?</h2>
+                            <p className="text-muted text-sm mb-6">Ini akan ditampilkan di papan peringkat. Gunakan nama asli Anda untuk berkompetisi!</p>
                             <input
                                 id="display-name-input"
                                 type="text"
                                 value={displayName}
                                 onChange={e => setDisplayName(e.target.value)}
-                                placeholder="Your full name..."
+                                placeholder="Nama lengkap Anda..."
                                 className="input-field mb-6 text-lg"
                                 maxLength={40}
                             />
                             <button
                                 id="next-step-btn"
                                 onClick={() => {
-                                    if (!displayName.trim()) { toast.error('Enter your name first!'); return }
+                                    if (!displayName.trim()) { toast.error('Masukkan nama Anda terlebih dahulu!'); return }
                                     setStep(2)
                                 }}
                                 className="btn-primary w-full flex items-center justify-center gap-2"
                             >
-                                Next: Choose Avatar <ChevronRight className="w-5 h-5" />
+                                Selanjutnya: Pilih Avatar <ChevronRight className="w-5 h-5" />
                             </button>
                         </motion.div>
                     ) : (
@@ -109,13 +109,13 @@ export default function CharacterSetupPage() {
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
                         >
-                            <h2 className="text-xl font-bold text-white mb-2">Choose your avatar</h2>
-                            <p className="text-white/50 text-sm mb-6">Your character on the leaderboard and in the story.</p>
+                            <h2 className="text-xl font-bold text-main mb-2">Pilih avatar Anda</h2>
+                            <p className="text-muted text-sm mb-6">Karakter Anda di papan peringkat dan dalam cerita.</p>
                             <AvatarPicker selected={avatarId} onSelect={setAvatarId} />
 
                             <div className="flex gap-3 mt-6">
                                 <button onClick={() => setStep(1)} className="btn-secondary flex-1">
-                                    Back
+                                    Kembali
                                 </button>
                                 <motion.button
                                     id="start-academy-btn"
@@ -125,9 +125,9 @@ export default function CharacterSetupPage() {
                                     whileTap={{ scale: 0.98 }}
                                 >
                                     {saving ? (
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <div className="w-5 h-5 border-2 border-main border-t-transparent rounded-full animate-spin" />
                                     ) : (
-                                        '🚀 Start the Academy!'
+                                        '🚀 Mulai Akademi!'
                                     )}
                                 </motion.button>
                             </div>
@@ -147,10 +147,10 @@ export default function CharacterSetupPage() {
                     </div>
                     <div>
                         <p className="text-accent font-bold text-sm mb-1">AKE-BOT</p>
-                        <p className="text-white/70 text-sm leading-relaxed">
+                        <p className="text-muted text-sm leading-relaxed">
                             {step === 1
-                                ? "Hello, new recruit! I'm AKE-BOT, your cybersecurity guide at Akebono Brake Astra. First, tell me your name!"
-                                : `Nice to meet you, ${displayName}! Now pick your look — you'll need a strong identity to face the hacker Ph1sh! 🔐`
+                                ? "Halo, rekrutan baru! Saya AKE-BOT, pemandu keamanan siber Anda di Akebono Brake Astra. Pertama, beri tahu saya nama Anda!"
+                                : `Senang bertemu dengan Anda, ${displayName}! Sekarang pilih penampilan Anda — Anda akan membutuhkan identitas yang kuat untuk menghadapi peretas Ph1sh! 🔐`
                             }
                         </p>
                     </div>

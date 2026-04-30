@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Volume2, VolumeX, SkipForward, RotateCcw, Star, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { Home, Volume2, VolumeX, SkipForward, RotateCcw, Star, AlertTriangle, CheckCircle, Clock, Search, Monitor, Smartphone, MousePointer2, XCircle, Terminal as TerminalIcon, Mail, BookOpen } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useGame } from '../contexts/GameContext.jsx'
-import chapter1 from '../data/chapters/chapter1.json'
-
-const CHAPTERS_DATA = { 1: chapter1 }
+import { FakeUIScaledWrapper } from '../components/FakeUIBackground.jsx'
 
 // Scene background styles
 const BACKGROUNDS = {
@@ -38,7 +36,9 @@ const BACKGROUNDS = {
 }
 
 // Character sprites
-function CharacterSprite({ character, expression, position }) {
+function CharacterSprite({ character, expression, position, isActive }) {
+    const { CHARACTERS } = useGame()
+
     const SPRITES = {
         player: { base: '🧑‍💻', expressions: { happy: '😊', shocked: '😱', worried: '😟', proud: '💪', normal: '🧑‍💻' } },
         akebot: { base: '🤖', expressions: { happy: '🤖✨', worried: '🤖⚠️', proud: '🤖🎉', shocked: '🤖😱', normal: '🤖' } },
@@ -46,41 +46,40 @@ function CharacterSprite({ character, expression, position }) {
         manager: { base: '👔', expressions: { happy: '😄', worried: '😟', shocked: '😱', normal: '👔' } },
     }
 
+    const customChar = CHARACTERS?.find(c => c.key_name === character)
+    const customExpr = customChar?.expressions?.find(e => e.expression_name === expression)
+
     const sprite = SPRITES[character] || SPRITES.player
-    const expr = sprite.expressions[expression] || sprite.base
+    const exprEmoji = customExpr?.emoji || (customChar ? customChar.emoji : (sprite.expressions[expression] || sprite.base))
+    const imgUrl = customExpr?.sprite_url || customExpr?.image_url
 
-    const charColors = {
-        player: 'from-blue-500/20 to-cyan-500/20 border-blue-500/30',
-        akebot: 'from-yellow-500/20 to-amber-500/20 border-yellow-500/30',
-        villain: 'from-red-900/40 to-purple-900/30 border-red-600/30',
-        manager: 'from-green-500/20 to-emerald-500/20 border-green-500/30',
-    }
-
+    // Full height 2D sprite rendering
     return (
         <motion.div
-            className={`flex flex-col items-center gap-1 ${position === 'right' ? 'items-end' : 'items-start'}`}
-            initial={{ opacity: 0, x: position === 'left' ? -30 : 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: position === 'left' ? -30 : 30 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+            className={`relative flex flex-col justify-end ${position === 'right' ? 'items-end' : 'items-start'} h-[30vh] md:h-[40vh] w-[35vw] md:w-[25vw] overflow-visible`}
+            initial={{ opacity: 0, x: position === 'left' ? -50 : 50 }}
+            animate={{
+                opacity: isActive ? 1 : 0.6,
+                x: 0,
+                scale: isActive ? 1.05 : 0.95,
+                filter: isActive ? 'brightness(1)' : 'brightness(0.5)'
+            }}
+            exit={{ opacity: 0, x: position === 'left' ? -50 : 50 }}
+            transition={{ type: 'spring', stiffness: 200, damping: 25, duration: 0.2 }}
+            style={{ transformOrigin: 'bottom center' }}
         >
-            <motion.div
-                className={`w-28 h-36 md:w-36 md:h-48 rounded-2xl border bg-gradient-to-b ${charColors[character] || charColors.player} flex flex-col items-center justify-center gap-2 relative overflow-hidden`}
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            >
-                {/* CRT scanlines overlay */}
-                <div className="absolute inset-0 scanlines opacity-30 pointer-events-none" />
-
-                <span className="text-5xl md:text-7xl select-none">{expr.split('')[0]}</span>
-                {character === 'villain' && (
-                    <motion.div
-                        className="absolute inset-0 bg-red-500/5"
-                        animate={{ opacity: [0, 0.3, 0] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                    />
-                )}
-            </motion.div>
+            {imgUrl ? (
+                <img
+                    src={imgUrl}
+                    alt={expression}
+                    className="w-full h-full object-contain object-bottom drop-shadow-xl relative z-10"
+                />
+            ) : (
+                // Fallback emoji rendering if no sprite is available
+                <div className={`w-full max-w-sm aspect-[2/3] rounded-3xl border ${isActive ? 'from-white/20 to-white/5 border-white/30' : 'from-black/40 to-black/20 border-black/50'} bg-gradient-to-b flex flex-col items-center justify-center relative overflow-hidden backdrop-blur-sm`}>
+                    <span className="text-8xl md:text-9xl select-none relative z-10 drop-shadow-xl">{exprEmoji?.split('')[0] || '👤'}</span>
+                </div>
+            )}
         </motion.div>
     )
 }
@@ -153,7 +152,7 @@ function EmailDisplay({ email, onContinue }) {
             {/* Red flags */}
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                 <p className="text-red-700 font-bold text-xs mb-2">🚨 Red Flags Detected:</p>
-                {email.redFlags.map((flag, i) => (
+                {(email.redFlags || []).map((flag, i) => (
                     <div key={i} className="flex items-start gap-1.5 text-xs text-red-600 mb-1">
                         <span className="text-red-500 mt-0.5">❌</span>
                         <span>{flag}</span>
@@ -165,7 +164,7 @@ function EmailDisplay({ email, onContinue }) {
                 onClick={onContinue}
                 className="w-full bg-dark text-white py-3 rounded-lg font-semibold hover:bg-dark-card transition-colors"
             >
-                Continue Reading →
+                Lanjut Membaca →
             </button>
         </motion.div>
     )
@@ -181,7 +180,7 @@ function LessonDisplay({ lesson, onContinue }) {
         >
             <h3 className="font-bold text-accent text-lg mb-3">{lesson.title}</h3>
             <ul className="space-y-2">
-                {lesson.points.map((point, i) => (
+                {(lesson.points || []).map((point, i) => (
                     <motion.li
                         key={i}
                         className="flex items-start gap-2 text-white/80 text-sm"
@@ -195,7 +194,7 @@ function LessonDisplay({ lesson, onContinue }) {
                 ))}
             </ul>
             <button onClick={onContinue} className="btn-primary w-full mt-4">
-                Got it! Continue →
+                Mengerti! Lanjut →
             </button>
         </motion.div>
     )
@@ -231,14 +230,156 @@ function TimerRing({ seconds, total }) {
     )
 }
 
+// Investigate display
+function InvestigateDisplay({ scene, onFound, timer, timerTotal }) {
+    const { UI_TYPES } = useGame()
+    const [foundItems, setFoundItems] = useState([])
+    const [falsePoints, setFalsePoints] = useState(0)
+    const [shake, setShake] = useState(false)
+    const totalItems = scene.targets?.length || 0
+    const maxFalsePoints = scene.maxFalsePoints || scene.custom_data?.maxFalsePoints || 3
+
+    const handleClick = (e, target) => {
+        e.stopPropagation()
+        if (!foundItems.includes(target.id)) {
+            const newFound = [...foundItems, target.id]
+            setFoundItems(newFound)
+            if (newFound.length === totalItems) {
+                setTimeout(() => onFound(true), 1000)
+            }
+        }
+    }
+
+    const handleMiss = () => {
+        if (foundItems.length >= totalItems) return
+
+        const newFalse = falsePoints + 1
+        setFalsePoints(newFalse)
+
+        setShake(true)
+        setTimeout(() => setShake(false), 400)
+
+        if (newFalse >= maxFalsePoints) {
+            setTimeout(() => onFound(false, false, `Investigation Failed! You made ${maxFalsePoints} incorrect clicks, triggering system lockout.`), 500)
+        }
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto pointer-events-auto z-20">
+            <div className="bg-dark/80 backdrop-blur-xl border border-white/10 p-4 rounded-xl mb-4 w-full flex items-center justify-between">
+                <div>
+                    <h3 className="text-xl font-bold text-accent mb-1 flex items-center gap-2"><Search className="w-5 h-5" /> Temukan Ancaman!</h3>
+                    <p className="text-white/70 text-sm">Temukan dan klik semua {totalItems} kerentanan keamanan tanpa membuat kesalahan.</p>
+                </div>
+                <div className="flex gap-4 items-center">
+                    <div className="text-right border-r border-white/20 pr-4">
+                        <div className="text-sm text-white/50">Kesalahan</div>
+                        <div className="text-2xl font-black font-mono text-red-400">{falsePoints}/{maxFalsePoints}</div>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-sm text-white/50">Ditemukan</div>
+                        <div className="text-2xl font-black font-mono text-white">{foundItems.length}/{totalItems}</div>
+                    </div>
+                    {timer > 0 && <TimerRing seconds={timer} total={timerTotal} />}
+                </div>
+            </div>
+
+            <motion.div 
+                className="w-full"
+                animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
+                transition={{ duration: 0.4 }}
+            >
+                <FakeUIScaledWrapper
+                    uiType={scene.uiType || scene.custom_data?.uiType || 'browser'}
+                    uiTypesData={UI_TYPES}
+                    className="border-4 border-gray-700 shadow-2xl ring-4 ring-black/20 cursor-crosshair rounded-lg"
+                    onClick={handleMiss}
+                >
+                    {scene.targets?.map((t) => {
+                        const w = t.w || 6
+                        const h = t.h || 10
+                        return (
+                            <motion.button
+                                key={t.id}
+                                className={`absolute rounded-md flex items-center justify-center pointer-events-auto transition-all ${foundItems.includes(t.id) ? 'border-[3px] border-green-500 bg-green-500/20 text-green-600 shadow-md cursor-default' : 'bg-transparent text-transparent border-transparent !cursor-crosshair'}`}
+                                style={{ left: `${t.x}%`, top: `${t.y}%`, width: `${w}%`, height: `${h}%` }}
+                                onClick={(e) => handleClick(e, t)}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                {foundItems.includes(t.id) && <CheckCircle className="w-6 h-6 absolute drop-shadow" />}
+                            </motion.button>
+                        )
+                    })}
+                </FakeUIScaledWrapper>
+            </motion.div>
+        </div>
+    )
+}
+
+// Terminal display
+function TerminalDisplay({ scene, onCommand, timer, timerTotal }) {
+    const [input, setInput] = useState('')
+    const [logs, setLogs] = useState([{ type: 'sys', text: scene.promptText }])
+
+    const handleSubmit = (e) => {
+        e.preventDefault()
+        if (!input.trim()) return
+
+        const cmd = input.trim().toLowerCase()
+        const correct = (scene.correctCommand || '').toLowerCase()
+
+        setLogs(prev => [...prev, { type: 'user', text: `> ${input} ` }])
+        setInput('')
+
+        if (cmd === correct) {
+            setLogs(prev => [...prev, { type: 'success', text: 'ACCESS GRANTED / THREAT NEUTRALIZED' }])
+            setTimeout(() => onCommand(true), 1500)
+        } else {
+            setLogs(prev => [...prev, { type: 'error', text: 'Command unrecognized or access denied.' }])
+        }
+    }
+
+    return (
+        <div className="flex flex-col items-center justify-center w-full max-w-3xl mx-auto pointer-events-auto z-20">
+            <div className="w-full bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl font-mono text-sm border flex flex-col h-[50vh] border-gray-700 ring-2 ring-black/50">
+                <div className="bg-gray-800 p-2 flex items-center justify-between border-b border-gray-900 border-opacity-50">
+                    <div className="flex items-center gap-2 text-gray-400 text-xs">
+                        <TerminalIcon className="w-4 h-4" /> Security CLI - root@akebono
+                    </div>
+                    {timer > 0 && <div className="text-red-400 font-bold flex items-center gap-2">T-MINUS {timer}s</div>}
+                </div>
+                <div className="flex-1 p-4 overflow-y-auto font-mono flex flex-col gap-1 text-green-400 pb-20">
+                    {logs.map((L, i) => (
+                        <div key={i} className={`${L.type === 'error' ? 'text-red-400' : L.type === 'sys' ? 'text-yellow-400 font-bold' : L.type === 'success' ? 'text-green-300 font-bold bg-green-900/40 p-1' : 'text-gray-300'} `}>
+                            {L.text}
+                        </div>
+                    ))}
+                </div>
+                <form onSubmit={handleSubmit} className="p-2 bg-black border-t border-gray-800 flex items-center gap-2 mt-auto">
+                    <span className="text-green-500 font-bold">root@sec~#</span>
+                    <input
+                        type="text"
+                        autoFocus
+                        autoComplete="off"
+                        className="flex-1 bg-transparent text-gray-100 outline-none placeholder-gray-700"
+                        placeholder="Type command..."
+                        value={input}
+                        onChange={e => setInput(e.target.value)}
+                    />
+                </form>
+            </div>
+        </div>
+    )
+}
+
 export default function VNEnginePage() {
     const { chapterId } = useParams()
     const { user } = useAuth()
-    const { awardXP, completeChapter } = useGame()
+    const { awardXP, completeChapter, CHAPTERS, BACKGROUNDS: globalBackgrounds } = useGame()
     const navigate = useNavigate()
 
-    const chapterData = CHAPTERS_DATA[parseInt(chapterId)]
-    const [sceneId, setSceneId] = useState(chapterData?.scenes[0]?.id || null)
+    const chapterData = CHAPTERS.find(c => c.id === parseInt(chapterId))
+    const [sceneId, setSceneId] = useState(null)
     const [choiceResult, setChoiceResult] = useState(null) // { correct, consequence, lesson, xp }
     const [timer, setTimer] = useState(null)
     const [timerTotal, setTimerTotal] = useState(15)
@@ -248,7 +389,20 @@ export default function VNEnginePage() {
     const [showHud, setShowHud] = useState(true)
     const [gameOver, setGameOver] = useState(false)
 
-    const currentScene = chapterData?.scenes.find(s => s.id === sceneId)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        // Wait for chapters to load from context if they are still the default ones
+        if (CHAPTERS.length > 0) {
+            setLoading(false)
+        }
+
+        if (!sceneId && chapterData?.scenes?.length > 0) {
+            setSceneId(chapterData.scenes[0].id)
+        }
+    }, [CHAPTERS, chapterData, sceneId])
+
+    const currentScene = chapterData?.scenes?.find(s => s.id === sceneId)
     const playerName = user?.name?.split(' ')[0] || 'Recruit'
 
     const getText = (text) => text?.replace(/\{\{playerName\}\}/g, playerName) || ''
@@ -259,17 +413,25 @@ export default function VNEnginePage() {
         currentScene?.type === 'dialogue'
     )
 
-    // Timer for choices
+    // Timer handle for choice, investigate, and terminal scenes
     useEffect(() => {
-        if (currentScene?.type === 'choice' && currentScene.timer && !choiceResult) {
+        if (!currentScene?.timer || choiceResult) return;
+        const typesWithTimer = ['choice', 'investigate', 'terminal'];
+
+        if (typesWithTimer.includes(currentScene.type)) {
             setTimer(currentScene.timer)
             setTimerTotal(currentScene.timer)
             const interval = setInterval(() => {
                 setTimer(prev => {
                     if (prev <= 1) {
                         clearInterval(interval)
-                        // Auto-select wrong answer on timeout
-                        handleChoice(currentScene.choices[0], true)
+                        if (currentScene.type === 'choice') {
+                            handleChoice(currentScene.choices[0], true)
+                        } else if (currentScene.type === 'investigate') {
+                            handleInvestigate(false, true)
+                        } else if (currentScene.type === 'terminal') {
+                            handleTerminal(false, true)
+                        }
                         return 0
                     }
                     return prev - 1
@@ -278,6 +440,46 @@ export default function VNEnginePage() {
             return () => clearInterval(interval)
         }
     }, [sceneId, choiceResult])
+
+    const handleInvestigate = useCallback((success, timedOut = false, failMsg = null) => {
+        setTimer(null)
+        if (success) {
+            if (currentScene.xpReward) {
+                awardXP(currentScene.xpReward, `Chapter ${chapterId} spot the phish`)
+                setXpTotal(prev => prev + currentScene.xpReward)
+            }
+            setSceneId(currentScene.successNext || currentScene.next)
+        } else {
+            setWrongChoices(prev => prev + 1)
+            setChoiceResult({
+                correct: false,
+                consequence: failMsg || (timedOut ? "Waktu habis sebelum Anda dapat menemukan semua ancaman!" : "Investigasi gagal."),
+                lesson: "Selalu periksa URL dengan cermat dan teliti lampiran tak terduga sebelum mengklik.",
+                xp: 0,
+                next: currentScene.failNext || currentScene.next
+            })
+        }
+    }, [currentScene, chapterId, awardXP])
+
+    const handleTerminal = useCallback((success, timedOut = false) => {
+        setTimer(null)
+        if (success) {
+            if (currentScene.xpReward) {
+                awardXP(currentScene.xpReward, `Chapter ${chapterId} terminal defense`)
+                setXpTotal(prev => prev + currentScene.xpReward)
+            }
+            setSceneId(currentScene.successNext || currentScene.failNext)
+        } else {
+            setWrongChoices(prev => prev + 1)
+            setChoiceResult({
+                correct: false,
+                consequence: timedOut ? "Jaringan diretas. Waktu terminal Anda habis." : "Perintah yang dimasukkan tidak valid. Sistem disusupi.",
+                lesson: "Dalam skenario darurat, kecepatan dan eksekusi perintah yang akurat sangat penting.",
+                xp: 0,
+                next: currentScene.failNext
+            })
+        }
+    }, [currentScene, chapterId, awardXP])
 
     const handleChoice = useCallback((choice, timedOut = false) => {
         setTimer(null)
@@ -289,7 +491,7 @@ export default function VNEnginePage() {
             setWrongChoices(prev => prev + 1)
             setChoiceResult({
                 correct: false,
-                consequence: timedOut ? "Time's up! You didn't respond in time!" : choice.consequence,
+                consequence: timedOut ? "Waktu habis! Anda tidak merespons tepat waktu!" : choice.consequence,
                 lesson: choice.lesson,
                 xp: choice.xp,
                 next: choice.next,
@@ -328,34 +530,50 @@ export default function VNEnginePage() {
         navigate(`/result/${chapterId}`, { state: { result, chapterData } })
     }
 
-    if (!chapterData) {
+    if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-dark">
                 <div className="text-center">
-                    <p className="text-white text-xl mb-4">Chapter not available yet</p>
-                    <button onClick={() => navigate('/chapters')} className="btn-primary">← Back to Chapters</button>
+                    <motion.div
+                        className="w-16 h-16 border-4 border-accent border-t-transparent rounded-full mx-auto mb-4"
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    />
+                    <p className="text-white text-xl">Memuat Misi...</p>
                 </div>
             </div>
         )
     }
 
-    const bg = BACKGROUNDS[currentScene?.background] || BACKGROUNDS.office
+    if (!chapterData || !chapterData.scenes || chapterData.scenes.length === 0) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-dark">
+                <div className="text-center max-w-md p-8 glass-card">
+                    <div className="text-6xl mb-4">🚧</div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Modul {chapterId} Belum Siap</h2>
+                    <p className="text-white/60 mb-6"> Modul ini sedang dalam pengembangan atau belum memiliki adegan yang dapat dimainkan. Silakan periksa kembali nanti!</p>
+                    <button onClick={() => navigate('/chapters')} className="btn-primary w-full">← Kembali ke Pilih Misi</button>
+                </div>
+            </div>
+        )
+    }
+
+    const localBg = BACKGROUNDS[currentScene?.background] || BACKGROUNDS.office
+    const customBg = globalBackgrounds?.find(b => b.key_name === currentScene?.background)
+
+    const bgLabel = customBg ? customBg.name : localBg.label
+    const bgGradient = customBg ? '' : localBg.gradient
+    const bgStyle = customBg && customBg.image_url
+        ? { backgroundImage: `url(${customBg.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+        : { background: localBg.pattern }
 
     return (
         <div className="fixed inset-0 bg-dark overflow-hidden flex flex-col">
             {/* Background */}
             <div
-                className={`absolute inset-0 bg-gradient-to-b ${bg.gradient} transition-all duration-1000`}
-                style={{ background: bg.pattern }}
+                className={`absolute inset-0 transition-all duration-1000 ${bgGradient ? `bg-gradient-to-b ${bgGradient}` : ''}`}
+                style={bgStyle}
             />
-
-            {/* Scanline overlay */}
-            <div className="absolute inset-0 scanlines opacity-20 pointer-events-none" />
-
-            {/* CRT vignette */}
-            <div className="absolute inset-0 pointer-events-none" style={{
-                background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%)'
-            }} />
 
             {/* HUD - Top bar */}
             <AnimatePresence>
@@ -370,12 +588,12 @@ export default function VNEnginePage() {
                             <Home className="w-5 h-5" />
                         </button>
                         <div className="flex-1">
-                            <p className="text-xs text-white/40 uppercase tracking-wider">Chapter {chapterId}</p>
-                            <p className="text-sm font-semibold text-white">{chapterData.title}</p>
+                            <p className="text-xs text-dim uppercase tracking-wider">Modul {chapterId}</p>
+                            <p className="text-sm font-semibold text-main">{chapterData.title}</p>
                         </div>
                         {/* Location */}
-                        <div className="hidden md:block text-xs text-white/40">
-                            {bg.label}
+                        <div className="hidden md:block text-xs text-dim">
+                            {bgLabel}
                         </div>
                         {/* XP counter */}
                         <div className="flex items-center gap-1.5 bg-accent/20 border border-accent/30 rounded-full px-3 py-1">
@@ -383,7 +601,7 @@ export default function VNEnginePage() {
                             <span className="text-accent font-bold text-sm">{xpTotal} XP</span>
                         </div>
                         {/* Mute */}
-                        <button onClick={() => setMute(!mute)} className="text-white/40 hover:text-white transition-colors">
+                        <button onClick={() => setMute(!mute)} className="text-dim hover:text-main transition-colors">
                             {mute ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                         </button>
                     </motion.div>
@@ -394,34 +612,42 @@ export default function VNEnginePage() {
             <div className="relative flex-1 flex items-end">
                 {/* Characters */}
                 {currentScene?.type === 'dialogue' && (
-                    <div className="absolute inset-0 flex items-end justify-between px-8 pb-36 pointer-events-none">
+                    <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none z-0 overflow-hidden">
                         {/* Left character */}
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence mode="popLayout">
                             {currentScene.position === 'left' && (
-                                <motion.div key={currentScene.character + '_left'} className="pointer-events-auto">
+                                <motion.div key={currentScene.character + '_left'} className="absolute bottom-24 md:bottom-32 left-4 md:left-16 pointer-events-auto flex items-end">
                                     <CharacterSprite
                                         character={currentScene.character}
                                         expression={currentScene.expression}
                                         position="left"
+                                        isActive={true} /* Only 1 char speaks in single char scenes */
                                     />
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
                         {/* Right character */}
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence mode="popLayout">
                             {currentScene.position === 'right' && (
-                                <motion.div key={currentScene.character + '_right'} className="pointer-events-auto">
+                                <motion.div key={currentScene.character + '_right'} className="absolute bottom-24 md:bottom-32 right-4 md:right-16 pointer-events-auto flex items-end">
                                     <CharacterSprite
                                         character={currentScene.character}
                                         expression={currentScene.expression}
                                         position="right"
+                                        isActive={true}
                                     />
                                 </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
                 )}
+
+                {/* Visual Novel Retro Overlays (Covers background + characters to blend them) */}
+                <div className="absolute inset-0 scanlines opacity-25 pointer-events-none z-0" />
+                <div className="absolute inset-0 pointer-events-none z-0" style={{
+                    background: 'radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.8) 100%)'
+                }} />
 
                 {/* Email scene */}
                 {currentScene?.type === 'email' && (
@@ -443,6 +669,30 @@ export default function VNEnginePage() {
                     </div>
                 )}
 
+                {/* Investigate scene */}
+                {currentScene?.type === 'investigate' && !choiceResult && (
+                    <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
+                        <InvestigateDisplay
+                            scene={currentScene}
+                            onFound={(success, timedOut, failMsg) => handleInvestigate(success, timedOut, failMsg)}
+                            timer={timer}
+                            timerTotal={timerTotal}
+                        />
+                    </div>
+                )}
+
+                {/* Terminal scene */}
+                {currentScene?.type === 'terminal' && !choiceResult && (
+                    <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
+                        <TerminalDisplay
+                            scene={currentScene}
+                            onCommand={(success) => handleTerminal(success)}
+                            timer={timer}
+                            timerTotal={timerTotal}
+                        />
+                    </div>
+                )}
+
                 {/* Ending scene */}
                 {currentScene?.type === 'ending' && (
                     <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
@@ -456,13 +706,13 @@ export default function VNEnginePage() {
                             <h2 className={`text-2xl font-bold font-display mb-3 ${currentScene.ending === 'good' ? 'text-accent' : 'text-primary'}`}>
                                 {currentScene.title}
                             </h2>
-                            <p className="text-white/70 mb-4">{currentScene.message}</p>
+                            <p className="text-muted mb-4">{currentScene.message}</p>
                             {currentScene.lesson_recap && (
-                                <div className="bg-white/5 rounded-xl p-4 text-left mb-6">
-                                    <p className="text-accent font-bold text-sm mb-2">📚 Lesson Summary:</p>
+                                <div className="bg-card-bg/50 rounded-xl p-4 text-left mb-6">
+                                    <p className="text-accent font-bold text-sm mb-2">📚 Ringkasan Pelajaran:</p>
                                     {currentScene.lesson_recap.map((l, i) => (
-                                        <p key={i} className="text-white/70 text-sm flex items-start gap-2 mb-1">
-                                            <span className="text-white/40 mt-0.5">•</span> {l}
+                                        <p key={i} className="text-muted text-sm flex items-start gap-2 mb-1">
+                                            <span className="text-dim mt-0.5">•</span> {l}
                                         </p>
                                     ))}
                                 </div>
@@ -474,7 +724,7 @@ export default function VNEnginePage() {
                                         onClick={() => { setSceneId(chapterData.scenes[0].id); setWrongChoices(0); setXpTotal(0) }}
                                         className="btn-secondary flex-1 flex items-center justify-center gap-2"
                                     >
-                                        <RotateCcw className="w-4 h-4" /> Retry Chapter
+                                        <RotateCcw className="w-4 h-4" /> Ulangi Modul
                                     </button>
                                 )}
                                 <button
@@ -482,7 +732,7 @@ export default function VNEnginePage() {
                                     onClick={() => handleEnding(currentScene)}
                                     className="btn-primary flex-1"
                                 >
-                                    {currentScene.ending === 'good' ? '🏆 Collect Reward!' : '📊 See Results'}
+                                    {currentScene.ending === 'good' ? '🏆 Ambil Hadiah!' : '📊 Lihat Hasil'}
                                 </button>
                             </div>
                         </motion.div>
@@ -514,23 +764,23 @@ export default function VNEnginePage() {
                                 <div className="flex items-center gap-3 mb-4">
                                     <AlertTriangle className="w-8 h-8 text-primary flex-shrink-0" />
                                     <div>
-                                        <h3 className="font-bold text-primary text-lg">Security Breach!</h3>
-                                        <p className="text-white/60 text-sm">That wasn't the right choice...</p>
+                                        <h3 className="font-bold text-primary text-lg">Pelanggaran Keamanan!</h3>
+                                        <p className="text-white/60 text-sm">Itu bukan pilihan yang tepat...</p>
                                     </div>
                                 </div>
                                 <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-4">
-                                    <p className="text-white/80 text-sm">{choiceResult.consequence}</p>
+                                    <p className="text-main/80 text-sm">{choiceResult.consequence}</p>
                                 </div>
                                 <div className="bg-accent/10 border border-accent/20 rounded-lg p-3 mb-4">
-                                    <p className="text-accent font-bold text-xs mb-1">📚 What you should know:</p>
-                                    <p className="text-white/70 text-sm">{choiceResult.lesson}</p>
+                                    <p className="text-accent font-bold text-xs mb-1">📚 Apa yang harus Anda ketahui:</p>
+                                    <p className="text-muted text-sm">{choiceResult.lesson}</p>
                                 </div>
                                 <button
                                     id="wrong-choice-continue-btn"
                                     onClick={handleWrongDismiss}
                                     className="btn-primary w-full"
                                 >
-                                    Understood — Continue
+                                    Mengerti — Lanjut
                                 </button>
                             </motion.div>
                         </motion.div>
@@ -552,25 +802,25 @@ export default function VNEnginePage() {
                                 </span>
                             </div>
                             {/* Dialogue text */}
-                            <p className={`text-white text-base md:text-lg leading-relaxed min-h-[3rem] ${!dialogueDone ? 'typewriter-cursor' : ''}`}>
+                            <p className={`text-main text-base md:text-lg leading-relaxed min-h-[3rem] ${!dialogueDone ? 'typewriter-cursor' : ''}`}>
                                 {dialogueText}
                             </p>
                             {/* Continue hint */}
                             <div className="flex items-center justify-between mt-4">
-                                <div className="flex items-center gap-2 text-white/30 text-sm">
+                                <div className="flex items-center gap-2 text-dim text-sm">
                                     {currentScene.xpReward && dialogueDone && (
-                                        <span className="text-accent text-xs font-bold">+{currentScene.xpReward} XP incoming</span>
+                                        <span className="text-accent text-xs font-bold">+{currentScene.xpReward} XP masuk</span>
                                     )}
                                 </div>
                                 <button
                                     id="dialogue-next-btn"
                                     onClick={handleNext}
-                                    className="flex items-center gap-2 text-white/60 hover:text-white text-sm transition-colors"
+                                    className="flex items-center gap-2 text-muted hover:text-main text-sm transition-colors"
                                 >
                                     {dialogueDone ? (
-                                        <><span>Click to continue</span><motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>→</motion.span></>
+                                        <><span>Klik untuk lanjut</span><motion.span animate={{ x: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1 }}>→</motion.span></>
                                     ) : (
-                                        <><SkipForward className="w-4 h-4" /> Skip</>
+                                        <><SkipForward className="w-4 h-4" /> Lewati</>
                                     )}
                                 </button>
                             </div>
@@ -587,7 +837,7 @@ export default function VNEnginePage() {
                     >
                         <div className="vn-dialogue-box p-5 md:p-6 mx-2 md:mx-4 mb-2 md:mb-4 rounded-2xl">
                             <div className="flex items-start justify-between gap-4 mb-4">
-                                <p className="text-white font-semibold">{currentScene.question}</p>
+                                <p className="text-main font-semibold">{currentScene.question}</p>
                                 {timer !== null && (
                                     <div className="flex-shrink-0">
                                         <TimerRing seconds={timer} total={timerTotal} />
@@ -600,7 +850,7 @@ export default function VNEnginePage() {
                                         key={choice.id}
                                         id={`choice-${choice.id}-btn`}
                                         onClick={() => handleChoice(choice)}
-                                        className="text-left p-4 rounded-xl border border-white/20 bg-white/5 hover:bg-white/15 hover:border-white/40 transition-all duration-200 text-white text-sm font-medium"
+                                        className="text-left p-4 rounded-xl border border-card-border bg-card-bg/50 hover:bg-card-bg hover:border-primary transition-all duration-200 text-main text-sm font-medium"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                     >

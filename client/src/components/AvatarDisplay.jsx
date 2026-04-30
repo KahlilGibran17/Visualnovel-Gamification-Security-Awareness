@@ -1,14 +1,14 @@
 // Avatar component — renders colored avatar circles with initials or emoji
 // avatarId 1-8 maps to different color combos
 const AVATARS = [
-    { bg: 'from-red-500 to-orange-500', emoji: '🧑‍💻', label: 'Coder' },
-    { bg: 'from-blue-500 to-cyan-500', emoji: '👩‍💼', label: 'Executive' },
-    { bg: 'from-purple-500 to-pink-500', emoji: '🧑‍🔧', label: 'Engineer' },
-    { bg: 'from-green-500 to-emerald-500', emoji: '👩‍🔬', label: 'Analyst' },
-    { bg: 'from-yellow-500 to-amber-500', emoji: '🧑‍🏫', label: 'Teacher' },
-    { bg: 'from-indigo-500 to-violet-500', emoji: '👨‍🎨', label: 'Creative' },
-    { bg: 'from-teal-500 to-cyan-500', emoji: '👩‍🚀', label: 'Leader' },
-    { bg: 'from-rose-500 to-red-500', emoji: '🧑‍⚕️', label: 'Support' },
+    { bg: 'from-red-500 to-orange-500', emoji: '🧑‍💻', label: 'Programer' },
+    { bg: 'from-blue-500 to-cyan-500', emoji: '👩‍💼', label: 'Eksekutif' },
+    { bg: 'from-purple-500 to-pink-500', emoji: '🧑‍🔧', label: 'Insinyur' },
+    { bg: 'from-green-500 to-emerald-500', emoji: '👩‍🔬', label: 'Analis' },
+    { bg: 'from-yellow-500 to-amber-500', emoji: '🧑‍🏫', label: 'Pengajar' },
+    { bg: 'from-indigo-500 to-violet-500', emoji: '👨‍🎨', label: 'Kreatif' },
+    { bg: 'from-teal-500 to-cyan-500', emoji: '👩‍🚀', label: 'Pemimpin' },
+    { bg: 'from-rose-500 to-red-500', emoji: '🧑‍⚕️', label: 'Dukungan' },
 ]
 
 const SIZE_CLASSES = {

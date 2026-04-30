@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import React from 'react'
+import axios from 'axios'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Users, BookOpen, BarChart2, Bell, TrendingUp, AlertCircle, CheckCircle, Clock, PlusCircle } from 'lucide-react'
+import { Users, BookOpen, BarChart2, Bell, TrendingUp, AlertCircle, CheckCircle, Clock, PlusCircle, GraduationCap } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
 import axios from 'axios'
 import { io } from 'socket.io-client'
@@ -14,9 +16,9 @@ function KpiCard({ icon: Icon, label, value, sub, color, delay }) {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}>
             <div className="flex items-start justify-between">
                 <div>
-                    <p className="text-white/50 text-xs uppercase tracking-wider mb-1">{label}</p>
-                    <p className="text-3xl font-bold text-white">{value}</p>
-                    {sub && <p className="text-xs text-white/40 mt-1">{sub}</p>}
+                    <p className="text-muted text-xs uppercase tracking-wider mb-1">{label}</p>
+                    <p className="text-3xl font-bold text-main">{value}</p>
+                    {sub && <p className="text-xs text-dim mt-1">{sub}</p>}
                 </div>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${color}20` }}>
                     <Icon className="w-5 h-5" style={{ color }} />
@@ -239,8 +241,8 @@ export default function AdminDashboardPage() {
             <div className="p-6 max-w-6xl mx-auto space-y-6">
                 {/* Header */}
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-                    <h1 className="text-3xl font-bold font-display text-white mb-1">⚙️ Admin Dashboard</h1>
-                    <p className="text-white/50">Akebono Cyber Academy — Management Overview</p>
+                    <h1 className="text-3xl font-bold font-display text-main mb-1">⚙️ Admin Dashboard</h1>
+                    <p className="text-muted">Akebono Cyber Academy — Management Overview</p>
                 </motion.div>
 
                 {/* KPI Cards */}
@@ -252,17 +254,18 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Quick links */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
                         { icon: Users, label: 'User Management', desc: 'Import, manage, and reset employee accounts', path: '/admin/users', color: '#60a5fa' },
                         { icon: BookOpen, label: 'Content Management', desc: 'Edit chapters, dialogues, and quiz questions', path: '/admin/content', color: '#a78bfa' },
+                        { icon: GraduationCap, label: 'E-Learning', desc: 'Manage module articles and learning materials', path: '/admin/elearning', color: '#ec4899' },
                         { icon: BarChart2, label: 'Reports & Export', desc: 'Compliance reports, export to Excel and PDF', path: '/admin/reports', color: '#22c55e' },
                         { icon: PlusCircle, label: 'Buat eLearning', desc: 'Buat modul eLearning baru', path: '/admin/elearning', color: '#f97316' },
                     ].map(item => (
                         <motion.button
                             key={item.path}
                             onClick={() => navigate(item.path)}
-                            className="glass-card p-5 text-left hover:bg-white/10 transition-all duration-200 group"
+                            className="glass-card p-5 text-left hover:bg-card-border transition-all duration-200 group"
                             whileHover={{ scale: 1.02 }}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -270,8 +273,8 @@ export default function AdminDashboardPage() {
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: `${item.color}20` }}>
                                 <item.icon className="w-5 h-5" style={{ color: item.color }} />
                             </div>
-                            <h3 className="font-bold text-white mb-1 group-hover:text-accent transition-colors">{item.label}</h3>
-                            <p className="text-white/50 text-sm">{item.desc}</p>
+                            <h3 className="font-bold text-main mb-1 group-hover:text-accent transition-colors">{item.label}</h3>
+                            <p className="text-muted text-sm">{item.desc}</p>
                         </motion.button>
                     ))}
                 </div>
@@ -280,7 +283,7 @@ export default function AdminDashboardPage() {
                     {/* Department Stats */}
                     <motion.div className="glass-card p-5"
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                        <h2 className="font-bold text-white mb-4 flex items-center gap-2">
+                        <h2 className="font-bold text-main mb-4 flex items-center gap-2">
                             <Users className="w-4 h-4 text-accent" /> Department Progress
                         </h2>
                         <div className="space-y-3">
@@ -294,26 +297,27 @@ export default function AdminDashboardPage() {
 
                             {!loading && departmentProgress.map(d => (
                                 <div key={d.dept} className="flex items-center gap-3">
-                                    <span className="w-20 text-white/70 text-sm">{d.dept}</span>
-                                    <div className="flex-1 bg-white/10 rounded-full h-2">
+                                    <span className="w-20 text-muted text-sm">{d.dept}</span>
+                                    <div className="flex-1 bg-input-bg rounded-full h-2">
                                         <div
                                             className="h-2 rounded-full transition-all duration-1000"
                                             style={{ width: `${d.total > 0 ? (d.completed / d.total) * 100 : 0}%`, background: d.color }}
                                         />
                                     </div>
-                                    <span className="text-xs text-white/50 w-12 text-right">{d.completed}/{d.total}</span>
-                                    <span className="text-xs font-bold w-20 text-right" style={{ color: d.color }}>
+                                    <span className="text-xs text-dim w-12 text-right">{d.completed}/{d.total}</span>
+                                    <span className="text-xs font-bold w-20 text-right" style={{ color: getDeptColor(d.dept) }}>
                                         {d.avgXp.toLocaleString()} XP
                                     </span>
                                 </div>
                             ))}
+                            {deptStats.length === 0 && <p className="text-center text-dim py-8">No department data found.</p>}
                         </div>
                     </motion.div>
 
                     {/* Recent Activity */}
                     <motion.div className="glass-card p-5"
                         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-                        <h2 className="font-bold text-white mb-4 flex items-center gap-2">
+                        <h2 className="font-bold text-main mb-4 flex items-center gap-2">
                             <Bell className="w-4 h-4 text-accent" /> Recent Activity
                         </h2>
                         <div className="space-y-3">
@@ -329,14 +333,15 @@ export default function AdminDashboardPage() {
                                 <div key={`${a.id}-${a.createdAt || i}`} className="flex items-start gap-3">
                                     <span className="text-xl flex-shrink-0">{a.icon}</span>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-white/80 text-sm font-medium">{a.userName}</p>
-                                        <p className="text-white/50 text-xs">{a.action}</p>
+                                        <p className="text-main font-medium">{a.userName}</p>
+                                        <p className="text-muted text-xs">{a.action}</p>
                                     </div>
-                                    <span className="text-white/30 text-xs flex-shrink-0 flex items-center gap-1">
-                                        <Clock className="w-3 h-3" /> {formatRelativeTime(a.createdAt)}
+                                    <span className="text-dim text-xs flex-shrink-0 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" /> {formatTime(formatRelativeTime(a.createdAt))}
                                     </span>
                                 </div>
                             ))}
+                            {recentActivity.length === 0 && <p className="text-center text-dim py-8">No recent activity.</p>}
                         </div>
                     </motion.div>
                 </div>
@@ -344,7 +349,7 @@ export default function AdminDashboardPage() {
                 {/* Broadcast notification */}
                 <motion.div className="glass-card p-5"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                    <h2 className="font-bold text-white mb-3 flex items-center gap-2">
+                    <h2 className="font-bold text-main mb-3 flex items-center gap-2">
                         <Bell className="w-4 h-4 text-accent" /> Broadcast Notification
                     </h2>
                     <div className="flex gap-3">

@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext.jsx'
+import axios from 'axios'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Upload, Search, UserPlus } from 'lucide-react'
 import { useGame } from '../../contexts/GameContext.jsx'
 import Layout from '../../components/Layout.jsx'
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
-import toast from '../../utils/toast.js'
-import axios from 'axios'
+import toast from 'react-hot-toast'
 
 //const LEVEL_LABELS = ['', 'Rookie', 'Aware', 'Guardian', 'Expert', 'Cyber Hero']
 
@@ -35,6 +35,8 @@ export default function AdminUsersPage() {
     const [leaderboardRows, setLeaderboardRows] = useState([])
     const [totalChapters, setTotalChapters] = useState(0)
     const [loadingUsers, setLoadingUsers] = useState(true)
+    const [usersData, setUsersData] = useState([])
+    const [loading, setLoading] = useState(true)
     const fileRef = useRef()
     
 
@@ -129,7 +131,7 @@ export default function AdminUsersPage() {
                 {/* Filters */}
                 <div className="flex flex-wrap gap-3 items-center">
                     <div className="relative flex-1 min-w-[200px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dim" />
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
@@ -141,7 +143,7 @@ export default function AdminUsersPage() {
                         {depts.map(d => (
                             <button key={d}
                                 onClick={() => setDeptFilter(d)}
-                                className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${deptFilter === d ? 'bg-primary text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'
+                                className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${deptFilter === d ? 'bg-primary text-white' : 'bg-card-bg text-muted hover:bg-input-bg'
                                     }`}>
                                 {d}
                             </button>
@@ -155,7 +157,7 @@ export default function AdminUsersPage() {
                     <div className="overflow-x-auto">
                         <table className="admin-table w-full">
                             <thead>
-                                <tr className="border-b border-white/10">
+                                <tr className="border-b border-card-border">
                                     <th>Employee</th>
                                     <th>NIK</th>
                                     <th>Department</th>
@@ -229,8 +231,11 @@ export default function AdminUsersPage() {
                             </tbody>
                         </table>
                     </div>
-                    <div className="p-4 border-t border-white/10 text-xs text-white/40">
-                        Showing {users.length} of {leaderboardRows.length} employees
+                    <div className="p-4 border-t border-card-border text-xs text-dim flex justify-between items-center">
+                        <div>Showing {filteredUsers.length} of {usersData.length} employees</div>
+                        <button onClick={fetchUsers} className="flex items-center gap-1 hover:text-main transition-colors">
+                            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
+                        </button>
                     </div>
                 </motion.div>
             </div>

@@ -25,7 +25,8 @@ CREATE DATABASE akebono_cyber_academy;
 Then run the migration and seed:
 ```bash
 cd server
-node db/seed.js   # Creates tables + seeds 20 demo employees
+node db/seed.js           # Creates tables + seeds 20 demo employees
+node db/add_test_user.js  # Adds 'tester_admin' for testing (No NPK needed)
 ```
 
 ### 2. Configure Server
@@ -56,12 +57,11 @@ npm run dev
 
 ## 🎮 Demo Credentials
 
-| Role     | NIK      | Password     |
-|----------|----------|--------------|
-| Employee | 10001    | password123  |
-| Manager  | 10002    | password123  |
-| Admin    | admin001 | admin123     |
-| New User | 10003    | password123  |
+| Employee    | 10001        | password123  |
+| Manager     | 10002        | password123  |
+| Admin       | admin001     | admin123     |
+| Test Admin  | tester_admin | akebono2024  |
+| New User    | 10003        | password123  |
 
 > **Note:** The app works in **Demo Mode** even without a backend — just use the credentials above from the Login page demo buttons.
 
@@ -109,6 +109,7 @@ npm run dev
 | Socket.io real-time updates | ✅ |
 | JWT authentication | ✅ |
 | Role-based access | ✅ |
+| Content-Management Studio | ✅ |
 
 ---
 

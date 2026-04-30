@@ -17,6 +17,11 @@ export default {
                     dark: '#e5be00',
                     light: '#ffe566',
                 },
+                main: 'var(--bg-main)',
+                secondary: 'var(--bg-secondary)',
+                'card-bg': 'var(--card-bg)',
+                'card-border': 'var(--card-border)',
+                'input-bg': 'var(--input-bg)',
                 dark: {
                     DEFAULT: '#1A1A2E',
                     card: '#16213E',

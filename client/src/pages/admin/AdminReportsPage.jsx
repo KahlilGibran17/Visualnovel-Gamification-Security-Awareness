@@ -119,8 +119,8 @@ export default function AdminReportsPage() {
                 <motion.div className="flex flex-col md:flex-row md:items-center gap-4"
                     initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
                     <div>
-                        <h1 className="text-3xl font-bold font-display text-white">📊 Reports & Export</h1>
-                        <p className="text-white/50 mt-1">Compliance tracking and progress analytics</p>
+                        <h1 className="text-3xl font-bold font-display text-main">📊 Reports & Export</h1>
+                        <p className="text-muted mt-1">Compliance tracking and progress analytics</p>
                     </div>
                     <div className="md:ml-auto flex gap-2">
                         <button id="export-excel-btn" onClick={() => handleExport('Excel')}
@@ -145,8 +145,8 @@ export default function AdminReportsPage() {
                         <motion.div key={s.label} className="stat-widget text-center"
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
                             <div className="text-3xl mb-1">{s.icon}</div>
-                            <p className="text-2xl font-bold text-white">{s.value}</p>
-                            <p className="text-xs text-white/40">{s.label}</p>
+                            <p className="text-2xl font-bold text-main">{s.value}</p>
+                            <p className="text-xs text-dim">{s.label}</p>
                         </motion.div>
                     ))}
                 </div>
@@ -163,10 +163,10 @@ export default function AdminReportsPage() {
                     )}
                     <ResponsiveContainer width="100%" height={180}>
                         <BarChart data={departmentSummary} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
-                            <XAxis dataKey="dept" stroke="rgba(255,255,255,0.4)" tick={{ fontSize: 12 }} />
-                            <YAxis stroke="rgba(255,255,255,0.2)" tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={v => `${v}%`} />
+                            <XAxis dataKey="dept" stroke="var(--text-dim)" tick={{ fontSize: 12 }} />
+                            <YAxis stroke="var(--text-dim)" opacity={0.5} tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={v => `${v}%`} />
                             <Tooltip
-                                contentStyle={{ background: '#16213E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                                contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '8px', color: 'var(--text-main)' }}
                                 formatter={(val) => [`${val}%`, 'Completion']}
                             />
                             <Bar dataKey="pct" radius={[4, 4, 0, 0]}>
@@ -181,16 +181,16 @@ export default function AdminReportsPage() {
                 {/* Compliance table */}
                 <motion.div className="glass-card overflow-hidden"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                    <div className="p-5 border-b border-white/10">
-                        <h2 className="font-bold text-white text-lg">Compliance Status — All Employees</h2>
-                        <p className="text-white/50 text-sm mt-1">
+                    <div className="p-5 border-b border-card-border">
+                        <h2 className="font-bold text-main text-lg">Compliance Status — All Employees</h2>
+                        <p className="text-muted text-sm mt-1">
                             Employees who have completed all {loading ? '...' : totalChapters} chapters
                         </p>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="admin-table w-full">
                             <thead>
-                                <tr className="border-b border-white/10">
+                                <tr className="border-b border-card-border">
                                     <th>Employee</th>
                                     <th>Department</th>
                                     <th>XP</th>
@@ -221,7 +221,7 @@ export default function AdminReportsPage() {
                                         <td>
                                             <div className="flex items-center gap-2">
                                                 <AvatarDisplay avatarId={u.avatarId} size="xs" />
-                                                <span className="text-white font-medium">{u.name}</span>
+                                                <span className="text-main font-medium">{u.name}</span>
                                             </div>
                                         </td>
                                         <td>{u.department}</td>
@@ -233,7 +233,7 @@ export default function AdminReportsPage() {
                                                 <td key={chapterNumber} className="text-center">
                                                     {chapterNumber <= u.chaptersCompleted
                                                         ? <CheckCircle className="w-4 h-4 text-green-400 mx-auto" />
-                                                        : <XCircle className="w-4 h-4 text-white/20 mx-auto" />
+                                                        : <XCircle className="w-4 h-4 text-dim opacity-30 mx-auto" />
                                                     }
                                                 </td>
                                             )

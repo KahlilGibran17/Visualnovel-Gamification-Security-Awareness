@@ -105,7 +105,7 @@ export default function ProfilePage() {
         } catch { }
         updateUser({ name: displayName, avatarId })
         setEditing(false)
-        toast.success('Profile updated!')
+        toast.success('Profil diperbarui!')
     }
 
     return (
@@ -113,8 +113,8 @@ export default function ProfilePage() {
             <div className="p-6 max-w-4xl mx-auto space-y-6">
                 {/* Header */}
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-                    <h1 className="text-3xl font-bold font-display text-white">My Profile</h1>
-                    <p className="text-white/50 mt-1">Your cyber hero identity and achievement record</p>
+                    <h1 className="text-3xl font-bold font-display text-main">Profil Saya</h1>
+                    <p className="text-muted mt-1">Identitas pahlawan siber dan catatan pencapaian Anda</p>
                 </motion.div>
 
                 {/* Profile Card */}
@@ -126,12 +126,12 @@ export default function ProfilePage() {
                             <div className="flex-1">
                                 <div className="flex items-start justify-between mb-2">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
-                                        <p className="text-white/50">{user?.position} • {user?.department}</p>
-                                        <p className="text-white/30 text-sm">NIK: {user?.nik}</p>
+                                        <h2 className="text-2xl font-bold text-main">{user?.name}</h2>
+                                        <p className="text-muted">{user?.position} • {user?.department}</p>
+                                        <p className="text-dim text-sm">NIK: {user?.nik}</p>
                                     </div>
                                     <button onClick={() => setEditing(true)} className="btn-secondary text-sm flex items-center gap-2">
-                                        <Edit3 className="w-4 h-4" /> Edit
+                                        <Edit3 className="w-4 h-4" /> Ubah
                                     </button>
                                 </div>
 
@@ -141,14 +141,14 @@ export default function ProfilePage() {
                                         style={{ color: level.color, borderColor: `${level.color}60`, background: `${level.color}15` }}>
                                         {level.icon} {level.title}
                                     </span>
-                                    <span className="text-white/50 text-sm">Level {level.level}</span>
+                                    <span className="text-muted text-sm">Tingkat {level.level}</span>
                                 </div>
 
                                 {/* XP */}
                                 <div className="max-w-md">
-                                    <div className="flex justify-between text-xs mb-1 text-white/50">
+                                    <div className="flex justify-between text-xs mb-1 text-muted">
                                         <span>{(user?.xp || 0).toLocaleString()} XP</span>
-                                        {nextLevel && <span>{nextLevel.xpRequired.toLocaleString()} XP for {nextLevel.title}</span>}
+                                        {nextLevel && <span>{nextLevel.xpRequired.toLocaleString()} XP untuk {nextLevel.title}</span>}
                                     </div>
                                     <div className="xp-bar">
                                         <motion.div className="xp-bar-fill"
@@ -159,19 +159,19 @@ export default function ProfilePage() {
                         </div>
                     ) : (
                         <div>
-                            <h2 className="font-bold text-white mb-4">Edit Profile</h2>
+                            <h2 className="font-bold text-main mb-4">Edit Profil</h2>
                             <div className="mb-4">
-                                <label className="text-sm text-white/60 mb-2 block">Display Name</label>
+                                <label className="text-sm text-muted mb-2 block">Nama Tampilan</label>
                                 <input value={displayName} onChange={e => setDisplayName(e.target.value)} className="input-field max-w-sm" />
                             </div>
                             <div className="mb-4">
-                                <label className="text-sm text-white/60 mb-2 block">Avatar</label>
+                                <label className="text-sm text-muted mb-2 block">Avatar</label>
                                 <AvatarPicker selected={avatarId} onSelect={setAvatarId} />
                             </div>
                             <div className="flex gap-3">
-                                <button onClick={() => setEditing(false)} className="btn-secondary">Cancel</button>
+                                <button onClick={() => setEditing(false)} className="btn-secondary">Batal</button>
                                 <button onClick={handleSave} className="btn-primary flex items-center gap-2">
-                                    <Save className="w-4 h-4" /> Save Changes
+                                    <Save className="w-4 h-4" /> Simpan Perubahan
                                 </button>
                             </div>
                         </div>
@@ -182,15 +182,15 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
                         { label: 'Total XP', value: (user?.xp || 0).toLocaleString(), icon: '⭐' },
-                        { label: 'Global Rank', value: `#${myRank || '—'}`, icon: '🏆' },
-                        { label: 'Chapters Done', value: `${chapterStats.completed}/${chapterStats.total}`, icon: '📚' },
-                        { label: 'Login Streak', value: `${user?.streak || 1} days`, icon: '🔥' },
+                        { label: 'Peringkat Global', value: `#${myRank || '—'}`, icon: '🏆' },
+                        { label: 'Modul Selesai', value: `${chapterStats.completed}/${chapterStats.total}`, icon: '📚' },
+                        { label: 'Login Beruntun', value: `${user?.streak || 1} days`, icon: '🔥' },
                     ].map((s, i) => (
                         <motion.div key={s.label} className="stat-widget text-center"
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.05 }}>
                             <div className="text-3xl mb-1">{s.icon}</div>
-                            <p className="text-xl font-bold text-white">{s.value}</p>
-                            <p className="text-xs text-white/40">{s.label}</p>
+                            <p className="text-xl font-bold text-main">{s.value}</p>
+                            <p className="text-xs text-dim">{s.label}</p>
                         </motion.div>
                     ))}
                 </div>
@@ -198,7 +198,7 @@ export default function ProfilePage() {
                 {/* Level progression */}
                 <motion.div className="glass-card p-5"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                    <h2 className="font-bold text-white mb-4">🎯 Level Progression</h2>
+                    <h2 className="font-bold text-main mb-4">🎯 Progres Tingkat</h2>
                     <div className="flex items-end gap-2">
                         {loading ? (
                             <p className="text-white/40 text-xs text-center">Loading levels...</p>
@@ -221,8 +221,8 @@ export default function ProfilePage() {
                                         }}>
                                         <span className="text-lg">{l.icon}</span>
                                     </div>
-                                    <p className="text-xs text-center font-medium" style={{ color: reached ? l.color : '#ffffff40' }}>{l.title}</p>
-                                    <p className="text-xs text-white/20">{l.xpRequired.toLocaleString()}</p>
+                                    <p className="text-xs text-center font-medium" style={{ color: reached ? l.color : 'var(--text-dim)' }}>{l.title}</p>
+                                    <p className="text-xs text-dim opacity-50">{l.xpRequired.toLocaleString()}</p>
                                 </div>
                             )
                         })}

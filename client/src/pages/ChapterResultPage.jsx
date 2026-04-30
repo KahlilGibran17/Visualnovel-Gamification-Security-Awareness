@@ -59,13 +59,13 @@ export default function ChapterResultPage() {
     const earnedBadge = earnedBadgeId ? BADGES.find(b => b.id === earnedBadgeId) : null
 
     const xpBreakdown = [
-        { label: 'Correct Choices', value: result.xpEarned - (isGood ? 200 : 100) - (result.perfect ? 100 : 0), color: '#60a5fa' },
-        { label: isGood ? 'Good Ending Bonus' : 'Chapter Completion', value: isGood ? 200 : 100, color: '#22c55e' },
-        ...(result.perfect ? [{ label: 'Perfect Score Bonus!', value: 100, color: '#FFD60A' }] : []),
+        { label: 'Pilihan Benar', value: result.xpEarned - (isGood ? 200 : 100) - (result.perfect ? 100 : 0), color: '#60a5fa' },
+        { label: isGood ? 'Bonus Akhir Baik' : 'Penyelesaian Modul', value: isGood ? 200 : 100, color: '#22c55e' },
+        ...(result.perfect ? [{ label: 'Bonus Skor Sempurna!', value: 100, color: '#FFD60A' }] : []),
     ].filter(x => x.value > 0)
 
     return (
-        <div className="min-h-screen bg-dark flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen bg-main flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
             {isGood && <Confetti />}
 
             {/* Background */}
@@ -85,9 +85,9 @@ export default function ChapterResultPage() {
                 >
                     <div className="text-8xl mb-3">{isGood ? '🎉' : '💥'}</div>
                     <h1 className={`text-3xl font-bold font-display ${isGood ? 'text-accent' : 'text-primary'}`}>
-                        {isGood ? 'Mission Complete!' : 'Mission Failed'}
+                        {isGood ? 'Misi Selesai!' : 'Misi Gagal'}
                     </h1>
-                    <p className="text-white/60 mt-1">{chapter?.title} — {chapter?.subtitle}</p>
+                    <p className="text-muted mt-1">{chapter?.title} — {chapter?.subtitle}</p>
                 </motion.div>
 
                 {/* Stats row */}
@@ -100,17 +100,17 @@ export default function ChapterResultPage() {
                     <div className="grid grid-cols-3 gap-4 text-center">
                         <div>
                             <p className="text-3xl font-bold text-accent">{result.score}%</p>
-                            <p className="text-xs text-white/50 mt-1">Score</p>
+                            <p className="text-xs text-dim mt-1">Skor</p>
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-white">{result.xpEarned}</p>
-                            <p className="text-xs text-white/50 mt-1">XP Earned</p>
+                            <p className="text-3xl font-bold text-main">{result.xpEarned}</p>
+                            <p className="text-xs text-dim mt-1">XP Diperoleh</p>
                         </div>
                         <div>
                             <p className={`text-3xl font-bold ${isGood ? 'text-green-400' : 'text-yellow-400'}`}>
                                 {isGood ? '🏆' : '⚠️'}
                             </p>
-                            <p className="text-xs text-white/50 mt-1">{isGood ? 'Good Ending' : 'Bad Ending'}</p>
+                            <p className="text-xs text-dim mt-1">{isGood ? 'Akhir Baik' : 'Akhir Buruk'}</p>
                         </div>
                     </div>
                 </motion.div>
@@ -122,13 +122,13 @@ export default function ChapterResultPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <h2 className="font-bold text-white mb-3 flex items-center gap-2">
-                        <Star className="w-4 h-4 text-accent" /> XP Breakdown
+                    <h2 className="font-bold text-main mb-3 flex items-center gap-2">
+                        <Star className="w-4 h-4 text-accent" /> Rincian XP
                     </h2>
                     <div className="space-y-2">
                         {xpBreakdown.map((item, i) => (
                             <div key={i} className="flex items-center justify-between">
-                                <span className="text-white/70 text-sm">{item.label}</span>
+                                <span className="text-muted text-sm">{item.label}</span>
                                 <motion.span
                                     className="font-bold text-sm"
                                     style={{ color: item.color }}
@@ -140,8 +140,8 @@ export default function ChapterResultPage() {
                                 </motion.span>
                             </div>
                         ))}
-                        <div className="border-t border-white/10 pt-2 flex justify-between">
-                            <span className="font-bold text-white">Total</span>
+                        <div className="border-t border-card-border pt-2 flex justify-between">
+                            <span className="font-bold text-main">Total</span>
                             <span className="font-bold text-accent text-lg">+{result.xpEarned} XP</span>
                         </div>
                     </div>
@@ -156,15 +156,15 @@ export default function ChapterResultPage() {
                         transition={{ delay: 0.5, type: 'spring' }}
                     >
                         <h2 className="font-bold text-accent mb-3 flex items-center gap-2">
-                            <Award className="w-4 h-4" /> Badge Unlocked!
+                            <Award className="w-4 h-4" /> Lencana Terbuka!
                         </h2>
                         <div className="flex items-center gap-4">
                             <div className="badge-earned w-16 h-16">
                                 <span className="text-3xl">{earnedBadge.icon}</span>
                             </div>
                             <div>
-                                <p className="font-bold text-white">{earnedBadge.name}</p>
-                                <p className="text-white/50 text-sm">{earnedBadge.desc}</p>
+                                <p className="font-bold text-main">{earnedBadge.name}</p>
+                                <p className="text-muted text-sm">{earnedBadge.desc}</p>
                             </div>
                         </div>
                     </motion.div>
@@ -182,14 +182,14 @@ export default function ChapterResultPage() {
                         onClick={() => navigate(`/play/${chapterId}`)}
                         className="btn-secondary flex-1 flex items-center justify-center gap-2"
                     >
-                        <RotateCcw className="w-4 h-4" /> Play Again
+                        <RotateCcw className="w-4 h-4" /> Main Lagi
                     </button>
                     <button
                         id="next-chapter-btn"
                         onClick={() => navigate('/chapters')}
                         className="btn-primary flex-1 flex items-center justify-center gap-2"
                     >
-                        {isGood ? 'Next Chapter' : 'Return to Map'}
+                        {isGood ? 'Modul Selanjutnya' : 'Kembali ke Peta'}
                         <ArrowRight className="w-4 h-4" />
                     </button>
                 </motion.div>

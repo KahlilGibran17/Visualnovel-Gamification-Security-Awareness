@@ -5,14 +5,14 @@ import axios from 'axios'
 const GameContext = createContext(null)
 
 
-// Chapter definitions
-export const CHAPTERS = [
-    { id: 1, title: 'First Day', subtitle: 'Phishing Email', icon: '📧', location: 'Office Lobby', unlockAt: 0 },
-    { id: 2, title: 'The Open Desk', subtitle: 'Clean Desk Policy', icon: '🗂️', location: 'Workstation', unlockAt: 1 },
-    { id: 3, title: 'Stranger in the Elevator', subtitle: 'Social Engineering', icon: '🛗', location: 'Elevator', unlockAt: 2 },
-    { id: 4, title: 'Change Your Password', subtitle: 'Password Security', icon: '🔐', location: 'IT Room', unlockAt: 3 },
-    { id: 5, title: 'Incident!', subtitle: 'Incident Reporting', icon: '🚨', location: 'Server Room', unlockAt: 4 },
-    { id: 6, title: 'Showdown with Ph1sh', subtitle: 'FINALE', icon: '⚔️', location: 'Data Center', unlockAt: 5 },
+// Fallback data
+const CHAPTERS = [
+    { id: 1, title: 'Hari Pertama', subtitle: 'Email Phishing', icon: '📧', location: 'Lobi Kantor', unlockAt: 0, scenes: [] },
+    { id: 2, title: 'Meja Terbuka', subtitle: 'Kebijakan Meja Bersih', icon: '🗂️', location: 'Ruang Kerja', unlockAt: 1, scenes: [] },
+    { id: 3, title: 'Orang Asing', subtitle: 'Rekayasa Sosial', icon: '🛗', location: 'Lift', unlockAt: 2, scenes: [] },
+    { id: 4, title: 'Ganti Sandi Anda', subtitle: 'Keamanan Kata Sandi', icon: '🔐', location: 'Ruang IT', unlockAt: 3, scenes: [] },
+    { id: 5, title: 'Insiden!', subtitle: 'Pelaporan Insiden', icon: '🚨', location: 'Ruang Server', unlockAt: 4, scenes: [] },
+    { id: 6, title: 'Pertarungan Terakhir', subtitle: 'FINAL', icon: '⚔️', location: 'Pusat Data', unlockAt: 5, scenes: [] },
 ]
 
 
@@ -118,12 +118,81 @@ export function GameProvider({ children }) {
     const [leaderboard, setLeaderboard] = useState([])
     const [leaderboardLoading, setLeaderboardLoading] = useState(false)
     const [leaderboardError, setLeaderboardError] = useState(null)
+    const [deptStats, setDeptStats] = useState(DEMO_DEPT_STATS)
     const [xpPopups, setXpPopups] = useState([])
     const [badges, setBadges] = useState([])
     const { levels,loading,error } = useLevels()
+    const [isTourActive, setIsTourActive] = useState(false)
+    const [currentStep, setCurrentStep] = useState(0)
+    const [tourShownThisSession, setTourShownThisSession] = useState(false)
+
+    const [chapters, setChapters] = useState(FALLBACK_CHAPTERS)
+    const [levels, setLevels] = useState(FALLBACK_LEVELS)
+    const [badges, setBadges] = useState(FALLBACK_BADGES)
+    const [backgrounds, setBackgrounds] = useState([])
+    const [characters, setCharacters] = useState([])
+    const [uiTypes, setUiTypes] = useState([])
+    const [roadmapNodes, setRoadmapNodes] = useState([])
 
     useEffect(() => {
+        const fetchContent = async () => {
+            try {
+                const [cRes, lRes, bRes, bgRes, charRes, uiRes, rmRes] = await Promise.all([
+                    axios.get('/api/content/chapters'),
+                    axios.get('/api/content/levels'),
+                    axios.get('/api/content/badges'),
+                    axios.get('/api/cms/backgrounds').catch(() => ({ data: [] })),
+                    axios.get('/api/cms/characters').catch(() => ({ data: [] })),
+                    axios.get('/api/content/ui-types').catch(() => ({ data: [] })),
+                    axios.get('/api/roadmap').catch(() => ({ data: [] }))
+                ])
+                if (Array.isArray(cRes.data) && cRes.data.length > 0) {
+                    setChapters(cRes.data)
+                }
+                if (Array.isArray(lRes.data) && lRes.data.length > 0) {
+                    setLevels(lRes.data.map(l => ({ level: l.level, title: l.title, xpRequired: l.xp_required, color: l.color, icon: l.icon })))
+                }
+                if (Array.isArray(bRes.data) && bRes.data.length > 0) {
+                    setBadges(bRes.data)
+                }
+                if (bgRes?.data && Array.isArray(bgRes.data)) {
+                    setBackgrounds(bgRes.data)
+                }
+                if (charRes?.data && Array.isArray(charRes.data)) {
+                    setCharacters(charRes.data)
+                }
+                if (uiRes?.data && Array.isArray(uiRes.data)) {
+                    setUiTypes(uiRes.data)
+                }
+                if (rmRes?.data && Array.isArray(rmRes.data)) {
+                    setRoadmapNodes(rmRes.data)
+                }
+            } catch (err) {
+                console.warn('Using fallback content (auth may not be ready):', err.message)
+            }
+        }
+
+        const fetchLeaderboardData = async () => {
+            try {
+                const [lbRes, deptRes] = await Promise.all([
+                    axios.get('/api/leaderboard'),
+                    axios.get('/api/leaderboard/departments')
+                ])
+                if (lbRes.data && Array.isArray(lbRes.data) && lbRes.data.length > 0) {
+                    setLeaderboard(lbRes.data)
+                }
+                if (deptRes.data && Array.isArray(deptRes.data) && deptRes.data.length > 0) {
+                    setDeptStats(deptRes.data)
+                }
+            } catch (err) {
+                console.warn('Using fallback leaderboard', err.message)
+            }
+        }
+
+        // Only fetch content when user is authenticated (token available via axios defaults)
         if (user) {
+            fetchContent()
+            fetchLeaderboardData()
             loadProgress()
             loadLeaderboard()
         } else {
@@ -131,6 +200,54 @@ export function GameProvider({ children }) {
             setLeaderboard([])
         }
     }, [user?.id])
+
+    // Synchronize local leaderboard immediately when user changes xp so rank adjusts continuously 
+    useEffect(() => {
+        if (!user) return
+        setLeaderboard(prev => {
+            const index = prev.findIndex(u => u.nik === user.nik || u.id === user.id)
+            if (index === -1) {
+                // User not in leaderboard yet, add them so they can see themselves rank up
+                const updated = [...prev, {
+                    id: user.id || Date.now(),
+                    nik: user.nik,
+                    name: user.name || 'You',
+                    department: user.department || 'Unknown',
+                    xp: user.xp || 0,
+                    level: user.level || 1,
+                    avatarId: user.avatarId || 1,
+                    chaptersCompleted: user.chaptersCompleted || 0
+                }]
+                updated.sort((a, b) => b.xp - a.xp)
+                let rank = 1
+                for (let i = 0; i < updated.length; i++) {
+                    if (i > 0 && Math.floor(updated[i].xp) < Math.floor(updated[i - 1].xp)) {
+                        rank = i + 1
+                    }
+                    updated[i].rank = rank
+                }
+                return updated
+            }
+
+            if (prev[index].xp === user.xp) return prev // unchanged
+
+            const updated = [...prev]
+            updated[index] = { ...updated[index], xp: user.xp, level: user.level }
+
+            // Re-sort
+            updated.sort((a, b) => b.xp - a.xp)
+
+            // Re-rank 
+            let rank = 1
+            for (let i = 0; i < updated.length; i++) {
+                if (i > 0 && Math.floor(updated[i].xp) < Math.floor(updated[i - 1].xp)) {
+                    rank = i + 1
+                }
+                updated[i].rank = rank
+            }
+            return updated
+        })
+    }, [user?.xp, user?.level, user?.id, user?.nik, user?.name, user?.department])
 
     const loadProgress = async () => {
         try {
@@ -258,26 +375,77 @@ export function GameProvider({ children }) {
         return { rank: rank - 1, name: above.name, gap }
     }
 
+    const elearningCompleted = chapterProgress[0]?.completed === true
+    
+    const completeElearning = async () => {
+        setChapterProgress(prev => ({
+            ...prev,
+            0: { completed: true, ending: 'good', xpEarned: 0, score: 100 }
+        }))
+        try {
+            await axios.post('/api/progress/chapter/0/complete', {
+                ending: 'good',
+                xpEarned: 0,
+                perfect: true,
+                score: 100,
+                wrongChoices: 0
+            })
+        } catch (err) {
+            console.error('Failed to save elearning progress', err)
+        }
+    }
+
+    const startTour = () => {
+        if (tourShownThisSession && !isTourActive) return // Don't auto-start if already shown
+        setCurrentStep(0)
+        setIsTourActive(true)
+        setTourShownThisSession(true)
+    }
+
+    const forceStartTour = () => {
+        setCurrentStep(0)
+        setIsTourActive(true)
+        setTourShownThisSession(true)
+    }
+
+    const completeTour = (dontShowAgain) => {
+        if (dontShowAgain) {
+            localStorage.setItem('ake_tour_disabled', 'true')
+        }
+        setIsTourActive(false)
+    }
+
+    const setTourStep = (step) => {
+        setCurrentStep(step)
+    }
+
     return (
         <GameContext.Provider value={{
             chapterProgress,
             leaderboard,
+            deptStats,
             xpPopups,
             getLevelFromXP,
             getNextLevel,
             awardXP,
             completeChapter,
+            completeElearning,
             getUserRank,
             getNextRankGap,
-            loadLeaderboard,
-            CHAPTERS,
-            levels,
-            loading,
-            error,
-            leaderboardLoading,
-            leaderboardError,
-            badges,
-            loadBadges
+            elearningCompleted,
+            CHAPTERS: chapters,
+            LEVELS: levels,
+            BADGES: badges,
+            BACKGROUNDS: backgrounds,
+            CHARACTERS: characters,
+            UI_TYPES: uiTypes,
+            ROADMAP_NODES: roadmapNodes,
+            isTourActive,
+            currentStep,
+            startTour,
+            forceStartTour,
+            completeTour,
+            setTourStep
         }}>
             {children}
         </GameContext.Provider>

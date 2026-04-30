@@ -9,7 +9,16 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
-    const [token, setToken] = useState(() => localStorage.getItem('ake_token'))
+    const [token, setToken] = useState(() => {
+        const urlParams = new URLSearchParams(window.location.search)
+        const urlToken = urlParams.get('token')
+        if (urlToken) {
+            sessionStorage.setItem('ake_token', urlToken)
+            window.history.replaceState({}, document.title, window.location.pathname)
+            return urlToken
+        }
+        return localStorage.getItem('ake_token') || sessionStorage.getItem('ake_token')
+    })
 
     useEffect(() => {
         if (token) {
@@ -49,17 +58,9 @@ export function AuthProvider({ children }) {
             axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
             return { success: true, user: userData }
         } catch (err) {
-            // Demo mode fallback
-            // const demo = DEMO_USERS.find(u => u.nik === nik && password === (nik === 'admin001' ? 'admin123' : 'password123'))
-            // if (demo) {
-            //     const fakeToken = 'demo_' + demo.nik
-            //     setToken(fakeToken)
-            //     setUser(demo)
-            //     if (remember) localStorage.setItem('ake_token', fakeToken)
-            //     localStorage.setItem('ake_demo_user', JSON.stringify(demo))
-            //     return { success: true, user: demo }
-            // }
-            return { success: false, error: err.response?.data?.message || 'Invalid NIK or password' }
+            // Teruskan pesan error dari server (Sunfish atau lokal)
+            const serverMsg = err.response?.data?.message
+            return { success: false, error: serverMsg || 'NPK atau kata sandi salah.' }
         }
     }
 
