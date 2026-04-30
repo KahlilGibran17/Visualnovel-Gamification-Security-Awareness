@@ -138,7 +138,6 @@ export default function LeaderboardPage() {
     const [showDeptFilter, setShowDeptFilter] = useState(false)
     const [showDeptChart, setShowDeptChart] = useState(false)
     const [leaderboardRows, setLeaderboardRows] = useState([])
-    const [deptStats, setDeptStats] = useState([])
     const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
     const [totalChapters, setTotalChapters] = useState(0)
     const [loadingTotalChapters, setLoadingTotalChapters] = useState(true)

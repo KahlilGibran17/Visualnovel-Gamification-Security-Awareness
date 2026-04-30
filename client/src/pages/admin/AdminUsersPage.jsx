@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useEffect, useRef, useState } from 'react'
+import React, {useMemo, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import axios from 'axios'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -36,7 +36,6 @@ export default function AdminUsersPage() {
     const [totalChapters, setTotalChapters] = useState(0)
     const [loadingUsers, setLoadingUsers] = useState(true)
     const [usersData, setUsersData] = useState([])
-    const [loading, setLoading] = useState(true)
     const fileRef = useRef()
     
 

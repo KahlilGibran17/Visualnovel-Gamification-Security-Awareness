@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Users, BookOpen, BarChart2, Bell, TrendingUp, AlertCircle, CheckCircle, Clock, PlusCircle, GraduationCap } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
-import axios from 'axios'
 import { io } from 'socket.io-client'
 
 const DEPT_COLORS = ['#60a5fa', '#a78bfa', '#f97316', '#22c55e', '#ec4899', '#FFD60A']
