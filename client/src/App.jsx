@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthContext.jsx'
 import { GameProvider } from './contexts/GameContext.jsx'
 import { AudioProvider } from './contexts/AudioContext.jsx'
+import { ThemeProvider } from './contexts/ThemeContext.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 import LoginPage from './pages/LoginPage.jsx'
@@ -26,6 +27,7 @@ import SuperAdminAdminManagePage from './pages/super-admin/SuperAdmin-AdminManag
 export default function App() {
     return (
         <BrowserRouter>
+            <ThemeProvider>
             <AuthProvider>
                 <GameProvider>
                     <AudioProvider>
@@ -151,6 +153,7 @@ export default function App() {
                     </AudioProvider>
                 </GameProvider>
             </AuthProvider>
+            </ThemeProvider>
         </BrowserRouter>
     )
 }
