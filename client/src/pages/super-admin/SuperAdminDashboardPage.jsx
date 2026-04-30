@@ -141,7 +141,7 @@ export default function SuperAdminDashboardPage() {
 				</motion.div>
 
 				<div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-					{/* <motion.form
+					<motion.form
 						onSubmit={handleSubmit}
 						className="glass-card p-5 space-y-4 lg:col-span-3"
 						initial={{ opacity: 0, y: 16 }}
@@ -188,7 +188,7 @@ export default function SuperAdminDashboardPage() {
 						>
 							{submitting ? 'Menyimpan...' : 'Tambah Admin'}
 						</button>
-					</motion.form> */}
+					</motion.form>
 
 					<motion.div
 						className="glass-card p-5 lg:col-span-2"
