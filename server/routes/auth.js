@@ -51,9 +51,7 @@ router.post('/login', async (req, res) => {
     nik = nik.trim()
 
     try {
-        // ══════════════════════════════════════════════════════════════════════
-        // 1. CEK LOKAL TERLEBIH DAHULU
-        // ══════════════════════════════════════════════════════════════════════
+        // 1) Cek user lokal dulu
         const localUserResult = await pool.query(
             `SELECT u.*, r.name as role FROM users u
              JOIN roles r ON u.role_id = r.id
@@ -61,40 +59,20 @@ router.post('/login', async (req, res) => {
             [nik]
         )
 
-        if (result.rows.length === 0) {
-            return res.status(401).json({ message: 'Invalid NIK or password' })
-        }
+        if (localUserResult.rows.length > 0) {
+            const user = localUserResult.rows[0]
+            const match = await bcrypt.compare(password, user.password_hash || '')
 
-        const user = result.rows[0]
-        const match = await bcrypt.compare(password, user.password_hash)
-        if (!match) return res.status(401).json({ message: 'Invalid NIK or password' })
+            if (match) {
+                const streak = await updateLoginMeta(user.id, user.streak || 0, user.last_login)
 
-        // Update last login & streak
-        const today = new Date().toDateString()
-        const lastLogin = user.last_login ? new Date(user.last_login).toDateString() : null
-        const yesterday = new Date(Date.now() - 86400000).toDateString()
-        const newStreak =
-            lastLogin === today
-                ? user.streak
-                : lastLogin === yesterday
-                    ? user.streak + 1
-                    : 1
-
-        await pool.query(
-            `UPDATE users
-             SET last_login = NOW(),
-                 streak = $1,
-                 updated_at = NOW()
-             WHERE id = $2`,
-            [newStreak, user.id]
-        )
-
-
-        // Get badges
-        const badgesResult = await pool.query(
-            `SELECT b.badge_key FROM user_badges ub JOIN badges b ON ub.badge_id = b.id WHERE ub.user_id = $1`,
-            [user.id]
-        )
+                const badgesRes = await pool.query(
+                    `SELECT b.badge_key
+                     FROM user_badges ub
+                     JOIN badges b ON ub.badge_id = b.id
+                     WHERE ub.user_id = $1`,
+                    [user.id]
+                )
 
                 const token = jwt.sign(
                     { userId: user.id, nik: user.nik, role: user.role },
@@ -109,9 +87,7 @@ router.post('/login', async (req, res) => {
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════════
-        // 2. MODE SUNFISH — jika lokal tidak cocok dan Sunfish aktif
-        // ══════════════════════════════════════════════════════════════════════
+        // 2) Jika lokal gagal, fallback ke Sunfish (kalau aktif)
         if (isSunfishEnabled()) {
             console.log(`[Auth] Attempting Sunfish login for NPK: ${nik}`)
 
@@ -131,27 +107,29 @@ router.post('/login', async (req, res) => {
             console.log(`[Auth] Sunfish login successful for NPK: ${nik}`)
 
             const employeeData = await fetchEmployee(nik)
-            const sunfishName  = employeeData?.name       || nik
-            const sunfishDept  = employeeData?.department || 'Umum'
-            const sunfishPos   = employeeData?.position   || 'Karyawan'
+            const sunfishName = employeeData?.name || nik
+            const sunfishDept = employeeData?.department || 'Umum'
+            const sunfishPos = employeeData?.position || 'Karyawan'
 
             let userRow
             if (localUserResult.rows.length > 0) {
                 userRow = localUserResult.rows[0]
                 await pool.query(
-                    `UPDATE users SET name = $1, department = $2, position = $3 WHERE nik = $4`,
+                    `UPDATE users
+                     SET name = $1, department = $2, position = $3, updated_at = NOW()
+                     WHERE nik = $4`,
                     [sunfishName, sunfishDept, sunfishPos, nik]
                 )
-                userRow.name       = sunfishName
+                userRow.name = sunfishName
                 userRow.department = sunfishDept
-                userRow.position   = sunfishPos
+                userRow.position = sunfishPos
             } else {
                 console.log(`[Auth] Auto-registering new Sunfish user: ${nik}`)
                 const defaultRoleRes = await pool.query(`SELECT id FROM roles WHERE name = 'employee' LIMIT 1`)
                 const roleId = defaultRoleRes.rows[0]?.id || 1
 
                 const crypto = require('crypto')
-                const placeholderHash = '$2a$12$' + crypto.randomBytes(22).toString('base64').slice(0, 53)
+                const placeholderHash = '$2a$12$' + crypto.randomBytes(40).toString('base64').slice(0, 53)
 
                 const inserted = await pool.query(
                     `INSERT INTO users (nik, name, department, position, role_id, xp, setup_done, password_hash, created_at)
@@ -164,7 +142,10 @@ router.post('/login', async (req, res) => {
 
             const streak = await updateLoginMeta(userRow.id, userRow.streak || 0, userRow.last_login)
             const badgesRes = await pool.query(
-                `SELECT b.badge_key FROM user_badges ub JOIN badges b ON ub.badge_id = b.id WHERE ub.user_id = $1`,
+                `SELECT b.badge_key
+                 FROM user_badges ub
+                 JOIN badges b ON ub.badge_id = b.id
+                 WHERE ub.user_id = $1`,
                 [userRow.id]
             )
 
@@ -180,12 +161,10 @@ router.post('/login', async (req, res) => {
             })
         }
 
-        // Jika Sunfish tidak aktif dan login lokal gagal
         return res.status(401).json({ message: 'NPK atau kata sandi salah' })
-
     } catch (err) {
         console.error('[Auth] Unexpected login error:', err)
-        res.status(500).json({ message: 'Terjadi kesalahan pada server. Silakan coba lagi.' })
+        return res.status(500).json({ message: 'Terjadi kesalahan pada server. Silakan coba lagi.' })
     }
 })
 

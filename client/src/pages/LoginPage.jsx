@@ -68,6 +68,36 @@ function HUDCorners() {
     )
 }
 
+function GlitchText({ text, className }) {
+    return (
+        <span className={`relative inline-block ${className}`} data-text={text}>
+            {text}
+            <span
+                className="absolute inset-0 text-primary"
+                style={{
+                    clipPath: 'inset(40% 0 55% 0)',
+                    animation: 'glitch-anim 3s infinite linear alternate-reverse',
+                    opacity: 0.7,
+                }}
+                aria-hidden
+            >
+                {text}
+            </span>
+            <span
+                className="absolute inset-0 text-accent"
+                style={{
+                    clipPath: 'inset(60% 0 15% 0)',
+                    animation: 'glitch-anim 2.5s infinite linear alternate',
+                    opacity: 0.5,
+                }}
+                aria-hidden
+            >
+                {text}
+            </span>
+        </span>
+    )
+}
+
 export default function LoginPage() {
     const [tab, setTab]           = useState('login')
     const [nik, setNik]           = useState('')
