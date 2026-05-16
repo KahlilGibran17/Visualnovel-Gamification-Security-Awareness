@@ -1,4 +1,4 @@
-const pool = require('./server/db/pool');
+const pool = require('../db/pool');
 
 // 50 scenes: all player_male emotes, no terminal, lots of choice + investigate + email + lesson
 async function expandChapter1() {

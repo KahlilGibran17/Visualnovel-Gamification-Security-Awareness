@@ -1,11 +1,11 @@
-const pool = require('./server/db/pool');
+const pool = require('../db/pool');
 
 async function migrate() {
     try {
-        console.log('Adding image_url to vn_char_expressions...');
+        console.log('Adding uniform_reference_url to vn_characters...');
         await pool.query(`
-            ALTER TABLE vn_char_expressions 
-            ADD COLUMN IF NOT EXISTS image_url TEXT;
+            ALTER TABLE vn_characters 
+            ADD COLUMN IF NOT EXISTS uniform_reference_url TEXT;
         `);
         console.log('✅ Migration completed successfully.');
         process.exit(0);

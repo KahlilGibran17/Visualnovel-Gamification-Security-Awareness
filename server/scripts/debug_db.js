@@ -1,4 +1,4 @@
-const pool = require('./server/db/pool');
+const pool = require('../db/pool');
 
 async function check() {
     try {

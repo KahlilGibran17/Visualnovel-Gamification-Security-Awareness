@@ -1,6 +1,6 @@
-const pool = require('./server/db/pool');
+const pool = require('../db/pool');
 // Use the bcrypt from server node_modules
-const bcrypt = require('./server/node_modules/bcryptjs');
+const bcrypt = require('bcryptjs');
 
 async function reset() {
     try {
