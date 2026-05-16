@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, ChevronUp, ChevronDown, Copy, GripVertical, MessageSquare, HelpCircle, Flag, CheckCircle, Circle, X, Loader2, Clock, Mail, BookOpen, Search, Terminal } from 'lucide-react'
+import { Plus, Trash2, ChevronUp, ChevronDown, Copy, GripVertical, MessageSquare, HelpCircle, Flag, CheckCircle, Circle, X, Loader2, Clock, Mail, BookOpen, Search, Terminal, Upload, Eye, Key, Shield } from 'lucide-react'
+import { useGame } from '../../../contexts/GameContext'
+import { useAuth } from '../../../contexts/AuthContext'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 import { FakeUIScaledWrapper } from '../../../components/FakeUIBackground'
@@ -13,7 +15,182 @@ export const SCENE_TYPES = [
     { value: 'ending', label: 'Ending', icon: Flag, color: 'red' },
     { value: 'email', label: 'Email', icon: Mail, color: 'purple' },
     { value: 'lesson', label: 'Lesson', icon: BookOpen, color: 'cyan' },
+    { value: 'password_setup', label: 'Password Event', icon: Key, color: 'indigo' },
 ]
+
+const PREVIEW_BACKGROUNDS = {
+    office: {
+        gradient: 'from-blue-900/40 via-dark/60 to-dark',
+        pattern: 'linear-gradient(135deg, rgba(15,52,96,0.8), rgba(26,26,46,0.95))',
+    },
+    desk: {
+        gradient: 'from-indigo-900/40 via-dark/60 to-dark',
+        pattern: 'linear-gradient(135deg, rgba(49,46,129,0.7), rgba(26,26,46,0.95))',
+    },
+    server: {
+        gradient: 'from-green-900/40 via-dark/60 to-dark',
+        pattern: 'linear-gradient(135deg, rgba(6,78,59,0.7), rgba(26,26,46,0.95))',
+    },
+    elevator: {
+        gradient: 'from-gray-900/40 via-dark/60 to-dark',
+        pattern: 'linear-gradient(135deg, rgba(17,24,39,0.8), rgba(26,26,46,0.95))',
+    },
+    factory: {
+        gradient: 'from-orange-900/40 via-dark/60 to-dark',
+        pattern: 'linear-gradient(135deg, rgba(120,53,15,0.6), rgba(26,26,46,0.95))',
+    },
+}
+
+// ─── Scene Preview Modal ───────────────────────────────────────────────────
+function ScenePreview({ scene, onClose }) {
+    const { CHARACTERS, BACKGROUNDS: globalBackgrounds } = useGame()
+    const { user } = useAuth()
+    const vaRef = useRef(null)
+    const sfxRef = useRef(null)
+
+    const playerName = user?.name?.split(' ')[0] || 'Yusuf'
+    const getText = (text) => text?.replace(/\{\{playerName\}\}/gi, playerName) || ''
+
+    // Actual audio playing
+    useEffect(() => {
+        if (scene.va_url) {
+            vaRef.current = new Audio(scene.va_url)
+            vaRef.current.play().catch(e => console.warn('VA play blocked', e))
+        }
+        if (scene.sfx_url) {
+            sfxRef.current = new Audio(scene.sfx_url)
+            sfxRef.current.play().catch(e => console.warn('SFX play blocked', e))
+        }
+        return () => {
+            vaRef.current?.pause()
+            sfxRef.current?.pause()
+        }
+    }, [scene.va_url, scene.sfx_url])
+
+    const getImgUrl = (charKey, expr) => {
+        if (!charKey) return null
+        const char = CHARACTERS?.find(c => c.key_name === charKey)
+        if (!char) return null
+        
+        // If center, try full body first
+        if (scene.char_center === charKey && char.full_body_url) return char.full_body_url
+        
+        const expression = char.expressions?.find(e => e.expression_name === expr)
+        return expression?.image_url || expression?.sprite_url || null
+    }
+
+    const getEmoji = (charKey) => {
+        if (!charKey) return '👤'
+        const char = CHARACTERS?.find(c => c.key_name === charKey)
+        return char?.emoji || '👤'
+    }
+
+    const localBg = PREVIEW_BACKGROUNDS[scene.background] || PREVIEW_BACKGROUNDS.office
+    const customBg = globalBackgrounds?.find(b => b.key_name === scene.background)
+
+    const bgStyle = customBg && customBg.image_url
+        ? { backgroundImage: `url(${customBg.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+        : { background: localBg.pattern }
+    
+    const bgGradient = customBg ? '' : localBg.gradient
+
+    return (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 md:p-10 bg-black/80 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative w-full max-w-5xl aspect-video bg-dark rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex flex-col">
+                {/* Background Layer */}
+                <div className={`absolute inset-0 z-0 transition-all duration-700 ${bgGradient ? `bg-gradient-to-b ${bgGradient}` : ''}`} style={bgStyle}>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+                </div>
+
+                {/* Characters Layer */}
+                <div className="absolute inset-0 z-10 flex items-end justify-between px-10 pointer-events-none">
+                    {/* Left */}
+                    <div className="w-1/3 h-[85%] flex justify-start items-end">
+                        {scene.char_left && (
+                            <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="h-full w-full max-w-[320px]">
+                                {getImgUrl(scene.char_left, scene.char_left_expr) ? (
+                                    <img src={getImgUrl(scene.char_left, scene.char_left_expr)} 
+                                        className="w-full h-full object-contain object-bottom" 
+                                        style={{ filter: 'drop-shadow(0 0 10px rgba(0,0,0,0.4))' }}
+                                    />
+                                ) : (
+                                    <div className="h-full aspect-[2/3] bg-white/10 rounded-t-3xl flex items-center justify-center border-t border-x border-white/20 backdrop-blur">
+                                        <span className="text-8xl">{getEmoji(scene.char_left)}</span>
+                                    </div>
+                                )}
+                            </motion.div>
+                        )}
+                    </div>
+                    
+                    {/* Right */}
+                    <div className="w-1/3 h-[85%] flex justify-end items-end">
+                        {scene.char_right && (
+                            <motion.div initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="h-full w-full max-w-[320px]">
+                                {getImgUrl(scene.char_right, scene.char_right_expr) ? (
+                                    <img src={getImgUrl(scene.char_right, scene.char_right_expr)} 
+                                        className="w-full h-full object-contain object-bottom" 
+                                        style={{ filter: 'drop-shadow(0 0 10px rgba(0,0,0,0.4))' }}
+                                    />
+                                ) : (
+                                    <div className="h-full aspect-[2/3] bg-white/10 rounded-t-3xl flex items-center justify-center border-t border-x border-white/20 backdrop-blur">
+                                        <span className="text-8xl">{getEmoji(scene.char_right)}</span>
+                                    </div>
+                                )}
+                            </motion.div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Center Character (Priority) */}
+                {scene.char_center && (
+                    <div className="absolute inset-0 z-20 flex items-end justify-center pointer-events-none overflow-hidden">
+                        <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="h-[75%] w-full max-w-[400px]">
+                            {getImgUrl(scene.char_center, scene.char_center_expr) ? (
+                                <img src={getImgUrl(scene.char_center, scene.char_center_expr)} 
+                                    className="w-full h-full object-contain object-bottom scale-110" 
+                                    style={{ filter: 'drop-shadow(0 0 15px rgba(0,0,0,0.5)) drop-shadow(0 0 2px rgba(255,255,255,0.4))' }}
+                                />
+                            ) : (
+                                <div className="h-full aspect-[2/3] bg-white/10 rounded-t-3xl flex items-center justify-center border-t border-x border-white/20 backdrop-blur scale-110">
+                                    <span className="text-9xl">{getEmoji(scene.char_center)}</span>
+                                </div>
+                            )}
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Dialogue Box */}
+                <div className="absolute bottom-6 left-6 right-6 z-30 pointer-events-none">
+                    <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-black/60 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                        <div className="inline-block px-3 py-1 bg-primary/20 border border-primary/30 rounded-lg text-primary text-xs font-bold uppercase tracking-widest mb-3">
+                            {getText(scene.speaker_name) || 'Narrator'}
+                        </div>
+                        <p className="text-lg md:text-xl text-white font-medium leading-relaxed drop-shadow-sm">
+                            {getText(scene.dialogue_text) || '...'}
+                        </p>
+                        
+                        {/* Fake UI Hint */}
+                        <div className="mt-4 flex justify-end">
+                            <span className="text-[10px] text-dim font-bold uppercase tracking-tighter opacity-50">Quick Preview Mode</span>
+                        </div>
+                    </motion.div>
+                </div>
+
+                {/* Close Button */}
+                <button onClick={onClose} className="absolute top-6 right-6 z-[100] w-12 h-12 rounded-full bg-black/40 hover:bg-red-500/80 text-white flex items-center justify-center backdrop-blur transition-all border border-white/10">
+                    <X className="w-6 h-6" />
+                </button>
+                
+                {/* Header Info */}
+                <div className="absolute top-6 left-6 z-[100] bg-black/40 backdrop-blur border border-white/10 rounded-xl px-4 py-2">
+                    <p className="text-[10px] text-primary font-bold uppercase tracking-widest">LIVE PREVIEW</p>
+                    <p className="text-xs text-white font-semibold">{scene.scene_name || 'Untitled Scene'}</p>
+                </div>
+            </motion.div>
+        </div>
+    )
+}
 
 // ─── Choice Row ────────────────────────────────────────────────────────────
 function ChoiceRow({ choice, index, scenes, currentSceneId, onUpdate, onDelete }) {
@@ -46,6 +223,10 @@ function ChoiceRow({ choice, index, scenes, currentSceneId, onUpdate, onDelete }
                         <input type="number" className="input-field w-14 text-xs py-1.5" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
                     </div>
                 )}
+                <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                    <Shield className="w-3 h-3 text-primary" />
+                    <input type="number" className="input-field w-12 text-xs py-1.5" placeholder="Trust" title="Trust Impact (+/-)" value={local.trust_impact || 0} onChange={e => field('trust_impact', parseInt(e.target.value) || 0)} />
+                </div>
                 <button onClick={onDelete} className="text-dim hover:text-red-400 p-1.5 rounded flex-shrink-0 transition-colors"><X className="w-3.5 h-3.5" /></button>
             </div>
 
@@ -77,11 +258,27 @@ function TargetVisualPicker({ uiType, targets, onAddTarget, uiTypesData = [] }) 
     const [dragStart, setDragStart] = useState(null)
     const [currentPos, setCurrentPos] = useState(null)
 
-    const handlePointerDown = (e) => {
+    const getCoords = (e) => {
         const rect = e.currentTarget.getBoundingClientRect()
-        const x = Math.min(Math.max(((e.clientX - rect.left) / rect.width) * 100, 0), 100)
-        const y = Math.min(Math.max(((e.clientY - rect.top) / rect.height) * 100, 0), 100)
-        const pos = { x, y }
+        // Get scale from rect vs internal 800px width
+        const currentScale = rect.width / 800
+        
+        // Find scroll container if exists
+        const scrollContainer = e.currentTarget.querySelector('.vn-scroll-container')
+        const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0
+        const totalHeight = scrollContainer ? scrollContainer.scrollHeight : 450
+
+        const localX = (e.clientX - rect.left) / currentScale
+        const localY = ((e.clientY - rect.top) / currentScale) + scrollTop
+
+        return {
+            x: Math.min(Math.max((localX / 800) * 100, 0), 100),
+            y: Math.min(Math.max((localY / totalHeight) * 100, 0), 100)
+        }
+    }
+
+    const handlePointerDown = (e) => {
+        const pos = getCoords(e)
         setDragStart(pos)
         setCurrentPos(pos)
         e.currentTarget.setPointerCapture(e.pointerId)
@@ -89,10 +286,7 @@ function TargetVisualPicker({ uiType, targets, onAddTarget, uiTypesData = [] }) 
 
     const handlePointerMove = (e) => {
         if (!dragStart) return
-        const rect = e.currentTarget.getBoundingClientRect()
-        const x = Math.min(Math.max(((e.clientX - rect.left) / rect.width) * 100, 0), 100)
-        const y = Math.min(Math.max(((e.clientY - rect.top) / rect.height) * 100, 0), 100)
-        setCurrentPos({ x, y })
+        setCurrentPos(getCoords(e))
     }
 
     const handlePointerUp = (e) => {
@@ -130,7 +324,7 @@ function TargetVisualPicker({ uiType, targets, onAddTarget, uiTypesData = [] }) 
         <FakeUIScaledWrapper 
             uiType={uiType}
             uiTypesData={uiTypesData}
-            className="mt-3 mb-4 cursor-crosshair rounded-lg border-2 border-card-border select-none shadow-lg touch-none"
+            className={`mt-3 mb-4 cursor-crosshair rounded-lg border-2 border-card-border shadow-lg ${dragStart ? 'touch-none' : ''}`}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -160,13 +354,34 @@ function TargetVisualPicker({ uiType, targets, onAddTarget, uiTypesData = [] }) 
 // ─── Scene Card ────────────────────────────────────────────────────────────
 export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTypes = [], onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate }) {
     const [expanded, setExpanded] = useState(false)
+    const [local, setLocal] = useState(scene)
     const [saving, setSaving] = useState(false)
     const [lastSaved, setLastSaved] = useState(null)
-    const [local, setLocal] = useState(scene)
+    const [showPreview, setShowPreview] = useState(false)
     const [newChoiceText, setNewChoiceText] = useState('')
+    const [uploadingAudio, setUploadingAudio] = useState(false)
     const debounceRef = useRef(null)
 
     useEffect(() => { setLocal(scene) }, [scene])
+
+    const handleUploadAudio = async (e, fieldKey) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setUploadingAudio(true)
+        try {
+            const fd = new FormData()
+            fd.append('file', file)
+            const res = await axios.post('/api/cms/media/upload', fd)
+            field(fieldKey, res.data.url)
+            toast.success('Audio uploaded')
+        } catch (err) {
+            toast.error('Upload failed: ' + (err.response?.data?.error || err.message))
+        } finally {
+            setUploadingAudio(false)
+            // Reset input so we can upload same file again if needed
+            e.target.value = ''
+        }
+    }
 
     const field = (key, val) => {
         const updated = { ...local, [key]: val }
@@ -231,7 +446,8 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
         orange: 'bg-orange-500/20 text-orange-400',
         red: 'bg-red-500/20 text-red-400',
         purple: 'bg-purple-500/20 text-purple-400',
-        cyan: 'bg-cyan-500/20 text-cyan-400'
+        cyan: 'bg-cyan-500/20 text-cyan-400',
+        indigo: 'bg-indigo-500/20 text-indigo-400'
     }
 
     return (
@@ -249,12 +465,15 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                 <div className="flex items-center gap-1 ml-auto flex-shrink-0" onClick={e => e.stopPropagation()}>
                     {saving && <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />}
                     {lastSaved && !saving && <span className="text-xs text-green-400/70 flex items-center gap-1"><Clock className="w-3 h-3" />{lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+                    <button onClick={() => setShowPreview(true)} title="Quick Preview" className="p-1.5 rounded text-dim hover:text-primary hover:bg-primary/10 transition-all"><Eye className="w-3.5 h-3.5" /></button>
                     <button onClick={() => onMoveUp(index)} disabled={index === 0} className="p-1.5 rounded text-dim hover:text-main hover:bg-card-border disabled:opacity-20 transition-all"><ChevronUp className="w-3.5 h-3.5" /></button>
                     <button onClick={() => onMoveDown(index)} disabled={index === scenes.length - 1} className="p-1.5 rounded text-dim hover:text-main hover:bg-card-border disabled:opacity-20 transition-all"><ChevronDown className="w-3.5 h-3.5" /></button>
                     <button onClick={() => onDuplicate(scene)} className="p-1.5 rounded text-dim hover:text-yellow-400 hover:bg-yellow-400/10 transition-all"><Copy className="w-3.5 h-3.5" /></button>
                     <button onClick={() => { if (window.confirm('Delete this scene?')) onDelete(scene.id) }} className="p-1.5 rounded text-dim hover:text-red-400 hover:bg-red-400/10 transition-all"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
             </div>
+
+            {showPreview && <ScenePreview scene={local} onClose={() => setShowPreview(false)} />}
 
             {/* Expanded body */}
             <AnimatePresence>
@@ -294,8 +513,8 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                             </div>
 
                             {/* Characters */}
-                            <div className="grid grid-cols-2 gap-4">
-                                {[['Left', 'char_left', 'char_left_expr'], ['Right', 'char_right', 'char_right_expr']].map(([side, ck, ek]) => {
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {[['Left', 'char_left', 'char_left_expr'], ['Center', 'char_center', 'char_center_expr'], ['Right', 'char_right', 'char_right_expr']].map(([side, ck, ek]) => {
                                     const selChar = characters.find(c => c.key_name === local[ck])
                                     return (
                                         <div key={side} className="bg-input-bg rounded-xl p-3 border border-card-border">
@@ -314,6 +533,30 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                 })}
                             </div>
 
+                            {/* Audio & Media */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="label-xs">🎤 Voice Acting URL</label>
+                                    <div className="flex gap-2 mt-1">
+                                        <input className="input-field flex-1 text-sm" placeholder="/uploads/voice.mp3 or URL" value={local.va_url || ''} onChange={e => field('va_url', e.target.value)} />
+                                        <label className={`btn-primary cursor-pointer flex items-center justify-center px-3 ${uploadingAudio ? 'opacity-50' : ''}`}>
+                                            {uploadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                            <input type="file" accept="audio/*" className="hidden" onChange={e => handleUploadAudio(e, 'va_url')} />
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="label-xs">🔊 Sound Effect (SFX) URL</label>
+                                    <div className="flex gap-2 mt-1">
+                                        <input className="input-field flex-1 text-sm" placeholder="/uploads/sfx.mp3 or URL" value={local.sfx_url || ''} onChange={e => field('sfx_url', e.target.value)} />
+                                        <label className={`btn-primary cursor-pointer flex items-center justify-center px-3 ${uploadingAudio ? 'opacity-50' : ''}`}>
+                                            {uploadingAudio ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                                            <input type="file" accept="audio/*" className="hidden" onChange={e => handleUploadAudio(e, 'sfx_url')} />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Dialogue fields */}
                             {local.scene_type === 'dialogue' && (
                                 <div className="space-y-3">
@@ -325,6 +568,10 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                         <div>
                                             <label className="label-xs">⭐ XP Reward</label>
                                             <input type="number" className="input-field w-full text-sm mt-1" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
+                                        </div>
+                                        <div>
+                                            <label className="label-xs">🛡️ Trust Impact</label>
+                                            <input type="number" className="input-field w-full text-sm mt-1" placeholder="+/-" value={local.trust_impact || 0} onChange={e => field('trust_impact', parseInt(e.target.value) || 0)} />
                                         </div>
                                         <div>
                                             <label className="label-xs">➡️ Next Scene</label>
@@ -367,6 +614,88 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                                 <button onClick={addChoice} className="btn-primary text-sm px-4 flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Add</button>
                                             </div>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Password Setup fields */}
+                            {local.scene_type === 'password_setup' && (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-input-bg border border-card-border rounded-xl p-4 space-y-3">
+                                            <p className="text-xs font-bold text-primary uppercase tracking-wider mb-2">⚙️ Password Policy</p>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="label-xs">Min Length</label>
+                                                    <input type="number" min="1" className="input-field w-full text-sm" value={local.custom_data?.min_length || 8} 
+                                                        onChange={e => customField('min_length', parseInt(e.target.value) || 8)} />
+                                                </div>
+                                                <div className="flex flex-col justify-end gap-2">
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input type="checkbox" className="w-4 h-4 rounded border-card-border bg-dark checked:bg-primary" 
+                                                            checked={!!local.custom_data?.require_uppercase} 
+                                                            onChange={e => customField('require_uppercase', e.target.checked)} />
+                                                        <span className="text-xs text-dim group-hover:text-main transition-colors">Uppercase</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input type="checkbox" className="w-4 h-4 rounded border-card-border bg-dark checked:bg-primary" 
+                                                            checked={!!local.custom_data?.require_symbol} 
+                                                            onChange={e => customField('require_symbol', e.target.checked)} />
+                                                        <span className="text-xs text-dim group-hover:text-main transition-colors">Symbol</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="label-xs">Crack Visualization</label>
+                                                <label className="flex items-center gap-2 cursor-pointer mt-1">
+                                                    <input type="checkbox" className="w-4 h-4 rounded border-card-border bg-dark checked:bg-primary" 
+                                                        checked={local.custom_data?.show_crack_time !== false} 
+                                                        onChange={e => customField('show_crack_time', e.target.checked)} />
+                                                    <span className="text-xs text-dim">Tampilkan waktu bobol (Realtime)</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-input-bg border border-card-border rounded-xl p-4 space-y-3">
+                                            <p className="text-xs font-bold text-accent uppercase tracking-wider mb-2">💎 Reward & Impact</p>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <label className="label-xs text-red-400">Weak</label>
+                                                    <input type="number" className="input-field w-full text-sm" placeholder="XP" value={local.custom_data?.xp_weak || 10} 
+                                                        onChange={e => customField('xp_weak', parseInt(e.target.value) || 0)} />
+                                                </div>
+                                                <div>
+                                                    <label className="label-xs text-yellow-400">Medium</label>
+                                                    <input type="number" className="input-field w-full text-sm" placeholder="XP" value={local.custom_data?.xp_medium || 50} 
+                                                        onChange={e => customField('xp_medium', parseInt(e.target.value) || 0)} />
+                                                </div>
+                                                <div>
+                                                    <label className="label-xs text-green-400">Strong</label>
+                                                    <input type="number" className="input-field w-full text-sm" placeholder="XP" value={local.custom_data?.xp_strong || 150} 
+                                                        onChange={e => customField('xp_strong', parseInt(e.target.value) || 0)} />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="label-xs">Base Score Impact</label>
+                                                    <input type="number" className="input-field w-full text-sm" value={local.custom_data?.impact_score || 20} 
+                                                        onChange={e => customField('impact_score', parseInt(e.target.value) || 0)} />
+                                                </div>
+                                                <div>
+                                                    <label className="label-xs">Next Scene</label>
+                                                    <select className="input-field w-full text-sm" value={local.next_scene_id || ''} onChange={e => field('next_scene_id', e.target.value ? parseInt(e.target.value) : null)}>
+                                                        <option value="">— Auto-next —</option>
+                                                        {scenes.filter(s => s.id !== scene.id).map(s => <option key={s.id} value={s.id}>{s.scene_name}</option>)}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="label-xs">💬 Introduction / Instruction</label>
+                                        <textarea className="input-field w-full text-sm resize-none mt-1" rows={3} 
+                                            placeholder="e.g. Please set a strong password to secure your workstation..." 
+                                            value={local.dialogue_text || ''} onChange={e => field('dialogue_text', e.target.value)} />
                                     </div>
                                 </div>
                             )}
@@ -481,6 +810,10 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                         <div>
                                             <label className="label-xs">⭐ XP Reward on Success</label>
                                             <input type="number" className="input-field w-full text-sm mt-1" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
+                                        </div>
+                                        <div>
+                                            <label className="label-xs">🛡️ Trust Impact (Success)</label>
+                                            <input type="number" className="input-field w-full text-sm mt-1" value={local.trust_impact || 0} onChange={e => field('trust_impact', parseInt(e.target.value) || 0)} />
                                         </div>
                                         <div>
                                             <label className="label-xs">❌ Max False Points</label>
@@ -606,6 +939,10 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                     <div>
                                         <label className="label-xs">⭐ XP Reward on Success</label>
                                         <input type="number" className="input-field w-full text-sm mt-1" value={local.xp_reward || 0} onChange={e => field('xp_reward', parseInt(e.target.value) || 0)} />
+                                    </div>
+                                    <div>
+                                        <label className="label-xs">🛡️ Trust Impact (Success)</label>
+                                        <input type="number" className="input-field w-full text-sm mt-1" value={local.trust_impact || 0} onChange={e => field('trust_impact', parseInt(e.target.value) || 0)} />
                                     </div>
                                     <div>
                                         <label className="label-xs">➡️ Next Scene (Success)</label>

@@ -52,6 +52,16 @@ router.get('/', requireAuth, async (req, res) => {
     }
 })
 
+// GET /api/progress/chapters/total
+router.get('/chapters/total', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT COUNT(*)::int as total FROM game_chapters')
+        res.json({ total: result.rows[0].total })
+    } catch (err) {
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
 // POST /api/progress/xp
 router.post('/xp', requireAuth, async (req, res) => {
     const { amount, reason } = req.body

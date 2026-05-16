@@ -70,6 +70,7 @@ export function GameProvider({ children }) {
     const [characters, setCharacters] = useState([])
     const [uiTypes, setUiTypes] = useState([])
     const [roadmapNodes, setRoadmapNodes] = useState([])
+    const [elearningCompleted, setElearningCompleted] = useState(false)
 
     // State from APIP
     const [loading, setLoading] = useState(true)
@@ -80,33 +81,29 @@ export function GameProvider({ children }) {
     const fetchContent = useCallback(async () => {
         try {
             const [cRes, lRes, bRes, bgRes, charRes, uiRes, rmRes] = await Promise.all([
-                axios.get('/api/content/chapters'),
-                axios.get('/api/badges/getLevelBadges'), // Using apip's level endpoint
-                axios.get('/api/content/badges'),
+                axios.get('/api/content/chapters').catch(() => ({ data: [] })),
+                axios.get('/api/badges/getLevelBadges').catch(() => ({ data: [] })), 
+                axios.get('/api/content/badges').catch(() => ({ data: [] })),
                 axios.get('/api/cms/backgrounds').catch(() => ({ data: [] })),
                 axios.get('/api/cms/characters').catch(() => ({ data: [] })),
                 axios.get('/api/content/ui-types').catch(() => ({ data: [] })),
                 axios.get('/api/roadmap').catch(() => ({ data: [] }))
             ])
 
-            if (Array.isArray(cRes.data) && cRes.data.length > 0) {
-                setChapters(cRes.data)
-            }
-
+            if (cRes.data) setChapters(Array.isArray(cRes.data) && cRes.data.length > 0 ? cRes.data : FALLBACK_CHAPTERS)
+            
             const levelRows = Array.isArray(lRes.data) ? lRes.data : (lRes.data?.levelBadges || [])
             setLevels(normalizeLevels(levelRows))
 
-            if (Array.isArray(bRes.data) && bRes.data.length > 0) {
-                setBadges(bRes.data)
-            }
-            if (bgRes?.data && Array.isArray(bgRes.data)) setBackgrounds(bgRes.data)
-            if (charRes?.data && Array.isArray(charRes.data)) setCharacters(charRes.data)
-            if (uiRes?.data && Array.isArray(uiRes.data)) setUiTypes(uiRes.data)
-            if (rmRes?.data && Array.isArray(rmRes.data)) setRoadmapNodes(rmRes.data)
+            if (bRes.data) setBadges(bRes.data)
+            if (bgRes.data) setBackgrounds(bgRes.data)
+            if (charRes.data) setCharacters(charRes.data)
+            if (uiRes.data) setUiTypes(uiRes.data)
+            if (rmRes.data) setRoadmapNodes(rmRes.data)
             
             setError(null)
         } catch (err) {
-            console.warn('Using fallback content:', err.message)
+            console.error('Error fetching content:', err)
             setError(err)
         } finally {
             setLoading(false)
@@ -140,10 +137,24 @@ export function GameProvider({ children }) {
         try {
             const res = await axios.get('/api/progress')
             setChapterProgress(res.data)
+            
+            // Check if e-learning node (pId 0) is completed
+            if (res.data[0]?.completed) {
+                setElearningCompleted(true)
+            }
         } catch (err) {
             console.warn('Failed to load progress', err.message)
         }
     }, [])
+
+    const completeElearning = async () => {
+        setElearningCompleted(true)
+        // Optionally update chapterProgress locally to trigger UI updates
+        setChapterProgress(prev => ({
+            ...prev,
+            [0]: { ...prev[0], completed: true }
+        }))
+    }
 
     useEffect(() => {
         if (user) {
@@ -209,6 +220,30 @@ export function GameProvider({ children }) {
         } catch { }
     }
 
+    const updateSecurityStats = async (stats) => {
+        // Stats: { score, strength, category, password }
+        updateUser({
+            security_score: stats.score,
+            password_strength: stats.strength,
+            password_category: stats.category
+        })
+        try {
+            await axios.put('/api/users/security-stats', stats)
+        } catch (err) {
+            console.warn('Failed to sync security stats to server', err.message)
+        }
+    }
+
+    const updateTrustPoints = async (amount) => {
+        // amount is the new total
+        updateUser({ trust_points: amount })
+        try {
+            await axios.put('/api/users/trust-points', { amount })
+        } catch (err) {
+            console.warn('Failed to sync trust points to server', err.message)
+        }
+    }
+
     const completeChapter = async (chapterId, result) => {
         const totalXp = result.xpEarned + (result.perfect ? 100 : 0)
         setChapterProgress(prev => ({
@@ -264,16 +299,21 @@ export function GameProvider({ children }) {
             getLevelFromXP,
             getNextLevel,
             awardXP,
+            updateSecurityStats,
+            updateTrustPoints,
             completeChapter,
             getUserRank,
             getNextRankGap,
             CHAPTERS: chapters,
             LEVELS: levels,
+            levels: levels,
             BADGES: badges,
             BACKGROUNDS: backgrounds,
             CHARACTERS: characters,
             UI_TYPES: uiTypes,
             ROADMAP_NODES: roadmapNodes,
+            elearningCompleted,
+            completeElearning,
             isTourActive,
             currentStep,
             startTour,

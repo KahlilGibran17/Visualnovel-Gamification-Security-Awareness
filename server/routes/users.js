@@ -69,6 +69,47 @@ router.put('/me', requireAuth, async (req, res) => {
     }
 })
 
+// PUT /api/users/security-stats
+router.put('/security-stats', requireAuth, async (req, res) => {
+    const { score, strength, category, password } = req.body
+    try {
+        let passwordHash = null
+        if (password) {
+            passwordHash = await bcrypt.hash(password, 10)
+        }
+
+        await pool.query(
+            `UPDATE users 
+             SET security_score = $1, 
+                 password_strength = $2, 
+                 password_category = $3, 
+                 password_game_hash = COALESCE($4, password_game_hash),
+                 updated_at = NOW() 
+             WHERE id = $5`,
+            [score, strength, category, passwordHash, req.user.userId]
+        )
+        res.json({ message: 'Security stats updated' })
+    } catch (err) {
+        console.error('[Users API] Error updating security stats:', err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
+// PUT /api/users/trust-points
+router.put('/trust-points', requireAuth, async (req, res) => {
+    const { amount } = req.body
+    try {
+        await pool.query(
+            'UPDATE users SET trust_points = $1, updated_at = NOW() WHERE id = $2',
+            [amount, req.user.userId]
+        )
+        res.json({ message: 'Trust points updated' })
+    } catch (err) {
+        console.error('[Users API] Error updating trust points:', err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
 // GET /api/admin/users (admin/manager only)
 router.get('/admin', requireAuth, requireRole('admin', 'manager'), async (req, res) => {
     try {

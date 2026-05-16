@@ -443,9 +443,13 @@ export default function ElearningPlayerPage() {
 
         pollRef.current = setInterval(() => {
             const v = videoRef.current
-            if (!v || v.paused) return
+            if (!v) return
 
             const currentTime = v.currentTime
+            if (currentTime > 0 && videoLoading) {
+                setVideoLoading(false)
+            }
+            setCurrentTime(currentTime)
             const questions = lessonRef.current?.questions || []
 
             const nextQ = questions.find(q =>
@@ -535,15 +539,11 @@ export default function ElearningPlayerPage() {
         const v = videoRef.current
         if (!v || !lesson) return
 
-       const onCanPlay = () => {
+        const onCanPlay = () => {
             setVideoLoading(false)
-            // requestFullscreen()
-            v.play()
-                .then(() => {
-                    setPaused(false)
-                    requestFullscreen()
-                })
-                .catch(() => setPaused(true))
+            if (v.paused && !pausingForQuestionRef.current && !activeQuestionRef.current) {
+                v.play().catch(() => setPaused(true))
+            }
         }
 
         const onPlaying = () => {
@@ -557,7 +557,7 @@ export default function ElearningPlayerPage() {
             setVideoLoading(true)
             stopPolling()
         }
-        //const onPlaying  = () => { setVideoLoading(false); setPaused(false); startPolling() }
+
         const onPause    = () => {
             setPaused(true)
             const pausedForQuestion = pausingForQuestionRef.current || Boolean(activeQuestionRef.current)
@@ -567,18 +567,22 @@ export default function ElearningPlayerPage() {
                 restoreBgmAfterVideo()
             }
         }
+
         const onEnded    = () => {
+            setVideoLoading(false)
             restoreBgmAfterVideo()
             handleVideoEnd()
         }
+
         const onError    = () => {
+            setVideoLoading(false)
             restoreBgmAfterVideo()
-            toast.error('Gagal memuat file video')
+            // toast.error('Gagal memuat file video')
         }
 
         v.addEventListener('canplay', onCanPlay)
-        v.addEventListener('waiting', onWaiting)
         v.addEventListener('playing', onPlaying)
+        v.addEventListener('waiting', onWaiting)
         v.addEventListener('pause', onPause)
         v.addEventListener('ended', onEnded)
         v.addEventListener('error', onError)

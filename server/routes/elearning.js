@@ -543,6 +543,27 @@ router.get('/admin/lessons', requireAuth, requireRole('admin', 'manager'), async
 })
 
 // ========================================================
+// ADMIN — GET /api/elearning/admin/chapters
+// ========================================================
+router.get('/admin/chapters', requireAuth, requireRole('admin', 'manager'), async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                gc.id, gc.title, gc.description, 
+                b.badge_key, b.name as badge_name, b.category_id
+            FROM game_chapters gc
+            LEFT JOIN badges b ON b.id = gc.badge_id
+            WHERE gc.type = 'E-Learning'
+            ORDER BY gc.id ASC
+        `)
+        res.json(result.rows)
+    } catch (err) {
+        console.error('GET /admin/chapters error:', err)
+        res.status(500).json({ message: err.message })
+    }
+})
+
+// ========================================================
 // ADMIN — GET /api/elearning/admin/lessons/:id
 // Detail lesson + pertanyaan + opsi (is_correct ikut serta untuk form edit)
 // ========================================================
@@ -673,24 +694,36 @@ router.post('/admin/lessons', requireAuth, requireRole('admin', 'manager'), asyn
 
 router.post('/admin/chapters', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { title, description, badge_name, badge_icon, badge_description, badge_color, badge_key, category_id } = req.body  // ← tambah category_id
+        const { 
+            title, description, 
+            badge_name, badge_icon, badge_description, badge_color, badge_key, 
+            category_id 
+        } = req.body
 
+        // 1. Insert Badge
         const badgeInsert = await pool.query(
             `INSERT INTO badges (badge_key, name, description, icon, color, category_id)
              VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING id`,
-            [badge_key, badge_name, badge_description || '', badge_icon || '🏆', badge_color || '#FFD60A', category_id || null]  // ← tambah category_id
+            [badge_key, badge_name, badge_description || '', badge_icon || '🏆', badge_color || '#FFD60A', category_id || null]
         )
         const badgeId = badgeInsert.rows[0].id
 
+        // 2. Insert Chapter (pointing to game_chapters)
         const chapterInsert = await pool.query(
-            `INSERT INTO chapters (ch_title, ch_description, created_at, badges_id)
-             VALUES ($1, $2, NOW(), $3)
-             RETURNING ch_id, ch_title, ch_description, badges_id`,
+            `INSERT INTO game_chapters (title, description, created_at, badge_id, type)
+             VALUES ($1, $2, NOW(), $3, 'E-Learning')
+             RETURNING id, title, description, badge_id`,
             [title || '', description || '', badgeId]
         )
 
-        return res.json({ chapter: chapterInsert.rows[0] })
+        return res.json({ 
+            chapter: {
+                ...chapterInsert.rows[0],
+                badge_key: badge_key,
+                category_id: category_id
+            } 
+        })
     } catch (err) {
         console.error('POST /admin/chapters error:', err.message)
         return res.status(500).json({ message: err.message })

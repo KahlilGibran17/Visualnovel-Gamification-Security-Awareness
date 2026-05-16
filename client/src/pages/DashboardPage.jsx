@@ -164,7 +164,7 @@ export default function DashboardPage() {
     const { 
         chapterProgress, getLevelFromXP, getNextLevel, 
         CHAPTERS, BADGES, leaderboard, getUserRank, 
-        getNextRankGap, elearningCompleted, loadBadges, badges 
+        getNextRankGap, elearningCompleted, loadBadges
     } = useGame()
     const navigate = useNavigate()
     const [showWelcome, setShowWelcome] = useState(true)
@@ -218,7 +218,7 @@ export default function DashboardPage() {
     }
 
     const earnedBadgeSet = new Set([...userBadges, ...(user?.badges || [])].map(normalizeBadgeKey).filter(Boolean))
-    const displayedBadges = [...(badges || [])]
+    const displayedBadges = [...(BADGES || [])]
         .sort((a, b) => {
             const aEarned = earnedBadgeSet.has(normalizeBadgeKey(a))
             const bEarned = earnedBadgeSet.has(normalizeBadgeKey(b))
@@ -316,7 +316,7 @@ export default function DashboardPage() {
                     <StatWidget icon={Star} label="Total XP" value={totalXP.toLocaleString()} color="#FFD60A" delay={0.1} />
                     <StatWidget icon={Trophy} label="Peringkat Global" value={`#${myRank || '—'}`} color="#E63946" delay={0.15} />
                     <StatWidget icon={BookOpen} label="Modul Selesai" value={`${completedChapters}/6`} color="#60a5fa" delay={0.2} />
-                    <StatWidget icon={Award} label="Lencana" value={`${earnedBadgeSet.size}/${badges?.length || 0}`} color="#a78bfa" delay={0.25} />
+                    <StatWidget icon={Award} label="Lencana" value={`${earnedBadgeSet.size}/${BADGES?.length || 0}`} color="#a78bfa" delay={0.25} />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

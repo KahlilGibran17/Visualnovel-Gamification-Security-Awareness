@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Volume2, VolumeX, SkipForward, RotateCcw, Star, AlertTriangle, CheckCircle, Clock, Search, Monitor, Smartphone, MousePointer2, XCircle, Terminal as TerminalIcon, Mail, BookOpen } from 'lucide-react'
+import { Home, Volume2, VolumeX, SkipForward, RotateCcw, Star, AlertTriangle, CheckCircle, Clock, Search, Monitor, Smartphone, MousePointer2, XCircle, Terminal as TerminalIcon, Mail, BookOpen, Shield } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { useGame } from '../contexts/GameContext.jsx'
+import axios from 'axios'
 import { FakeUIScaledWrapper } from '../components/FakeUIBackground.jsx'
+import PasswordSetupDisplay from '../components/PasswordSetupDisplay.jsx'
 
 // Scene background styles
 const BACKGROUNDS = {
@@ -37,6 +39,8 @@ const BACKGROUNDS = {
 
 // Character sprites
 function CharacterSprite({ character, expression, position, isActive }) {
+    if (!character || character === 'none') return null;
+
     const { CHARACTERS } = useGame()
 
     const SPRITES = {
@@ -51,20 +55,31 @@ function CharacterSprite({ character, expression, position, isActive }) {
 
     const sprite = SPRITES[character] || SPRITES.player
     const exprEmoji = customExpr?.emoji || (customChar ? customChar.emoji : (sprite.expressions[expression] || sprite.base))
-    const imgUrl = customExpr?.sprite_url || customExpr?.image_url
+
+    // For center position, prefer the dedicated full_body_url sprite
+    const imgUrl = position === 'center' && customChar?.full_body_url
+        ? customChar.full_body_url
+        : (customExpr?.sprite_url || customExpr?.image_url)
 
     // Full height 2D sprite rendering
+    const isCenter = position === 'center'
+    const heightClass = isCenter ? 'h-[50vh] md:h-[62vh]' : 'h-[35vh] md:h-[45vh]'
+    const widthClass = isCenter ? 'w-[50vw] md:w-[35vw]' : 'w-[40vw] md:w-[30vw]'
+
     return (
         <motion.div
-            className={`relative flex flex-col justify-end ${position === 'right' ? 'items-end' : 'items-start'} h-[30vh] md:h-[40vh] w-[35vw] md:w-[25vw] overflow-visible`}
-            initial={{ opacity: 0, x: position === 'left' ? -50 : 50 }}
+            className={`relative flex flex-col justify-end ${position === 'right' ? 'items-end' : position === 'center' ? 'items-center' : 'items-start'} ${heightClass} ${widthClass} overflow-visible`}
+            initial={{ opacity: 0, x: position === 'left' ? -50 : position === 'right' ? 50 : 0, y: isCenter ? 10 : 0 }}
             animate={{
                 opacity: isActive ? 1 : 0.6,
                 x: 0,
-                scale: isActive ? 1.05 : 0.95,
-                filter: isActive ? 'brightness(1)' : 'brightness(0.5)'
+                y: 0,
+                scale: isActive ? (isCenter ? 1.1 : 1.05) : 0.95,
+                filter: isActive 
+                    ? `brightness(1) drop-shadow(0 0 15px rgba(0,0,0,0.5)) ${isCenter ? 'drop-shadow(0 0 2px rgba(255,255,255,0.4))' : ''}` 
+                    : 'brightness(0.5)'
             }}
-            exit={{ opacity: 0, x: position === 'left' ? -50 : 50 }}
+            exit={{ opacity: 0, x: position === 'left' ? -50 : position === 'right' ? 50 : 0, y: isCenter ? 10 : 0 }}
             transition={{ type: 'spring', stiffness: 200, damping: 25, duration: 0.2 }}
             style={{ transformOrigin: 'bottom center' }}
         >
@@ -316,6 +331,55 @@ function InvestigateDisplay({ scene, onFound, timer, timerTotal }) {
     )
 }
 
+// Video display component
+function VideoDisplay({ scene, onContinue }) {
+    const videoRef = useRef(null)
+
+    useEffect(() => {
+        if (videoRef.current && scene.autoplay) {
+            videoRef.current.play().catch(e => console.warn('Video autoplay blocked', e))
+        }
+    }, [scene])
+
+    return (
+        <motion.div
+            className="absolute inset-0 flex items-center justify-center bg-black z-20 overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+        >
+            <video
+                ref={videoRef}
+                src={scene.videoUrl?.startsWith('http') ? scene.videoUrl : (scene.videoUrl?.startsWith('/') ? scene.videoUrl : `/${scene.videoUrl}`)}
+                className="w-full h-full object-contain"
+                controls
+                autoPlay={!!scene.autoplay}
+                loop={!!scene.loop}
+                onEnded={() => {
+                    if (!scene.loop) onContinue()
+                }}
+            />
+
+            {/* Cinematic Top Bar */}
+            <div className="absolute top-0 left-0 right-0 h-[12vh] bg-black z-30 pointer-events-none" />
+
+            {/* Cinematic Bottom Bar */}
+            <div className="absolute bottom-0 left-0 right-0 h-[12vh] bg-black z-30 pointer-events-none" />
+
+            {scene.caption && (
+                <div className="absolute bottom-[14vh] left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-center z-40">
+                    <p className="text-white text-lg font-medium drop-shadow-lg italic">"{scene.caption}"</p>
+                </div>
+            )}
+            <button 
+                onClick={onContinue}
+                className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold transition-all border border-white/20 flex items-center gap-2 z-40"
+            >
+                Skip Video <SkipForward className="w-3 h-3" />
+            </button>
+        </motion.div>
+    )
+}
+
 // Terminal display
 function TerminalDisplay({ scene, onCommand, timer, timerTotal }) {
     const [input, setInput] = useState('')
@@ -375,7 +439,7 @@ function TerminalDisplay({ scene, onCommand, timer, timerTotal }) {
 export default function VNEnginePage() {
     const { chapterId } = useParams()
     const { user } = useAuth()
-    const { awardXP, completeChapter, CHAPTERS, BACKGROUNDS: globalBackgrounds } = useGame()
+    const { awardXP, updateSecurityStats, updateTrustPoints, completeChapter, CHAPTERS, BACKGROUNDS: globalBackgrounds } = useGame()
     const navigate = useNavigate()
 
     const chapterData = CHAPTERS.find(c => c.id === parseInt(chapterId))
@@ -388,22 +452,57 @@ export default function VNEnginePage() {
     const [mute, setMute] = useState(false)
     const [showHud, setShowHud] = useState(true)
     const [gameOver, setGameOver] = useState(false)
+    const [trustChange, setTrustChange] = useState(null) // { type: 'up' | 'down' }
 
     const [loading, setLoading] = useState(true)
+    const [debugChapter, setDebugChapter] = useState(null)
 
     useEffect(() => {
-        // Wait for chapters to load from context if they are still the default ones
-        if (CHAPTERS.length > 0) {
-            setLoading(false)
+        const params = new URLSearchParams(window.location.search)
+        const startId = params.get('startSceneId')
+        
+        if (startId) {
+            setLoading(true);
+            const token = localStorage.getItem('ake_token') || sessionStorage.getItem('ake_token');
+            axios.get(`/api/cms/chapters/${chapterId}/preview-json`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+                .then(res => {
+                    setDebugChapter({ ...chapterData, scenes: res.data });
+                    
+                    const found = res.data.find(s => 
+                        String(s.id) === String(startId) || 
+                        String(s.id) === `scene_${startId}` || 
+                        Number(s.dbId) === Number(startId) ||
+                        String(s.custom_data?.id) === String(startId)
+                    );
+                    const initialSceneId = found ? found.id : res.data[0]?.id;
+                    
+                    console.log('DEBUG: Setting sceneId to', initialSceneId);
+                    if (initialSceneId) setSceneId(initialSceneId);
+                    setLoading(false);
+                })
+                .catch(err => {
+                    console.error('DEBUG: Fetch failed!', err);
+                    // Fallback to context data if fetch fails
+                    if (chapterData?.scenes?.length > 0) {
+                        const fallbackFound = chapterData.scenes.find(s => String(s.id) === String(startId) || Number(s.dbId) === Number(startId));
+                        setSceneId(fallbackFound ? fallbackFound.id : chapterData.scenes[0].id);
+                    }
+                    setLoading(false);
+                });
+        } else if (CHAPTERS.length > 0) {
+            setLoading(false);
+            if (!sceneId && chapterData?.scenes?.length > 0) {
+                setSceneId(chapterData.scenes[0].id);
+            }
         }
+    }, [chapterId, CHAPTERS, chapterData, window.location.search]) // Listen to URL search changes
 
-        if (!sceneId && chapterData?.scenes?.length > 0) {
-            setSceneId(chapterData.scenes[0].id)
-        }
-    }, [CHAPTERS, chapterData, sceneId])
-
-    const currentScene = chapterData?.scenes?.find(s => s.id === sceneId)
+    const activeChapter = debugChapter || chapterData;
+    const currentScene = activeChapter?.scenes?.find(s => s.id === sceneId)
     const playerName = user?.name?.split(' ')[0] || 'Recruit'
+    const trustPoints = user?.trust_points ?? 5
 
     const getText = (text) => text?.replace(/\{\{playerName\}\}/g, playerName) || ''
 
@@ -412,6 +511,82 @@ export default function VNEnginePage() {
         25,
         currentScene?.type === 'dialogue'
     )
+
+    // Audio handling (BGM, VA & SFX)
+    const bgmAudioRef = useRef(null)
+    const sfxAudioRef = useRef(null)
+    const vaAudioRef = useRef(null)
+
+    // BGM handling
+    useEffect(() => {
+        if (!chapterData?.music_theme) return;
+        
+        if (!bgmAudioRef.current || bgmAudioRef.current.src !== new URL(chapterData.music_theme, window.location.origin).href) {
+            if (bgmAudioRef.current) bgmAudioRef.current.pause();
+            bgmAudioRef.current = new Audio(chapterData.music_theme);
+            bgmAudioRef.current.loop = true;
+            bgmAudioRef.current.volume = 0.4;
+        }
+
+        if (!mute) {
+            bgmAudioRef.current.play().catch(e => console.warn('BGM auto-play blocked', e));
+        }
+
+        // We don't pause BGM on cleanup because it should keep playing across scenes in the same chapter
+        // It will only be replaced if the URL changes or paused on mute.
+        // But we DO need to cleanup when the component unmounts.
+        return () => {
+            // Unmount cleanup
+        }
+    }, [chapterData?.music_theme, mute])
+
+    useEffect(() => {
+        // Cleanup old audio when scene changes
+        if (sfxAudioRef.current) {
+            sfxAudioRef.current.pause()
+            sfxAudioRef.current = null
+        }
+        if (vaAudioRef.current) {
+            vaAudioRef.current.pause()
+            vaAudioRef.current = null
+        }
+
+        if (!currentScene || mute) return;
+
+        if (currentScene.sfx) {
+            sfxAudioRef.current = new Audio(currentScene.sfx)
+            sfxAudioRef.current.play().catch(e => console.warn('SFX auto-play blocked', e))
+        }
+
+        if (currentScene.va) {
+            vaAudioRef.current = new Audio(currentScene.va)
+            vaAudioRef.current.play().catch(e => console.warn('VA auto-play blocked', e))
+        }
+
+        return () => {
+            if (sfxAudioRef.current) sfxAudioRef.current.pause()
+            if (vaAudioRef.current) vaAudioRef.current.pause()
+        }
+    }, [currentScene, mute])
+
+    useEffect(() => {
+        if (mute) {
+            if (bgmAudioRef.current) bgmAudioRef.current.pause()
+            if (sfxAudioRef.current) sfxAudioRef.current.pause()
+            if (vaAudioRef.current) vaAudioRef.current.pause()
+        } else {
+            if (bgmAudioRef.current && bgmAudioRef.current.paused) bgmAudioRef.current.play().catch(() => {})
+            if (sfxAudioRef.current && sfxAudioRef.current.paused) sfxAudioRef.current.play().catch(() => {})
+            if (vaAudioRef.current && vaAudioRef.current.paused) vaAudioRef.current.play().catch(() => {})
+        }
+    }, [mute])
+
+    useEffect(() => {
+        // Cleanup BGM on unmount
+        return () => {
+            if (bgmAudioRef.current) bgmAudioRef.current.pause()
+        }
+    }, [])
 
     // Timer handle for choice, investigate, and terminal scenes
     useEffect(() => {
@@ -441,6 +616,26 @@ export default function VNEnginePage() {
         }
     }, [sceneId, choiceResult])
 
+    const handleTrustChange = useCallback((impact) => {
+        if (!impact) return
+        const newTrust = Math.max(0, trustPoints + impact)
+        updateTrustPoints(newTrust)
+        
+        setTrustChange(impact > 0 ? 'up' : 'down')
+        setTimeout(() => setTrustChange(null), 1000)
+
+        if (newTrust <= 0) {
+            setChoiceResult({
+                correct: false,
+                consequence: "Perusahaan telah kehilangan kepercayaan sepenuhnya terhadap Anda. Insiden keamanan ini tidak dapat ditoleransi.",
+                lesson: "Keamanan adalah tanggung jawab bersama. Satu kesalahan fatal dapat membahayakan seluruh organisasi.",
+                xp: 0,
+                isGameOver: true,
+                next: null
+            })
+        }
+    }, [trustPoints, updateTrustPoints])
+
     const handleInvestigate = useCallback((success, timedOut = false, failMsg = null) => {
         setTimer(null)
         if (success) {
@@ -448,8 +643,10 @@ export default function VNEnginePage() {
                 awardXP(currentScene.xpReward, `Chapter ${chapterId} spot the phish`)
                 setXpTotal(prev => prev + currentScene.xpReward)
             }
+            if (currentScene.trustImpact) handleTrustChange(currentScene.trustImpact)
             setSceneId(currentScene.successNext || currentScene.next)
         } else {
+            handleTrustChange(-1) // Default penalty for investigation fail
             setWrongChoices(prev => prev + 1)
             setChoiceResult({
                 correct: false,
@@ -468,8 +665,10 @@ export default function VNEnginePage() {
                 awardXP(currentScene.xpReward, `Chapter ${chapterId} terminal defense`)
                 setXpTotal(prev => prev + currentScene.xpReward)
             }
+            if (currentScene.trustImpact) handleTrustChange(currentScene.trustImpact)
             setSceneId(currentScene.successNext || currentScene.failNext)
         } else {
+            handleTrustChange(-1) // Default penalty for terminal fail
             setWrongChoices(prev => prev + 1)
             setChoiceResult({
                 correct: false,
@@ -486,8 +685,11 @@ export default function VNEnginePage() {
         if (choice.correct) {
             awardXP(choice.xp, `Chapter ${chapterId} correct choice`)
             setXpTotal(prev => prev + choice.xp)
+            if (choice.trustImpact) handleTrustChange(choice.trustImpact)
             setSceneId(choice.next)
         } else {
+            if (choice.trustImpact) handleTrustChange(choice.trustImpact)
+            else handleTrustChange(-1) // Default penalty for wrong choice
             setWrongChoices(prev => prev + 1)
             setChoiceResult({
                 correct: false,
@@ -497,9 +699,40 @@ export default function VNEnginePage() {
                 next: choice.next,
             })
         }
-    }, [awardXP, chapterId])
+    }, [awardXP, chapterId, handleTrustChange])
+
+    const handlePasswordSetup = useCallback((result) => {
+        // Result: { category, strength, xp, impactScore }
+        if (result.xp) {
+            awardXP(result.xp, `Chapter ${chapterId} password security: ${result.category}`)
+            setXpTotal(prev => prev + result.xp)
+        }
+        
+        // Sync to persistent security state
+        updateSecurityStats({
+            score: result.impactScore,
+            strength: result.strength,
+            category: result.category,
+            password: result.password
+        })
+
+        if (currentScene.config?.trustImpact) {
+            handleTrustChange(currentScene.config.trustImpact)
+        } else if (result.category === 'Weak') {
+            handleTrustChange(-1) // Automatic penalty for weak password
+        } else if (result.category === 'Strong') {
+            handleTrustChange(1) // Reward for strong password
+        }
+        
+        // Move to next scene
+        setSceneId(currentScene.next)
+    }, [currentScene, chapterId, awardXP, updateSecurityStats, handleTrustChange])
 
     const handleWrongDismiss = () => {
+        if (choiceResult?.isGameOver) {
+            navigate('/dashboard')
+            return
+        }
         const next = choiceResult.next
         setChoiceResult(null)
         setTimer(null)
@@ -569,6 +802,18 @@ export default function VNEnginePage() {
 
     return (
         <div className="fixed inset-0 bg-dark overflow-hidden flex flex-col">
+            {/* Visual Feedback Overlay */}
+            <AnimatePresence>
+                {trustChange && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 0.3 }}
+                        exit={{ opacity: 0 }}
+                        className={`absolute inset-0 z-[100] pointer-events-none ${trustChange === 'up' ? 'bg-blue-500' : 'bg-red-500'}`}
+                    />
+                )}
+            </AnimatePresence>
+
             {/* Background */}
             <div
                 className={`absolute inset-0 transition-all duration-1000 ${bgGradient ? `bg-gradient-to-b ${bgGradient}` : ''}`}
@@ -600,6 +845,25 @@ export default function VNEnginePage() {
                             <Star className="w-3.5 h-3.5 text-accent" />
                             <span className="text-accent font-bold text-sm">{xpTotal} XP</span>
                         </div>
+
+                        {/* Trust Point Indicator */}
+                        <div className="flex items-center gap-2 md:gap-3 bg-black/40 backdrop-blur-md border border-white/10 px-3 md:px-4 py-1.5 rounded-full shadow-xl">
+                            <Shield className={`w-3.5 h-3.5 md:w-4 h-4 ${trustPoints <= 1 ? 'text-red-400' : 'text-blue-400'}`} />
+                            <div className="flex flex-col">
+                                <div className="flex gap-1">
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <div 
+                                            key={i} 
+                                            className={`w-2.5 md:w-3 h-1 md:h-1.5 rounded-sm transition-all duration-500 ${
+                                                i <= trustPoints 
+                                                    ? (trustPoints <= 1 ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]') 
+                                                    : 'bg-white/10'
+                                            }`} 
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                         {/* Mute */}
                         <button onClick={() => setMute(!mute)} className="text-dim hover:text-main transition-colors">
                             {mute ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -610,6 +874,20 @@ export default function VNEnginePage() {
 
             {/* Main scene area */}
             <div className="relative flex-1 flex items-end">
+                {/* Debug Overlay (Only in startSceneId mode) */}
+                {new URLSearchParams(window.location.search).get('startSceneId') && (
+                    <div className="absolute top-20 left-4 z-[100] bg-black/80 p-3 rounded text-[10px] font-mono text-green-400 border border-green-500/30 space-y-1">
+                        <div>DEBUG INFO:</div>
+                        <div>• CHAP_ID: {chapterId}</div>
+                        <div>• START_ID: {new URLSearchParams(window.location.search).get('startSceneId')}</div>
+                        <div>• CURRENT_ID: {sceneId || 'NULL'}</div>
+                        <div>• SCENES_LOADED: {activeChapter?.scenes?.length || 0}</div>
+                        <div>• TYPE: {currentScene?.type || 'NULL'}</div>
+                        <div className="pt-1 border-t border-white/10 mt-1">
+                            SAMPLES: {activeChapter?.scenes?.slice(0, 3).map(s => s.id).join(', ')}
+                        </div>
+                    </div>
+                )}
                 {/* Characters */}
                 {currentScene?.type === 'dialogue' && (
                     <div className="absolute inset-x-0 bottom-0 top-0 pointer-events-none z-0 overflow-hidden">
@@ -622,6 +900,20 @@ export default function VNEnginePage() {
                                         expression={currentScene.expression}
                                         position="left"
                                         isActive={true} /* Only 1 char speaks in single char scenes */
+                                    />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Center character */}
+                        <AnimatePresence mode="popLayout">
+                            {currentScene.position === 'center' && (
+                                <motion.div key={currentScene.character + '_center'} className="absolute bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 pointer-events-auto flex items-end">
+                                    <CharacterSprite
+                                        character={currentScene.character}
+                                        expression={currentScene.expression}
+                                        position="center"
+                                        isActive={true}
                                     />
                                 </motion.div>
                             )}
@@ -669,6 +961,14 @@ export default function VNEnginePage() {
                     </div>
                 )}
 
+                {/* Video scene */}
+                {currentScene?.type === 'video' && (
+                    <VideoDisplay
+                        scene={currentScene}
+                        onContinue={() => setSceneId(currentScene.next)}
+                    />
+                )}
+
                 {/* Investigate scene */}
                 {currentScene?.type === 'investigate' && !choiceResult && (
                     <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
@@ -689,6 +989,16 @@ export default function VNEnginePage() {
                             onCommand={(success) => handleTerminal(success)}
                             timer={timer}
                             timerTotal={timerTotal}
+                        />
+                    </div>
+                )}
+
+                {/* Password Setup scene */}
+                {currentScene?.type === 'password_setup' && !choiceResult && (
+                    <div className="absolute inset-0 flex items-center justify-center p-4 z-10">
+                        <PasswordSetupDisplay
+                            scene={currentScene}
+                            onComplete={(result) => handlePasswordSetup(result)}
                         />
                     </div>
                 )}

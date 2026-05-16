@@ -93,7 +93,7 @@ router.get('/getBadgesByCategory', requireAuth, async (req, res) => {
 router.get('/getLevelBadges', requireAuth, async (req, res) => {
     try {
         const levelResult = await pool.query(
-            `SELECT * FROM level_badge`
+            `SELECT * FROM game_levels`
         )
         res.json({ levelBadges: levelResult.rows })
     } catch (err) {

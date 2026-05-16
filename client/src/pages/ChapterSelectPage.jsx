@@ -24,8 +24,11 @@ function getBackgroundClass(location, isLight) {
 }
 
 const getPos = (idx, total) => {
+    // If there's only one node, center it
+    if (total <= 1) return { x: 50, y: 50 };
+
     // Start from top (8%) and go down to bottom (92%) for padding
-    const y = 8 + (idx / Math.max(1, total - 1)) * 84;
+    const y = 8 + (idx / (total - 1)) * 84;
     
     // Weave X coordinates smoothly
     let x = 50;

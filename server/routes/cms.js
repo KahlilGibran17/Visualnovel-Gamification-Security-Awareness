@@ -31,24 +31,34 @@ async function buildVNJson(chapterId) {
     scenes.forEach(s => { idToKey[s.id] = s.scene_key || `scene_${s.id}` })
 
     const vnScenes = []
-    for (const scene of scenes) {
+    for (let i = 0; i < scenes.length; i++) {
+        const scene = scenes[i]
         const sceneKey = idToKey[scene.id]
-        const nextKey = scene.next_scene_id ? idToKey[scene.next_scene_id] : null
+        
+        // Auto-link to the next scene in the ordered list if next_scene_id is missing or points to a deleted scene
+        const nextSceneInArray = scenes[i + 1]
+        const explicitNextKey = scene.next_scene_id ? idToKey[scene.next_scene_id] : null
+        
+        const nextKey = explicitNextKey || (nextSceneInArray ? idToKey[nextSceneInArray.id] : null)
+            
         const bg = scene.background || 'office'
 
-        if (scene.scene_type === 'dialogue') {
-            const char = scene.char_left || scene.char_right || 'player'
-            const expr = (scene.char_left ? scene.char_left_expr : scene.char_right_expr) || 'normal'
-            const pos = scene.char_left ? 'left' : 'right'
+        const sType = (scene.scene_type || '').toLowerCase().trim();
+
+        if (sType === 'dialogue') {
+            const char = scene.char_center || scene.char_left || scene.char_right || 'player'
+            const expr = scene.char_center ? scene.char_center_expr : (scene.char_left ? scene.char_left_expr : scene.char_right_expr) || 'normal'
+            const pos = scene.char_center ? 'center' : (scene.char_left ? 'left' : 'right')
             vnScenes.push({
-                id: sceneKey, type: 'dialogue', background: bg,
+                id: sceneKey, dbId: scene.id, type: 'dialogue', background: bg,
                 character: char, expression: expr, position: pos,
                 speaker: scene.speaker_name || 'Narrator',
                 text: scene.dialogue_text || '',
                 xpReward: scene.xp_reward || 0,
+                trustImpact: scene.trust_impact || 0,
                 next: nextKey
             })
-        } else if (scene.scene_type === 'choice') {
+        } else if (sType === 'choice') {
             const choicesRes = await pool.query(
                 'SELECT * FROM vn_scene_choices WHERE scene_id = $1 ORDER BY choice_order ASC',
                 [scene.id]
@@ -60,60 +70,100 @@ async function buildVNJson(chapterId) {
                 consequence: c.consequence_text || null,
                 lesson: c.lesson_text || null,
                 xp: c.xp_reward || 0,
+                trustImpact: c.trust_impact || 0,
                 next: c.next_scene_id ? idToKey[c.next_scene_id] : null
             }))
             vnScenes.push({
-                id: sceneKey, type: 'choice', background: bg,
+                id: sceneKey, dbId: scene.id, type: 'choice', background: bg,
                 question: scene.question || '',
                 timer: scene.timer || 15,
                 choices
             })
-        } else if (scene.scene_type === 'ending') {
+        } else if (sType === 'ending') {
             vnScenes.push({
-                id: sceneKey, type: 'ending', background: bg,
+                id: sceneKey, dbId: scene.id, type: 'ending', background: bg,
                 ending: scene.ending_type || 'good',
                 title: scene.ending_title || 'Chapter Complete!',
                 message: scene.ending_message || scene.dialogue_text || '',
                 xpBonus: scene.xp_bonus || 200,
                 lesson_recap: scene.lesson_recap || []
             })
-        } else if (scene.scene_type === 'email') {
+        } else if (sType === 'email') {
             vnScenes.push({
-                id: sceneKey, type: 'email', background: bg,
+                id: sceneKey, dbId: scene.id, type: 'email', background: bg,
                 email: scene.custom_data?.email || {},
                 next: nextKey
             })
-        } else if (scene.scene_type === 'lesson') {
+        } else if (sType === 'lesson') {
             vnScenes.push({
-                id: sceneKey, type: 'lesson', background: bg,
+                id: sceneKey, dbId: scene.id, type: 'lesson', background: bg,
                 title: scene.custom_data?.title || scene.scene_name,
                 points: scene.custom_data?.points || [],
                 next: nextKey
             })
-        } else if (scene.scene_type === 'investigate') {
+        } else if (sType === 'investigate') {
             let targetsStr = scene.custom_data?.targets || '[]';
             let parsedTargets = [];
             try { parsedTargets = typeof targetsStr === 'string' ? JSON.parse(targetsStr) : targetsStr; } catch (e) { }
             vnScenes.push({
-                id: sceneKey, type: 'investigate', background: bg,
+                id: sceneKey, dbId: scene.id, type: 'investigate', background: bg,
                 uiType: scene.custom_data?.uiType || 'browser',
                 timer: scene.timer || 0,
                 xpReward: scene.xp_reward || 0,
+                trustImpact: scene.trust_impact || 0,
                 targets: parsedTargets,
                 successNext: nextKey, // default 'next' goes here
                 failNext: scene.custom_data?.failSceneId ? idToKey[scene.custom_data.failSceneId] : null
             })
-        } else if (scene.scene_type === 'terminal') {
+        } else if (sType === 'terminal') {
             vnScenes.push({
-                id: sceneKey, type: 'terminal', background: bg,
+                id: sceneKey, dbId: scene.id, type: 'terminal', background: bg,
                 promptText: scene.custom_data?.promptText || '>_',
                 correctCommand: scene.custom_data?.correctCommand || '',
                 timer: scene.timer || 0,
                 xpReward: scene.xp_reward || 0,
+                trustImpact: scene.trust_impact || 0,
                 successNext: nextKey, // default 'next' goes here
                 failNext: scene.custom_data?.failSceneId ? idToKey[scene.custom_data.failSceneId] : null
             })
+        } else if (sType === 'password_setup') {
+            vnScenes.push({
+                id: sceneKey, dbId: scene.id, type: 'password_setup', background: bg,
+                dialogue: scene.dialogue_text || '',
+                config: {
+                    minLength: scene.custom_data?.min_length || 8,
+                    requireUppercase: !!scene.custom_data?.require_uppercase,
+                    requireSymbol: !!scene.custom_data?.require_symbol,
+                    showCrackTime: scene.custom_data?.show_crack_time !== false,
+                    xpWeak: scene.custom_data?.xp_weak || 10,
+                    xpMedium: scene.custom_data?.xp_medium || 50,
+                    xpStrong: scene.custom_data?.xp_strong || 150,
+                    impactScore: scene.custom_data?.impact_score || 20,
+                    trustImpact: scene.trust_impact || 0
+                },
+                next: nextKey
+            })
+        } else if (sType === 'video') {
+            vnScenes.push({
+                id: sceneKey, dbId: scene.id, type: 'video', background: bg,
+                videoUrl: scene.custom_data?.videoUrl || '',
+                autoplay: !!scene.custom_data?.autoplay,
+                loop: !!scene.custom_data?.loop,
+                caption: scene.dialogue_text || '',
+                next: nextKey
+            })
+        } else {
+            // Fallback for unknown types so they aren't silently dropped
+            vnScenes.push({
+                id: sceneKey, dbId: scene.id, type: sType || 'unknown', background: bg,
+                text: scene.dialogue_text || '',
+                next: nextKey
+            })
         }
+    }
+    for (let i = 0; i < vnScenes.length; i++) {
+        vnScenes[i].va = scenes[i].va_url || null;
+        vnScenes[i].sfx = scenes[i].sfx_url || null;
     }
     return vnScenes
 }
@@ -167,11 +217,11 @@ router.get('/chapters', requireAuth, async (req, res) => {
 
 router.post('/chapters', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { title, subtitle, icon, location } = req.body
+        const { title, subtitle, icon, location, music_theme } = req.body
         const r = await pool.query(
-            `INSERT INTO game_chapters (title, subtitle, icon, location, scenes, status)
-             VALUES ($1, $2, $3, $4, '[]'::jsonb, 'Draft') RETURNING *`,
-            [title || 'New Chapter', subtitle || '', icon || '📖', location || '']
+            `INSERT INTO game_chapters (title, subtitle, icon, location, music_theme, scenes, status)
+             VALUES ($1, $2, $3, $4, $5, '[]'::jsonb, 'Draft') RETURNING *`,
+            [title || 'New Chapter', subtitle || '', icon || '📖', location || '', music_theme || null]
         )
         res.status(201).json(r.rows[0])
     } catch (err) {
@@ -196,17 +246,17 @@ router.get('/chapters/:id', requireAuth, async (req, res) => {
 // FIX: Protect against undefined status overwriting existing value
 router.put('/chapters/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { title, subtitle, icon, location, status } = req.body
+        const { title, subtitle, icon, location, status, music_theme } = req.body
         // Only update status if explicitly provided
         let query, params
         if (status !== undefined && status !== null) {
-            query = `UPDATE game_chapters SET title=$1, subtitle=$2, icon=$3, location=$4, status=$5, updated_at=NOW()
-                     WHERE id=$6 RETURNING *`
-            params = [title || '', subtitle || '', icon || '📖', location || '', status, req.params.id]
+            query = `UPDATE game_chapters SET title=$1, subtitle=$2, icon=$3, location=$4, music_theme=$5, status=$6, updated_at=NOW()
+                     WHERE id=$7 RETURNING *`
+            params = [title || '', subtitle || '', icon || '📖', location || '', music_theme || null, status, req.params.id]
         } else {
-            query = `UPDATE game_chapters SET title=$1, subtitle=$2, icon=$3, location=$4, updated_at=NOW()
-                     WHERE id=$5 RETURNING *`
-            params = [title || '', subtitle || '', icon || '📖', location || '', req.params.id]
+            query = `UPDATE game_chapters SET title=$1, subtitle=$2, icon=$3, location=$4, music_theme=$5, updated_at=NOW()
+                     WHERE id=$6 RETURNING *`
+            params = [title || '', subtitle || '', icon || '📖', location || '', music_theme || null, req.params.id]
         }
         const r = await pool.query(query, params)
         if (!r.rows.length) return res.status(404).json({ error: 'Chapter not found' })
@@ -285,25 +335,46 @@ router.post('/chapters/:id/scenes', requireAuth, requireRole('admin'), async (re
         const sceneKey = `scene_${Date.now()}`
 
         const { scene_name, scene_type, background, char_left, char_left_expr,
-            char_right, char_right_expr, speaker_name, dialogue_text,
-            xp_reward, question, timer, ending_type, ending_title,
-            ending_message, xp_bonus, custom_data } = req.body
+            char_right, char_right_expr, char_center, char_center_expr, speaker_name, dialogue_text,
+            xp_reward, trust_impact, question, timer, ending_type, ending_title,
+            ending_message, xp_bonus, lesson_recap, custom_data, va_url, sfx_url } = req.body
 
         const r = await pool.query(
             `INSERT INTO vn_scenes
              (chapter_id, scene_key, scene_name, scene_type, background,
-              char_left, char_left_expr, char_right, char_right_expr,
-              speaker_name, dialogue_text, xp_reward, question, timer,
-              ending_type, ending_title, ending_message, xp_bonus, custom_data, scene_order)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+              char_left, char_left_expr, char_right, char_right_expr, char_center, char_center_expr,
+              speaker_name, dialogue_text, xp_reward, trust_impact, question, timer,
+              ending_type, ending_title, ending_message, xp_bonus, lesson_recap, custom_data, scene_order, va_url, sfx_url)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22::jsonb,$23::jsonb,$24,$25,$26)
              RETURNING *`,
-            [chapterId, sceneKey, scene_name || 'New Scene', scene_type || 'dialogue',
-                background || 'office', char_left || null, char_left_expr || 'normal',
-                char_right || null, char_right_expr || 'normal',
-                speaker_name || '', dialogue_text || '', xp_reward || 0,
-                question || '', timer || 15, ending_type || 'good',
-                ending_title || '', ending_message || '', xp_bonus || 200,
-                custom_data || {}, nextOrder]
+            [
+                parseInt(chapterId), 
+                sceneKey, 
+                scene_name || 'New Scene', 
+                scene_type || 'dialogue',
+                background || 'office', 
+                char_left || null, 
+                char_left_expr || 'normal',
+                char_right || null, 
+                char_right_expr || 'normal',
+                char_center || null, 
+                char_center_expr || 'normal',
+                speaker_name || '', 
+                dialogue_text || '', 
+                parseInt(xp_reward) || 0,
+                parseInt(trust_impact) || 0,
+                question || '', 
+                parseInt(timer) || 15, 
+                ending_type || 'good',
+                ending_title || '', 
+                ending_message || '', 
+                parseInt(xp_bonus) || 200,
+                JSON.stringify(lesson_recap || []),
+                JSON.stringify(custom_data || {}), 
+                parseInt(nextOrder), 
+                va_url || null, 
+                sfx_url || null
+            ]
         )
         res.status(201).json({ ...r.rows[0], choices: [] })
         
@@ -320,29 +391,35 @@ router.put('/scenes/:id', requireAuth, requireRole('admin'), async (req, res) =>
     try {
         const {
             scene_name, scene_type, background, char_left, char_left_expr,
-            char_right, char_right_expr, speaker_name, dialogue_text,
-            xp_reward, question, timer, ending_type, ending_title,
-            ending_message, xp_bonus, next_scene_id, lesson_recap, custom_data
+            char_right, char_right_expr, char_center, char_center_expr, speaker_name, dialogue_text,
+            xp_reward, trust_impact, question, timer, ending_type, ending_title,
+            ending_message, xp_bonus, next_scene_id, lesson_recap, custom_data, va_url, sfx_url
         } = req.body
 
         const r = await pool.query(
             `UPDATE vn_scenes SET
              scene_name=$1, scene_type=$2, background=$3,
-             char_left=$4, char_left_expr=$5, char_right=$6, char_right_expr=$7,
-             speaker_name=$8, dialogue_text=$9, xp_reward=$10,
-             question=$11, timer=$12, ending_type=$13, ending_title=$14,
-             ending_message=$15, xp_bonus=$16, next_scene_id=$17,
-             lesson_recap=$18::jsonb, custom_data=$19::jsonb, updated_at=NOW()
-             WHERE id=$20 RETURNING *`,
+             char_left=$4, char_left_expr=$5,
+             char_right=$6, char_right_expr=$7,
+             char_center=$8, char_center_expr=$9,
+             speaker_name=$10, dialogue_text=$11, xp_reward=$12,
+             question=$13, timer=$14, ending_type=$15, ending_title=$16,
+             ending_message=$17, xp_bonus=$18, next_scene_id=$19,
+             lesson_recap=$20::jsonb, custom_data=$21::jsonb,
+             va_url=$22, sfx_url=$23, trust_impact=$24, updated_at=NOW()
+             WHERE id=$25 RETURNING *`,
             [
                 scene_name || '', scene_type || 'dialogue', background || 'office',
                 char_left || null, char_left_expr || 'normal',
                 char_right || null, char_right_expr || 'normal',
+                char_center || null, char_center_expr || 'normal',
                 speaker_name || '', dialogue_text || '', parseInt(xp_reward) || 0,
                 question || '', parseInt(timer) || 15, ending_type || 'good',
                 ending_title || '', ending_message || '',
-                parseInt(xp_bonus) || 0, next_scene_id ? parseInt(next_scene_id) : null,
-                JSON.stringify(lesson_recap || []), JSON.stringify(custom_data || {}), parseInt(req.params.id)
+                parseInt(xp_bonus) || 0, (next_scene_id && !isNaN(parseInt(next_scene_id))) ? parseInt(next_scene_id) : null,
+                JSON.stringify(lesson_recap || []), JSON.stringify(custom_data || {}),
+                va_url || null, sfx_url || null, parseInt(trust_impact) || 0,
+                parseInt(req.params.id)
             ]
         )
         if (!r.rows.length) return res.status(404).json({ error: 'Scene not found' })
@@ -364,17 +441,104 @@ router.put('/scenes/:id', requireAuth, requireRole('admin'), async (req, res) =>
 })
 
 router.delete('/scenes/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    const client = await pool.connect()
     try {
-        const info = await pool.query('SELECT chapter_id FROM vn_scenes WHERE id=$1', [req.params.id])
-        await pool.query('DELETE FROM vn_scenes WHERE id=$1', [req.params.id])
-        res.json({ message: 'Scene deleted' })
-
-        if (info.rows.length) syncChapterJson(info.rows[0].chapter_id)
+        await client.query('BEGIN')
+        
+        const info = await client.query('SELECT chapter_id FROM vn_scenes WHERE id=$1', [req.params.id])
+        if (!info.rows.length) {
+            await client.query('ROLLBACK')
+            return res.status(404).json({ error: 'Scene not found' })
+        }
+        
+        const chapterId = info.rows[0].chapter_id
+        
+        // 1. Delete associated choices first (to satisfy foreign keys if needed)
+        await client.query('DELETE FROM vn_scene_choices WHERE scene_id=$1', [req.params.id])
+        
+        // 2. Remove references to this scene in other scenes (next_scene_id)
+        await client.query('UPDATE vn_scenes SET next_scene_id = NULL WHERE next_scene_id = $1', [req.params.id])
+        
+        // 3. Remove references to this scene in choices (next_scene_id)
+        await client.query('UPDATE vn_scene_choices SET next_scene_id = NULL WHERE next_scene_id = $1', [req.params.id])
+        
+        // 4. Finally delete the scene
+        await client.query('DELETE FROM vn_scenes WHERE id=$1', [req.params.id])
+        
+        await client.query('COMMIT')
+        res.json({ message: 'Scene and all associated data deleted' })
+        
+        syncChapterJson(chapterId)
     } catch (err) {
+        await client.query('ROLLBACK')
         console.error('[CMS] DELETE scene error:', err.message)
-        res.status(500).json({ error: 'Failed to delete scene' })
+        res.status(500).json({ error: 'Failed to delete scene', detail: err.message })
+    } finally {
+        client.release()
     }
 })
+
+
+router.post('/scenes/:id/duplicate', requireAuth, requireRole('admin'), async (req, res) => {
+    const client = await pool.connect()
+    try {
+        await client.query('BEGIN')
+        
+        // 1. Get original scene
+        const sceneRes = await client.query('SELECT * FROM vn_scenes WHERE id = $1', [req.params.id])
+        if (!sceneRes.rows.length) {
+            await client.query('ROLLBACK')
+            return res.status(404).json({ error: 'Source scene not found' })
+        }
+        const s = sceneRes.rows[0]
+        
+        // 2. Insert new scene (clone everything except ID and created_at)
+        const nextOrderRes = await client.query('SELECT COALESCE(MAX(scene_order), -1) + 1 as next_order FROM vn_scenes WHERE chapter_id = $1', [s.chapter_id])
+        const nextOrder = nextOrderRes.rows[0].next_order
+        
+        const newSceneRes = await client.query(
+            `INSERT INTO vn_scenes 
+            (chapter_id, scene_key, scene_name, scene_type, background, 
+             char_left, char_left_expr, char_right, char_right_expr, char_center, char_center_expr,
+             speaker_name, dialogue_text, xp_reward, trust_impact, question, timer, 
+             ending_type, ending_title, ending_message, xp_bonus, custom_data, scene_order, va_url, sfx_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+            RETURNING *`,
+            [
+                s.chapter_id, `scene_${Date.now()}`, s.scene_name + ' (Copy)', s.scene_type, s.background,
+                s.char_left, s.char_left_expr, s.char_right, s.char_right_expr, s.char_center, s.char_center_expr,
+                s.speaker_name, s.dialogue_text, s.xp_reward, s.trust_impact || 0, s.question, s.timer,
+                s.ending_type, s.ending_title, s.ending_message, s.xp_bonus, s.custom_data, nextOrder, s.va_url, s.sfx_url
+            ]
+        )
+        const newScene = newSceneRes.rows[0]
+        
+        // 3. Clone choices if any
+        const choicesRes = await client.query('SELECT * FROM vn_scene_choices WHERE scene_id = $1 ORDER BY choice_order ASC', [s.id])
+        const newChoices = []
+        for (const c of choicesRes.rows) {
+            const nc = await client.query(
+                `INSERT INTO vn_scene_choices 
+                (scene_id, choice_text, is_correct, xp_reward, trust_impact, consequence_text, lesson_text, next_scene_id, choice_order)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+                [newScene.id, c.choice_text, c.is_correct, c.xp_reward, c.trust_impact || 0, c.consequence_text, c.lesson_text, c.next_scene_id, c.choice_order]
+            )
+            newChoices.push(nc.rows[0])
+        }
+        
+        await client.query('COMMIT')
+        res.status(201).json({ ...newScene, choices: newChoices })
+        
+        syncChapterJson(s.chapter_id)
+    } catch (err) {
+        await client.query('ROLLBACK')
+        console.error('[CMS] Duplicate error:', err.message)
+        res.status(500).json({ error: 'Failed to duplicate scene' })
+    } finally {
+        client.release()
+    }
+})
+
 
 router.put('/chapters/:id/scenes/reorder', requireAuth, requireRole('admin'), async (req, res) => {
     try {
@@ -401,10 +565,10 @@ router.post('/scenes/:id/choices', requireAuth, requireRole('admin'), async (req
         )
         const nextOrder = parseInt(maxRes.rows[0].max) + 1
         const r = await pool.query(
-            `INSERT INTO vn_scene_choices (scene_id, choice_text, is_correct, xp_reward, consequence_text, lesson_text, next_scene_id, choice_order)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+            `INSERT INTO vn_scene_choices (scene_id, choice_text, is_correct, xp_reward, trust_impact, consequence_text, lesson_text, next_scene_id, choice_order)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
             [req.params.id, choice_text || 'New choice', is_correct === true || is_correct === 'true',
-            parseInt(xp_reward) || 0, consequence_text || '', lesson_text || '',
+            parseInt(xp_reward) || 0, parseInt(req.body.trust_impact) || 0, consequence_text || '', lesson_text || '',
             next_scene_id || null, nextOrder]
         )
         res.status(201).json(r.rows[0])
@@ -420,13 +584,29 @@ router.post('/scenes/:id/choices', requireAuth, requireRole('admin'), async (req
 
 router.put('/choices/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { choice_text, is_correct, xp_reward, consequence_text, lesson_text, next_scene_id } = req.body
+        const { choice_text, is_correct, xp_reward, trust_impact, consequence_text, lesson_text, next_scene_id } = req.body
+        
+        // Use COALESCE for optional fields, but handle next_scene_id carefully to allow NULL
         const r = await pool.query(
-            `UPDATE vn_scene_choices SET choice_text=$1, is_correct=$2, xp_reward=$3,
-             consequence_text=$4, lesson_text=$5, next_scene_id=$6 WHERE id=$7 RETURNING *`,
-            [choice_text || '', is_correct === true || is_correct === 'true',
-            parseInt(xp_reward) || 0, consequence_text || '', lesson_text || '',
-            next_scene_id ? parseInt(next_scene_id) : null, parseInt(req.params.id)]
+            `UPDATE vn_scene_choices SET 
+             choice_text = COALESCE($1, choice_text),
+             is_correct = COALESCE($2, is_correct),
+             xp_reward = COALESCE($3, xp_reward),
+             trust_impact = COALESCE($4, trust_impact),
+             consequence_text = COALESCE($5, consequence_text),
+             lesson_text = COALESCE($6, lesson_text),
+             next_scene_id = $7
+             WHERE id=$8 RETURNING *`,
+            [
+                choice_text !== undefined ? choice_text : null,
+                is_correct !== undefined ? (is_correct === true || is_correct === 'true') : null,
+                xp_reward !== undefined ? parseInt(xp_reward) : null,
+                trust_impact !== undefined ? parseInt(trust_impact) : null,
+                consequence_text !== undefined ? consequence_text : null,
+                lesson_text !== undefined ? lesson_text : null,
+                (next_scene_id !== undefined && next_scene_id !== null && !isNaN(parseInt(next_scene_id))) ? parseInt(next_scene_id) : null,
+                parseInt(req.params.id)
+            ]
         )
         if (!r.rows.length) return res.status(404).json({ error: 'Choice not found' })
         res.json(r.rows[0])
@@ -473,10 +653,19 @@ router.get('/characters', requireAuth, async (req, res) => {
 
 router.post('/characters', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { name, key_name, role, emoji, description } = req.body
+        const { name, key_name, role, emoji, description, uniform_reference_url, full_body_url } = req.body
         const r = await pool.query(
-            `INSERT INTO vn_characters (name, key_name, role, emoji) VALUES ($1,$2,$3,$4) RETURNING *`,
-            [name, key_name || name.toLowerCase().replace(/\s+/g, '_'), role || 'NPC', emoji || '👤']
+            `INSERT INTO vn_characters (name, key_name, role, emoji, description, uniform_reference_url, full_body_url) 
+             VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+            [
+                name, 
+                key_name || name.toLowerCase().replace(/\s+/g, '_'), 
+                role || 'NPC', 
+                emoji || '👤',
+                description || '',
+                uniform_reference_url || null,
+                full_body_url || null
+            ]
         )
         res.status(201).json({ ...r.rows[0], expressions: [] })
     } catch (err) {
@@ -487,14 +676,20 @@ router.post('/characters', requireAuth, requireRole('admin'), async (req, res) =
 
 router.put('/characters/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { name, key_name, role, emoji, uniform_reference_url } = req.body
+        const { name, key_name, role, emoji, description, uniform_reference_url, full_body_url } = req.body
         const r = await pool.query(
-            'UPDATE vn_characters SET name=$1, key_name=$2, role=$3, emoji=$4, uniform_reference_url=COALESCE($5, uniform_reference_url) WHERE id=$6 RETURNING *',
-            [name, key_name, role, emoji, uniform_reference_url, req.params.id]
+            `UPDATE vn_characters SET 
+             name=$1, key_name=$2, role=$3, emoji=$4, 
+             description=COALESCE($5, description),
+             uniform_reference_url=COALESCE($6, uniform_reference_url),
+             full_body_url=COALESCE($7, full_body_url)
+             WHERE id=$8 RETURNING *`,
+            [name, key_name, role || 'NPC', emoji || '👤', description || null, uniform_reference_url || null, full_body_url || null, req.params.id]
         )
         const exprRes = await pool.query('SELECT * FROM vn_char_expressions WHERE character_id=$1', [req.params.id])
         res.json({ ...r.rows[0], expressions: exprRes.rows })
     } catch (err) {
+        console.error('[CMS] PUT character error:', err.message)
         res.status(500).json({ error: 'Failed to update character' })
     }
 })
@@ -505,6 +700,81 @@ router.delete('/characters/:id', requireAuth, requireRole('admin'), async (req, 
         res.json({ message: 'Character deleted' })
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete character' })
+    }
+})
+
+// Upload full body image for a character
+router.post('/characters/:id/full-body', requireAuth, requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No image provided' })
+        
+        const filePath = req.file.path;
+        // Try background removal with Jimp
+        // Try background removal with Jimp - optimized to prevent OOM/event-loop-block
+        try {
+            const { Jimp: JimpClass } = require('jimp');
+            const image = await JimpClass.read(filePath);
+            const w = image.bitmap.width;
+            const h = image.bitmap.height;
+
+            // Safety check for extremely large images
+            if (w * h > 3000 * 3000) {
+                console.warn('[CMS] Full body image too large for auto-bg removal, skipping.');
+            } else {
+                const getRGBA = (hex) => ({ r: (hex >>> 24) & 0xff, g: (hex >>> 16) & 0xff, b: (hex >>> 8) & 0xff, a: hex & 0xff });
+                const isWhite = (x, y) => { 
+                    if (x < 0 || x >= w || y < 0 || y >= h) return false; 
+                    const hex = image.getPixelColor(x, y);
+                    const c = getRGBA(hex); 
+                    return c.r > 240 && c.g > 240 && c.b > 240 && c.a > 200; 
+                };
+
+                // Use Uint8Array instead of Set for massive memory savings
+                const visited = new Uint8Array(w * h); 
+                const queue = new Int32Array(w * h);
+                let head = 0, tail = 0;
+                
+                for (let x = 0; x < w; x++) { 
+                    if (isWhite(x, 0)) queue[tail++] = 0 * w + x; 
+                    if (isWhite(x, h - 1)) queue[tail++] = (h - 1) * w + x; 
+                }
+                for (let y = 1; y < h - 1; y++) { 
+                    if (isWhite(0, y)) queue[tail++] = y * w + 0; 
+                    if (isWhite(w - 1, y)) queue[tail++] = y * w + (w - 1); 
+                }
+
+                let modified = false;
+                while (head < tail) { 
+                    const idx = queue[head++]; 
+                    if (visited[idx]) continue; 
+                    visited[idx] = 1; 
+                    
+                    const x = idx % w;
+                    const y = Math.floor(idx / w);
+
+                    if (isWhite(x, y)) { 
+                        image.setPixelColor(0x00000000, x, y); 
+                        modified = true; 
+                        if (x > 0) queue[tail++] = y * w + (x - 1); 
+                        if (x < w - 1) queue[tail++] = y * w + (x + 1); 
+                        if (y > 0) queue[tail++] = (y - 1) * w + x; 
+                        if (y < h - 1) queue[tail++] = (y + 1) * w + x; 
+                    } 
+                }
+                if (modified) await image.write(filePath);
+                console.log('[CMS] Full body bg removal done for', req.file.filename);
+            }
+        } catch (e) {
+            console.warn('[CMS] Full body bg removal failed/skipped:', e.message);
+        }
+
+        const imageUrl = `/uploads/${req.file.filename}`;
+        const r = await pool.query('UPDATE vn_characters SET full_body_url=$1 WHERE id=$2 RETURNING *', [imageUrl, req.params.id])
+        const exprRes = await pool.query('SELECT * FROM vn_char_expressions WHERE character_id=$1', [req.params.id])
+        res.json({ ...r.rows[0], expressions: exprRes.rows })
+    } catch (err) {
+        console.error('[CMS] Full body upload error:', err.message)
+        res.status(500).json({ error: 'Failed to upload full body image' })
     }
 })
 
@@ -528,57 +798,60 @@ router.post('/characters/:id/expressions', requireAuth, requireRole('admin'), up
         let imageUrl = null
         if (req.file) {
             const filePath = req.file.path;
+            // Try background removal with Jimp - optimized
             try {
-                // Auto-remove white backgrounds on upload using Jimp
-                const image = await Jimp.read(filePath);
+                const { Jimp: JimpClass } = require('jimp');
+                const image = await JimpClass.read(filePath);
                 const w = image.bitmap.width;
                 const h = image.bitmap.height;
-                const { intToRGBA } = require('jimp');
 
-                const isWhite = (x, y) => {
-                    if (x < 0 || x >= w || y < 0 || y >= h) return false;
-                    const c = intToRGBA(image.getPixelColor(x, y));
-                    return c.r > 240 && c.g > 240 && c.b > 240 && c.a > 200;
-                };
+                if (w * h > 3000 * 3000) {
+                    console.warn('[CMS] Expression image too large for auto-bg removal, skipping.');
+                } else {
+                    const getRGBA = (hex) => ({ r: (hex >>> 24) & 0xff, g: (hex >>> 16) & 0xff, b: (hex >>> 8) & 0xff, a: hex & 0xff });
+                    const isWhite = (x, y) => {
+                        if (x < 0 || x >= w || y < 0 || y >= h) return false;
+                        const hex = image.getPixelColor(x, y);
+                        const c = getRGBA(hex);
+                        return c.r > 240 && c.g > 240 && c.b > 240 && c.a > 200;
+                    };
 
-                const setTransparent = (x, y) => {
-                    image.setPixelColor(0x00000000, x, y);
-                };
+                    const visited = new Uint8Array(w * h);
+                    const queue = new Int32Array(w * h);
+                    let head = 0, tail = 0;
 
-                const bgPoints = [];
-                const visited = new Set();
-
-                for (let x = 0; x < w; x++) {
-                    if (isWhite(x, 0)) bgPoints.push({ x, y: 0 });
-                    if (isWhite(x, h - 1)) bgPoints.push({ x, y: h - 1 });
-                }
-                for (let y = 1; y < h - 1; y++) {
-                    if (isWhite(0, y)) bgPoints.push({ x: 0, y });
-                    if (isWhite(w - 1, y)) bgPoints.push({ x: w - 1, y });
-                }
-
-                let queue = [...bgPoints];
-                let idx = 0;
-                let modified = false;
-                while (idx < queue.length) {
-                    const { x, y } = queue[idx++];
-                    const key = `${x},${y}`;
-                    if (visited.has(key)) continue;
-                    visited.add(key);
-
-                    if (isWhite(x, y)) {
-                        setTransparent(x, y);
-                        modified = true;
-                        if (x > 0 && !visited.has(`${x - 1},${y}`)) queue.push({ x: x - 1, y });
-                        if (x < w - 1 && !visited.has(`${x + 1},${y}`)) queue.push({ x: x + 1, y });
-                        if (y > 0 && !visited.has(`${x},${y - 1}`)) queue.push({ x, y: y - 1 });
-                        if (y < h - 1 && !visited.has(`${x},${y + 1}`)) queue.push({ x, y: y + 1 });
+                    for (let x = 0; x < w; x++) {
+                        if (isWhite(x, 0)) queue[tail++] = 0 * w + x;
+                        if (isWhite(x, h - 1)) queue[tail++] = (h - 1) * w + x;
                     }
-                }
+                    for (let y = 1; y < h - 1; y++) {
+                        if (isWhite(0, y)) queue[tail++] = y * w + 0;
+                        if (isWhite(w - 1, y)) queue[tail++] = y * w + (w - 1);
+                    }
 
-                if (modified) await image.write(filePath);
+                    let modified = false;
+                    while (head < tail) {
+                        const idx = queue[head++];
+                        if (visited[idx]) continue;
+                        visited[idx] = 1;
+
+                        const x = idx % w;
+                        const y = Math.floor(idx / w);
+
+                        if (isWhite(x, y)) {
+                            image.setPixelColor(0x00000000, x, y);
+                            modified = true;
+                            if (x > 0) queue[tail++] = y * w + (x - 1);
+                            if (x < w - 1) queue[tail++] = y * w + (x + 1);
+                            if (y > 0) queue[tail++] = (y - 1) * w + x;
+                            if (y < h - 1) queue[tail++] = (y + 1) * w + x;
+                        }
+                    }
+                    if (modified) await image.write(filePath);
+                    console.log('[CMS] Background removal done for', req.file.filename);
+                }
             } catch (e) {
-                console.warn('[CMS] Background removal failed for uploaded image:', e.message);
+                console.warn('[CMS] Background removal skipped:', e.message);
             }
             imageUrl = `/uploads/${req.file.filename}`;
         }
@@ -602,7 +875,7 @@ router.post('/characters/:id/expressions', requireAuth, requireRole('admin'), up
         }
         res.json(result.rows[0])
     } catch (err) {
-        console.error('[CMS] POST expression error:', err.message)
+        console.error('[CMS] POST expression error:', err.message, err.detail || '')
         res.status(500).json({ error: 'Failed to save expression', detail: err.message })
     }
 })
@@ -737,15 +1010,16 @@ router.get('/ui-types', requireAuth, async (req, res) => {
 
 router.post('/ui-types', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { name, key_name, template_type, custom_html } = req.body
+        const { name, key_name, template_type, custom_html, bg_offset_y, is_scrollable } = req.body
         const safeKey = key_name || name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
         
         const existing = await pool.query('SELECT id FROM vn_ui_types WHERE key_name=$1', [safeKey])
         if (existing.rows.length > 0) return res.status(409).json({ error: 'UI Type key already exists' })
 
         const r = await pool.query(
-            `INSERT INTO vn_ui_types (name, key_name, template_type, custom_html) VALUES ($1,$2,$3,$4) RETURNING *`,
-            [name, safeKey, template_type || 'browser', custom_html || '']
+            `INSERT INTO vn_ui_types (name, key_name, template_type, custom_html, bg_offset_y, is_scrollable) 
+             VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+            [name, safeKey, template_type || 'browser', custom_html || '', parseInt(bg_offset_y) || 0, is_scrollable || false]
         )
         res.status(201).json(r.rows[0])
     } catch (err) {
@@ -755,14 +1029,35 @@ router.post('/ui-types', requireAuth, requireRole('admin'), async (req, res) => 
 
 router.put('/ui-types/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { name, template_type, custom_html } = req.body
+        const { name, template_type, custom_html, image_url, bg_offset_y, is_scrollable } = req.body
         const r = await pool.query(
-            'UPDATE vn_ui_types SET name=$1, template_type=$2, custom_html=$3 WHERE id=$4 RETURNING *',
-            [name, template_type, custom_html, req.params.id]
+            `UPDATE vn_ui_types SET 
+             name=$1, template_type=$2, custom_html=$3, image_url=$4, 
+             bg_offset_y=$5, is_scrollable=$6 
+             WHERE id=$7 RETURNING *`,
+            [name, template_type, custom_html, image_url || null, parseInt(bg_offset_y) || 0, is_scrollable || false, req.params.id]
         )
         res.json(r.rows[0])
     } catch (err) {
         res.status(500).json({ error: 'Failed to update UI type' })
+    }
+})
+
+// Upload image for a UI type — auto-generates full-cover HTML
+router.post('/ui-types/:id/upload-image', requireAuth, requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
+        const imageUrl = `/uploads/${req.file.filename}`
+        // Generate HTML that uses the image as a full-cover background
+        const generatedHtml = `<div style="width:100%;height:100%;background-image:url('${imageUrl}');background-size:cover;background-position:top center;background-repeat:no-repeat;"></div>`
+        const r = await pool.query(
+            'UPDATE vn_ui_types SET image_url=$1, custom_html=$2 WHERE id=$3 RETURNING *',
+            [imageUrl, generatedHtml, req.params.id]
+        )
+        res.json(r.rows[0])
+    } catch (err) {
+        console.error('[CMS] UI type image upload error:', err.message)
+        res.status(500).json({ error: 'Upload failed', detail: err.message })
     }
 })
 
@@ -788,8 +1083,9 @@ router.get('/media', requireAuth, async (req, res) => {
 router.post('/media/upload', requireAuth, requireRole('admin'), upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: 'No file uploaded' })
-        const { filename, originalname, mimetype, size } = req.file
-        const fileType = mimetype.startsWith('video/') ? 'video' : 'image'
+        const { filename, originalname, size } = req.file
+        const mimetype = req.file.mimetype || 'application/octet-stream'
+        const fileType = mimetype.startsWith('video/') ? 'video' : (mimetype.startsWith('audio/') ? 'audio' : 'image')
         const url = `/uploads/${filename}`
         const r = await pool.query(
             'INSERT INTO cms_media (filename, original_name, file_type, mime_type, file_size, url) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
@@ -797,6 +1093,7 @@ router.post('/media/upload', requireAuth, requireRole('admin'), upload.single('f
         )
         res.status(201).json(r.rows[0])
     } catch (err) {
+        console.error('[CMS] Media upload error:', err)
         res.status(500).json({ error: 'Upload failed', detail: err.message })
     }
 })
@@ -934,6 +1231,125 @@ router.delete('/roadmap-levels/:id', requireAuth, requireRole('admin'), async (r
     }
 })
 
+// ─── FLOW EDITOR SUPPORT ───────────────────────────────────────────────────
+
+// Combined route to get everything for the flow editor
+router.get('/chapters/:id/flow', requireAuth, async (req, res) => {
+    try {
+        const chapterId = req.params.id
+        const [scenes, zones, notes] = await Promise.all([
+            pool.query('SELECT * FROM vn_scenes WHERE chapter_id=$1 ORDER BY scene_order ASC', [chapterId]),
+            pool.query('SELECT * FROM vn_flow_zones WHERE chapter_id=$1', [chapterId]),
+            pool.query('SELECT * FROM vn_flow_notes WHERE chapter_id=$1', [chapterId])
+        ])
+
+        // For scenes, we also need choices
+        const sceneIds = scenes.rows.map(s => s.id)
+        let choices = []
+        if (sceneIds.length > 0) {
+            const cRes = await pool.query('SELECT * FROM vn_scene_choices WHERE scene_id = ANY($1) ORDER BY choice_order ASC', [sceneIds])
+            choices = cRes.rows
+        }
+
+        const scenesWithChoices = scenes.rows.map(s => ({
+            ...s,
+            choices: choices.filter(c => c.scene_id === s.id)
+        }))
+
+        res.json({
+            scenes: scenesWithChoices,
+            zones: zones.rows,
+            notes: notes.rows
+        })
+    } catch (err) {
+        console.error('[CMS] Flow get error:', err.message)
+        res.status(500).json({ error: 'Failed to fetch flow data' })
+    }
+})
+
+// Scene Position Sync
+router.put('/scenes/:id/position', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { x, y } = req.body
+        await pool.query('UPDATE vn_scenes SET x_pos=$1, y_pos=$2 WHERE id=$3', [x, y, req.params.id])
+        res.json({ success: true })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to sync position' })
+    }
+})
+
+// Zones CRUD
+router.post('/chapters/:id/flow/zones', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { title, color, x_pos, y_pos, width, height } = req.body
+        const r = await pool.query(
+            'INSERT INTO vn_flow_zones (chapter_id, title, color, x_pos, y_pos, width, height) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+            [req.params.id, title, color, x_pos, y_pos, width || 400, height || 300]
+        )
+        res.status(201).json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create zone' })
+    }
+})
+
+router.put('/flow/zones/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { title, color, x_pos, y_pos, width, height } = req.body
+        const r = await pool.query(
+            'UPDATE vn_flow_zones SET title=$1, color=$2, x_pos=$3, y_pos=$4, width=$5, height=$6 WHERE id=$7 RETURNING *',
+            [title, color, x_pos, y_pos, width, height, req.params.id]
+        )
+        res.json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update zone' })
+    }
+})
+
+router.delete('/flow/zones/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        await pool.query('DELETE FROM vn_flow_zones WHERE id=$1', [req.params.id])
+        res.json({ message: 'Zone deleted' })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete zone' })
+    }
+})
+
+// Notes CRUD
+router.post('/chapters/:id/flow/notes', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { content, color, x_pos, y_pos } = req.body
+        const r = await pool.query(
+            'INSERT INTO vn_flow_notes (chapter_id, content, color, x_pos, y_pos) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+            [req.params.id, content, color, x_pos, y_pos]
+        )
+        res.status(201).json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create note' })
+    }
+})
+
+router.put('/flow/notes/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { content, color, x_pos, y_pos } = req.body
+        const r = await pool.query(
+            'UPDATE vn_flow_notes SET content=$1, color=$2, x_pos=$3, y_pos=$4 WHERE id=$5 RETURNING *',
+            [content, color, x_pos, y_pos, req.params.id]
+        )
+        res.json(r.rows[0])
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update note' })
+    }
+})
+
+router.delete('/flow/notes/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        await pool.query('DELETE FROM vn_flow_notes WHERE id=$1', [req.params.id])
+        res.json({ message: 'Note deleted' })
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete note' })
+    }
+})
+
 router.put('/roadmap-levels/reorder/batch', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const { orderedIds } = req.body
@@ -943,6 +1359,16 @@ router.put('/roadmap-levels/reorder/batch', requireAuth, requireRole('admin'), a
         res.json({ message: 'Reordered', orderedIds })
     } catch (err) {
         res.status(500).json({ error: 'Failed to reorder roadmap nodes' })
+    }
+})
+
+// Real-time preview JSON for the Flow Editor debugging
+router.get('/chapters/:id/preview-json', requireAuth, async (req, res) => {
+    try {
+        const vnJson = await buildVNJson(req.params.id)
+        res.json(vnJson)
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to generate preview JSON' })
     }
 })
 

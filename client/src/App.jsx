@@ -26,6 +26,7 @@ import AdminReportsPage from './pages/admin/AdminReportsPage.jsx'
 import AdminELearningPage from './pages/admin/AdminELearningPage.jsx'
 import SuperAdminDashboardPage from './pages/super-admin/SuperAdminDashboardPage.jsx'
 import SuperAdminAdminManagePage from './pages/super-admin/SuperAdmin-AdminManagePage.jsx'
+import StoryFlowEditor from './pages/admin/cms/StoryFlowEditor.jsx'
 
 export default function App() {
     return (
@@ -98,12 +99,12 @@ export default function App() {
                                         </ProtectedRoute>
                                     } />
                                     <Route path="/admin/users" element={
-                                        <ProtectedRoute roles={['admin']}>
+                                        <ProtectedRoute roles={['admin', 'manager']}>
                                             <AdminUsersPage />
                                         </ProtectedRoute>
                                     } />
                                     <Route path="/admin/content" element={
-                                        <ProtectedRoute roles={['admin']}>
+                                        <ProtectedRoute roles={['admin', 'manager']}>
                                             <AdminCMSPage />
                                         </ProtectedRoute>
                                     } />
@@ -112,11 +113,16 @@ export default function App() {
                                             <AdminELearningPage />
                                         </ProtectedRoute>
                                     } />
-                                    <Route path="/admin/reports" element={
-                                        <ProtectedRoute roles={['admin', 'manager']}>
-                                            <AdminReportsPage />
-                                        </ProtectedRoute>
-                                    } />
+                                     <Route path="/admin/reports" element={
+                                         <ProtectedRoute roles={['admin', 'manager']}>
+                                             <AdminReportsPage />
+                                         </ProtectedRoute>
+                                     } />
+                                     <Route path="/admin/flow/:chapterId" element={
+                                         <ProtectedRoute roles={['admin', 'manager']}>
+                                             <StoryFlowEditor />
+                                         </ProtectedRoute>
+                                     } />
 
                                     {/* Super Admin Routes */}
                                     <Route path="/super-admin" element={

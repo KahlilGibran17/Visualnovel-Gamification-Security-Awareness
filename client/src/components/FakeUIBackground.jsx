@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Mail, Monitor, BookOpen, AlertTriangle } from 'lucide-react';
 
 export function FakeUIScaledWrapper({ uiType, uiTypesData = [], children, className = '', ...props }) {
@@ -8,7 +8,7 @@ export function FakeUIScaledWrapper({ uiType, uiTypesData = [], children, classN
     useEffect(() => {
         if (!containerRef.current) return;
         const obs = new ResizeObserver((entries) => {
-            if (entries[0]) {
+            if (entries[0] && entries[0].contentRect.width > 0) {
                 // The base design is 800px wide
                 setScale(entries[0].contentRect.width / 800);
             }
@@ -24,101 +24,177 @@ export function FakeUIScaledWrapper({ uiType, uiTypesData = [], children, classN
             {...props}
         >
             <div 
-                className="absolute top-0 left-0 bg-[#e0e0e0] pointer-events-none select-none origin-top-left z-0" 
-                style={{ width: '800px', height: '450px', transform: `scale(${scale})` }}
+                className="absolute top-0 left-0" 
+                style={{ 
+                    width: '800px', 
+                    height: '450px', 
+                    transform: `scale(${scale})`, 
+                    transformOrigin: 'top left' 
+                }}
             >
-                <FakeUIBackground uiType={uiType} uiTypesData={uiTypesData} />
-            </div>
-            <div className="absolute inset-0 z-10 pointer-events-none">
-                {children}
+                <FakeUIBackground uiType={uiType} uiTypesData={uiTypesData}>
+                    {children}
+                </FakeUIBackground>
             </div>
         </div>
     );
 }
 
-export function FakeUIBackground({ uiType, uiTypesData = [] }) {
+export function FakeUIBackground({ uiType, uiTypesData = [], children }) {
     // Check if it's a dynamically managed UI Type first
     const dynamicType = uiTypesData?.find(t => t.key_name === uiType);
-    if (dynamicType && dynamicType.custom_html) {
-        return <div className="absolute inset-0 bg-white" dangerouslySetInnerHTML={{ __html: dynamicType.custom_html }} />
+    
+    if (dynamicType) {
+        if (dynamicType.image_url) {
+            if (dynamicType.is_scrollable) {
+                return (
+                    <div 
+                        className="absolute inset-0 bg-white overflow-y-auto overflow-x-hidden pointer-events-auto vn-scroll-container"
+                        onPointerDown={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            if (e.clientX > rect.right - 20) {
+                                e.stopPropagation();
+                            }
+                        }}
+                        onClick={(e) => {
+                            // If clicking near scrollbar, definitely stop it
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            if (e.clientX > rect.right - 20) {
+                                e.stopPropagation();
+                            }
+                        }}
+                    >
+                        <div className="relative w-full" style={{ minHeight: '100%' }}>
+                            <img 
+                                src={dynamicType.image_url} 
+                                alt="Background" 
+                                className="w-full h-auto block"
+                                style={{ pointerEvents: 'none' }}
+                            />
+                            {/* Overlay for targets - Must be same size as image content */}
+                            <div className="absolute inset-0 pointer-events-none">
+                                {children}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
+            // Standard non-scrollable background
+            const bgStyle = {
+                backgroundImage: `url('${dynamicType.image_url}')`,
+                backgroundSize: 'cover',
+                backgroundPosition: `center ${dynamicType.bg_offset_y || 0}%`,
+                backgroundRepeat: 'no-repeat',
+                width: '100%',
+                height: '100%',
+            };
+            return (
+                <div className="absolute inset-0 bg-white overflow-hidden">
+                    <div style={bgStyle} className="w-full h-full" />
+                    <div className="absolute inset-0 pointer-events-none">
+                        {children}
+                    </div>
+                </div>
+            );
+        }
+        
+        if (dynamicType.custom_html) {
+            return (
+                <div className="absolute inset-0 bg-white overflow-hidden">
+                    <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: dynamicType.custom_html }} />
+                    <div className="absolute inset-0 pointer-events-none">
+                        {children}
+                    </div>
+                </div>
+            );
+        }
     }
 
+    // ─── Tampilan Default (Fallback) ──────────────────────────────────────────
+    
+    // Email Phishing
     if (uiType === 'email') {
         return (
             <div className="absolute inset-0 bg-white flex flex-col text-left font-sans">
                 <div className="bg-[#0078d4] text-white p-2.5 px-4 font-semibold text-sm flex items-center gap-2">
-                    <Mail className="w-4 h-4" /> Outlook Web Access
+                    <Mail className="w-4 h-4" /> Webmail Akebono — Outlook
                 </div>
                 <div className="border-b p-4 bg-[#f3f2f1] flex flex-col gap-1">
-                    <div className="text-gray-900 text-xl font-semibold mb-2">URGENT: Password Expiry Notification</div>
+                    <div className="text-gray-900 text-xl font-semibold mb-2">MENDESAK: Kata Sandi Anda Hampir Kedaluwarsa!</div>
                     <div className="text-sm text-gray-600 flex items-center gap-1">
-                        <span className="font-semibold text-gray-800">IT-Support</span> &lt;admin@akeb0no-secure.net&gt;
+                        <span className="font-semibold text-gray-800">Dukungan-TI Akebono</span> &lt;it-admin@akeb0no-secure.net&gt;
                     </div>
-                    <div className="text-sm text-gray-500">To: Employee User</div>
+                    <div className="text-sm text-gray-500">Kepada: Pengguna Karyawan</div>
                 </div>
-                <div className="p-6 text-gray-800 text-sm flex-1 bg-white overflow-hidden">
-                    <p className="mb-4">Dear Employee,</p>
-                    <p className="mb-4">Your Akebono corporate network password is set to expire in <strong>2 hours</strong>. Failure to update it immediately will result in a complete account lockout and require IT unblocking.</p>
-                    <p className="mb-6">Please securely log in and update your credentials immediately below:</p>
+                <div className="p-6 text-gray-800 text-sm flex-1 bg-white overflow-hidden relative">
+                    <p className="mb-4">Yth. Karyawan,</p>
+                    <p className="mb-4">Kata sandi jaringan perusahaan Anda akan <strong>kedaluwarsa dalam 2 jam</strong>. Jika tidak segera diperbarui, akun Anda akan dikunci secara otomatis dan memerlukan pembukaan kunci oleh tim TI.</p>
+                    <p className="mb-6">Harap klik tautan di bawah ini untuk memperbarui kredensial Anda sekarang:</p>
                     <div className="bg-blue-50 border border-blue-200 inline-block p-4 rounded mb-6">
-                        <a href="#" onClick={e => e.preventDefault()} className="underline text-[#0078d4] font-semibold text-base block">https://auth.akebono-secure-reset.com/login</a>
+                        <a href="#" onClick={e => e.preventDefault()} className="underline text-[#0078d4] font-semibold text-base block">
+                            https://auth.akebono-secure-reset.com/login
+                        </a>
                     </div>
-                    <p className="text-gray-500 text-xs">Regards,<br />Information Technology Administration Desk<br />Akebono Brake Astra Indonesia</p>
+                    <p>Terima kasih,<br /><strong>Tim Keamanan TI Akebono</strong></p>
+                    <div className="absolute inset-0 pointer-events-none">
+                        {children}
+                    </div>
                 </div>
             </div>
         );
     }
 
-    if (uiType === 'desktop') {
+    // Browser Phishing
+    if (uiType === 'browser') {
         return (
-            <div className="absolute inset-0 bg-[#005a9e] flex flex-col">
-                <div className="flex-1 p-4 grid grid-cols-6 gap-4 content-start">
-                    <div className="w-16 flex flex-col items-center gap-1">
-                        <div className="w-10 h-10 bg-blue-300 rounded shadow flex items-center justify-center text-[#005a9e]"><Monitor className="w-6 h-6" /></div>
-                        <span className="text-white text-xs drop-shadow-md text-center">My PC</span>
+            <div className="absolute inset-0 bg-white flex flex-col text-left font-sans">
+                <div className="bg-gray-100 border-b p-2 flex items-center gap-2 px-4">
+                    <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-red-400" />
+                        <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                        <div className="w-3 h-3 rounded-full bg-green-400" />
                     </div>
-                    <div className="w-16 flex flex-col items-center gap-1">
-                        <div className="w-10 h-10 bg-yellow-400 rounded shadow flex items-center justify-center text-white"><BookOpen className="w-6 h-6" /></div>
-                        <span className="text-white text-xs drop-shadow-md text-center">Reports</span>
-                    </div>
-                    <div className="w-16 flex flex-col items-center gap-1">
-                        <div className="w-10 h-10 bg-gray-200 rounded shadow border-l-[12px] border-red-500 flex items-center justify-center relative"><span className="absolute bottom-0 right-0 text-[10px] font-bold text-gray-500 bg-white px-0.5 border">EXE</span></div>
-                        <span className="text-white text-xs drop-shadow-md text-center bg-blue-600/50 px-1 rounded truncate w-20">Salary_2024.pdf.exe</span>
+                    <div className="flex-1 bg-white border rounded px-3 py-1 text-xs text-gray-400 flex items-center gap-2">
+                        <Monitor className="w-3 h-3" /> https://sso.akebono-portal-login.com/auth
                     </div>
                 </div>
-                <div className="h-10 bg-black/80 backdrop-blur border-t border-white/10 flex items-center px-2 z-10 w-full shrink-0">
-                    <div className="w-10 h-8 rounded bg-[#0078d4] mr-4 flex items-center justify-center text-white font-bold text-xs shadow-inner">Start</div>
-                    <div className="text-white text-xs ml-auto pr-4">12:00 PM</div>
+                <div className="flex-1 bg-[#f0f2f5] flex items-center justify-center p-8 relative">
+                    <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-sm">
+                        <div className="w-12 h-12 bg-red-600 rounded-lg mb-6 flex items-center justify-center text-white font-bold text-2xl">A</div>
+                        <h2 className="text-xl font-bold mb-6">Masuk ke Portal Karyawan</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">NPK / ID Karyawan</label>
+                                <div className="h-10 bg-gray-100 rounded border w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Kata Sandi</label>
+                                <div className="h-10 bg-gray-100 rounded border w-full" />
+                            </div>
+                            <div className="h-11 bg-red-600 rounded-lg w-full flex items-center justify-center text-white font-bold">Masuk</div>
+                        </div>
+                        <div className="mt-6 pt-6 border-t text-center">
+                            <span className="text-blue-600 text-sm font-semibold">Lupa kata sandi?</span>
+                        </div>
+                    </div>
+                    <div className="absolute inset-0 pointer-events-none">
+                        {children}
+                    </div>
                 </div>
             </div>
         );
     }
 
-    // Default to browser
+    // Default Fallback
     return (
-        <div className="absolute inset-0 bg-gray-100 flex flex-col">
-            <div className="h-10 bg-[#dee1e6] border-b border-[#cccccc] flex items-center px-4 gap-2 shrink-0">
-                <div className="flex gap-1.5"><div className="w-3 h-3 rounded-full bg-[#ff5f56]" /><div className="w-3 h-3 rounded-full bg-[#ffbd2e]" /><div className="w-3 h-3 rounded-full bg-[#27c93f]" /></div>
-                <div className="ml-4 flex-1 bg-white rounded-full text-xs px-4 py-1.5 text-red-600 font-mono shadow-sm flex items-center gap-2 border border-red-200">
-                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" /> <span className="truncate">https://akeb0no-internal-login.net/auth/verify?token=1829f0</span>
-                </div>
+        <div className="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center relative">
+            <div className="text-center p-8 opacity-20">
+                <AlertTriangle className="w-16 h-16 mx-auto mb-4" />
+                <p className="font-bold">UI Background: {uiType}</p>
             </div>
-            <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] text-gray-800 overflow-hidden">
-                <div className="bg-white p-8 rounded-xl shadow-xl w-[400px] border border-gray-100 flex flex-col items-center shrink-0">
-                    <div className="w-16 h-16 bg-blue-900 rounded-full flex items-center justify-center mb-4">
-                        <span className="text-white font-bold text-xl">AKE</span>
-                    </div>
-                    <h2 className="text-xl font-bold mb-6 text-center text-gray-800 w-full border-b pb-4">Employee Portal Login</h2>
-                    <div className="space-y-4 w-full">
-                        <div>
-                            <input type="text" disabled className="w-full border border-gray-300 rounded-md mt-1 p-2.5 bg-gray-50 text-sm" placeholder="Enter NIK (e.g. 10001)" />
-                        </div>
-                        <div>
-                            <input type="password" disabled className="w-full border border-gray-300 rounded-md mt-1 p-2.5 bg-gray-50 text-sm" placeholder="Password" />
-                        </div>
-                        <button className="w-full bg-[#005a9e] text-white rounded-md p-2.5 font-bold opacity-70 cursor-not-allowed mt-2">Sign In securely</button>
-                    </div>
-                </div>
+            <div className="absolute inset-0 pointer-events-none">
+                {children}
             </div>
         </div>
     );

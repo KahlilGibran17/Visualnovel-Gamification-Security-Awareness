@@ -1,8 +1,8 @@
 {
     "id": 1,
-    "title": "First Day",
-    "subtitle": "Phishing Email",
-    "location": "Akebono Brake Astra — Main Office",
+    "title": "Hari Pertama",
+    "subtitle": "Email Phishing",
+    "location": "Akebono Brake Astra — Kantor Pusat",
     "scenes": [
         {
             "id": "intro",
@@ -12,7 +12,7 @@
             "expression": "happy",
             "position": "left",
             "speaker": "{{playerName}}",
-            "text": "Today is my first day at Akebono Brake Astra! I'm so excited to join the team.",
+            "text": "Hari ini adalah hari pertama saya bekerja di Akebono Brake Astra! Saya sangat antusias untuk bergabung dengan tim ini.",
             "next": "intro2"
         },
         {
@@ -23,7 +23,7 @@
             "expression": "happy",
             "position": "right",
             "speaker": "AKE-BOT",
-            "text": "Welcome aboard, {{playerName}}! I'm AKE-BOT, your cybersecurity guide here at Akebono. My mission is to keep you safe in the digital world!",
+            "text": "Selamat bergabung, {{playerName}}! Saya adalah AKE-BOT, panduan keamanan siber Anda di Akebono. Misi saya adalah menjaga keamanan Anda di dunia digital!",
             "next": "intro3"
         },
         {
@@ -34,7 +34,7 @@
             "expression": "worried",
             "position": "right",
             "speaker": "AKE-BOT",
-            "text": "The cyber threat landscape is evolving fast. Our systems are constantly targeted by hackers. One of the most dangerous is a hacker known as Ph1sh!",
+            "text": "Lanskap ancaman siber berkembang dengan sangat cepat. Sistem kami terus-menerus menjadi target para peretas. Salah satu yang paling berbahaya adalah peretas yang dikenal sebagai Ph1sh!",
             "next": "intro4"
         },
         {
@@ -44,8 +44,8 @@
             "character": "villain",
             "expression": "evil",
             "position": "left",
-            "speaker": "Ph1sh (Unknown)",
-            "text": "Hehehe... A new employee? Fresh meat for my phishing attacks... They won't know what hit them. 😈",
+            "speaker": "Ph1sh (Tidak Dikenal)",
+            "text": "Hehehe... Karyawan baru? Mangsa segar untuk serangan phishing saya... Mereka tidak akan tahu apa yang menimpa mereka. 😈",
             "next": "email_scene"
         },
         {
@@ -56,7 +56,7 @@
             "expression": "happy",
             "position": "left",
             "speaker": "{{playerName}}",
-            "text": "Let me check my work email. There's already a message waiting for me...",
+            "text": "Mari saya periksa email kerja saya. Sudah ada pesan yang menunggu...",
             "next": "email_show"
         },
         {
@@ -66,13 +66,13 @@
             "email": {
                 "from": "IT-Support@akeb0n0-brake.com",
                 "to": "{{playerName}}@akebono-brake.co.id",
-                "subject": "URGENT: Your account will be suspended in 24 hours!",
-                "body": "Dear Employee,\n\nYour corporate account has been flagged for suspicious activity and will be SUSPENDED within 24 hours unless you verify your identity.\n\nClick here immediately: http://akebono-verify.xyz/login\n\nEnter your username and password to avoid account suspension.\n\nIT Security Team\nAkebono Brake Corp.",
+                "subject": "PENTING: Akun Anda akan ditangguhkan dalam 24 jam!",
+                "body": "Yth. Karyawan,\n\nAkun korporat Anda telah terdeteksi melakukan aktivitas mencurigakan dan akan DITANGGUHKAN dalam waktu 24 jam kecuali jika Anda memverifikasi identitas Anda.\n\nKlik di sini segera: http://akebono-verify.xyz/login\n\nMasukkan nama pengguna dan kata sandi Anda untuk menghindari penangguhan akun.\n\nTim Keamanan TI\nAkebono Brake Corp.",
                 "redFlags": [
-                    "Wrong domain: akeb0n0-brake.com (uses zeros!)",
-                    "Suspicious link: akebono-verify.xyz (not official domain)",
-                    "Creates urgent fear: 24 hour threat",
-                    "Asks for credentials via email (IT never does this!)"
+                    "Domain salah: akeb0n0-brake.com (menggunakan angka nol!)",
+                    "Tautan mencurigakan: akebono-verify.xyz (bukan domain resmi)",
+                    "Menciptakan rasa urgensi: Ancaman 24 jam",
+                    "Meminta kredensial melalui email (TI tidak pernah melakukan ini!)"
                 ]
             },
             "next": "email_question"
@@ -85,46 +85,46 @@
             "expression": "worried",
             "position": "right",
             "speaker": "AKE-BOT",
-            "text": "⚠️ Careful! You just received this email. What do you do?",
+            "text": "⚠️ Hati-hati! Anda baru saja menerima email ini. Apa yang akan Anda lakukan?",
             "next": "choice1"
         },
         {
             "id": "choice1",
             "type": "choice",
             "background": "desk",
-            "question": "You receive an urgent email saying your account will be suspended. What do you do?",
+            "question": "Anda menerima email mendesak yang menyatakan akun Anda akan ditangguhkan. Apa yang Anda lakukan?",
             "timer": 15,
             "choices": [
                 {
                     "id": "a",
-                    "text": "🖱️ Click the link and log in immediately",
+                    "text": "🖱️ Klik tautan dan segera masuk (login)",
                     "correct": false,
-                    "consequence": "You clicked a phishing link and entered your credentials! Ph1sh now has your login details and can access company systems.",
-                    "lesson": "NEVER click suspicious links in emails, even if they look urgent. Phishers use urgency to bypass your critical thinking. Always verify with IT directly.",
+                    "consequence": "Anda mengklik tautan phishing dan memasukkan kredensial Anda! Ph1sh kini memiliki data login Anda dan dapat mengakses sistem perusahaan.",
+                    "lesson": "JANGAN PERNAH mengklik tautan mencurigakan dalam email, meskipun terlihat mendesak. Pelaku phishing menggunakan urgensi untuk mengabaikan logika berpikir kritis Anda. Selalu lakukan verifikasi langsung dengan pihak TI.",
                     "xp": 0,
                     "next": "bad_ending_1"
                 },
                 {
                     "id": "b",
-                    "text": "📧 Forward the email to all colleagues",
+                    "text": "📧 Teruskan (forward) email ke semua rekan kerja",
                     "correct": false,
-                    "consequence": "Forwarding the phishing email spread it to all your colleagues, putting the entire company at risk!",
-                    "lesson": "Don't forward suspicious emails. This spreads the attack. Instead, report it to IT Security.",
+                    "consequence": "Meneruskan email phishing tersebut justru menyebarkannya ke semua rekan kerja Anda, membahayakan seluruh perusahaan!",
+                    "lesson": "Jangan meneruskan email yang mencurigakan. Hal ini akan memperluas jangkauan serangan. Sebaliknya, laporkan kepada bagian Keamanan TI.",
                     "xp": 0,
                     "next": "bad_ending_1"
                 },
                 {
                     "id": "c",
-                    "text": "🗑️ Delete the email without reporting it",
+                    "text": "🗑️ Hapus email tanpa melaporkannya",
                     "correct": false,
-                    "consequence": "By deleting without reporting, other employees may still receive and fall for this phishing attack.",
-                    "lesson": "Always report phishing emails — don't just delete them. IT Security needs to block the sender and warn others.",
+                    "consequence": "Dengan menghapus tanpa melaporkan, karyawan lain mungkin masih akan menerima dan terjebak oleh serangan phishing ini.",
+                    "lesson": "Selalu laporkan email phishing — jangan hanya dihapus. Bagian Keamanan TI perlu memblokir pengirim dan memperingatkan karyawan lain.",
                     "xp": 0,
                     "next": "bad_ending_1"
                 },
                 {
                     "id": "d",
-                    "text": "🚨 Report it to IT Security and don't click anything",
+                    "text": "🚨 Laporkan ke Keamanan TI dan jangan klik apa pun",
                     "correct": true,
                     "consequence": null,
                     "lesson": null,
@@ -141,7 +141,7 @@
             "expression": "proud",
             "position": "right",
             "speaker": "AKE-BOT",
-            "text": "Excellent work! 🎉 You identified the threat and reported it correctly! Let me show you the red flags in that email...",
+            "text": "Kerja bagus! 🎉 Anda berhasil mengidentifikasi ancaman dan melaporkannya dengan benar! Mari saya tunjukkan indikator bahaya dalam email tersebut...",
             "xpReward": 50,
             "next": "lesson1"
         },
@@ -149,13 +149,13 @@
             "id": "lesson1",
             "type": "lesson",
             "background": "desk",
-            "title": "📚 Phishing Red Flags",
+            "title": "📚 Indikator Bahaya Phishing",
             "points": [
-                "Wrong sender domain: akeb0n0-brake.com (zeros, not letter O!)",
-                "Suspicious URL: akebono-verify.xyz instead of official domain",
-                "Creates artificial urgency: '24 hours!' to stop your thinking",
-                "Asks for credentials — IT NEVER asks for your password via email",
-                "Poor grammar/formatting is a common phishing sign"
+                "Domain pengirim salah: akeb0n0-brake.com (menggunakan angka 0, bukan huruf O!)",
+                "URL mencurigakan: akebono-verify.xyz, bukan domain resmi",
+                "Menciptakan urgensi buatan: '24 jam!' untuk memicu kepanikan",
+                "Meminta kredensial — TI TIDAK PERNAH meminta kata sandi Anda melalui email",
+                "Tata bahasa atau format yang buruk sering kali menjadi tanda phishing"
             ],
             "next": "choice2"
         },
@@ -163,21 +163,21 @@
             "id": "choice2",
             "type": "choice",
             "background": "office",
-            "question": "IT Security confirmed it was a phishing email. They ask you to check for more suspicious emails. You find one from 'CEO@akebono.com' asking for a wire transfer. What do you do?",
+            "question": "Keamanan TI mengonfirmasi bahwa itu adalah email phishing. Mereka meminta Anda memeriksa email mencurigakan lainnya. Anda menemukan satu dari 'CEO@akebono.com' yang meminta transfer dana. Apa yang Anda lakukan?",
             "timer": 15,
             "choices": [
                 {
                     "id": "a",
-                    "text": "💸 Process the transfer — the CEO is asking!",
+                    "text": "💸 Proses transfer — ini permintaan langsung dari CEO!",
                     "correct": false,
-                    "consequence": "You processed a fraudulent wire transfer! This is Business Email Compromise (BEC) — a very common and costly attack.",
-                    "lesson": "Always verify financial requests through another channel (phone call) before acting. No matter who the email appears to be from.",
+                    "consequence": "Anda memproses transfer dana palsu! Ini adalah serangan Business Email Compromise (BEC) — serangan yang sangat umum dan merugikan.",
+                    "lesson": "Selalu verifikasi permintaan finansial melalui saluran lain (seperti panggilan telepon) sebelum bertindak, tidak peduli dari siapa email tersebut terlihat dikirim.",
                     "xp": 0,
                     "next": "bad_ending_2"
                 },
                 {
                     "id": "b",
-                    "text": "📞 Call the CEO directly to verify the request",
+                    "text": "📞 Hubungi CEO secara langsung untuk verifikasi permintaan",
                     "correct": true,
                     "consequence": null,
                     "lesson": null,
@@ -186,16 +186,16 @@
                 },
                 {
                     "id": "c",
-                    "text": "📧 Reply to the email asking for more details",
+                    "text": "📧 Balas email untuk menanyakan detail lebih lanjut",
                     "correct": false,
-                    "consequence": "Replying confirms your email is active and you're susceptible. The attacker will send more convincing requests.",
-                    "lesson": "Never reply to suspicious emails. Always verify through an independent, trusted channel.",
+                    "consequence": "Membalas email tersebut mengonfirmasi bahwa email Anda aktif dan Anda rentan terhadap serangan. Penyerang akan mengirimkan permintaan yang lebih meyakinkan.",
+                    "lesson": "Jangan pernah membalas email yang mencurigakan. Selalu lakukan verifikasi melalui saluran mandiri yang tepercaya.",
                     "xp": 0,
                     "next": "bad_ending_2"
                 },
                 {
                     "id": "d",
-                    "text": "🚨 Forward to IT Security for investigation",
+                    "text": "🚨 Teruskan ke Keamanan TI untuk diselidiki",
                     "correct": true,
                     "consequence": null,
                     "lesson": null,
@@ -212,7 +212,7 @@
             "expression": "proud",
             "position": "right",
             "speaker": "AKE-BOT",
-            "text": "Perfect! You verified through an independent channel. The CEO confirmed they never sent that email — it was Ph1sh using Business Email Compromise!",
+            "text": "Sempurna! Anda melakukan verifikasi melalui saluran mandiri. CEO mengonfirmasi bahwa beliau tidak pernah mengirim email tersebut — itu adalah Ph1sh yang menggunakan metode Business Email Compromise!",
             "xpReward": 50,
             "next": "finale"
         },
@@ -224,7 +224,7 @@
             "expression": "angry",
             "position": "left",
             "speaker": "Ph1sh",
-            "text": "Curse you! My phishing attack failed because of you! But this isn't over, rookie... I have more tricks up my sleeve! 😠",
+            "text": "Sialan! Serangan phishing saya gagal karena Anda! Tapi ini belum berakhir, pemula... Saya masih punya banyak trik lainnya! 😠",
             "next": "good_ending"
         },
         {
@@ -232,8 +232,8 @@
             "type": "ending",
             "background": "office",
             "ending": "good",
-            "title": "🎉 Great Job! — Good Ending",
-            "message": "You successfully identified and reported both phishing attempts, protecting Akebono from a serious data breach! Ph1sh's first attack has been foiled.",
+            "title": "🎉 Kerja Bagus! — Akhir yang Baik",
+            "message": "Anda berhasil mengidentifikasi dan melaporkan kedua upaya phishing, melindungi Akebono dari pelanggaran data yang serius! Serangan pertama Ph1sh telah digagalkan.",
             "badge": "phishing-hunter",
             "xpBonus": 200
         },
@@ -242,13 +242,13 @@
             "type": "ending",
             "background": "office",
             "ending": "bad",
-            "title": "💥 Security Breach — Bad Ending",
-            "message": "You fell for Ph1sh's phishing attack! Your credentials were stolen, potentially compromising the entire company's systems. Don't worry — this is a learning moment!",
+            "title": "💥 Pelanggaran Keamanan — Akhir yang Buruk",
+            "message": "Anda terjebak oleh serangan phishing Ph1sh! Kredensial Anda dicuri, yang berpotensi membahayakan seluruh sistem perusahaan. Jangan khawatir — ini adalah momen pembelajaran!",
             "lesson_recap": [
-                "Always verify email sender domains carefully",
-                "Never click links in urgent, threatening emails",
-                "Report suspicious emails to IT Security immediately",
-                "IT will never ask for your password via email"
+                "Selalu verifikasi domain pengirim email dengan teliti",
+                "Jangan pernah mengklik tautan dalam email yang bersifat mendesak atau mengancam",
+                "Laporkan email mencurigakan ke Keamanan TI segera",
+                "TI tidak akan pernah meminta kata sandi Anda melalui email"
             ],
             "xpBonus": 100
         },
@@ -257,13 +257,13 @@
             "type": "ending",
             "background": "office",
             "ending": "bad",
-            "title": "💸 BEC Attack Succeeded — Bad Ending",
-            "message": "Ph1sh used Business Email Compromise to trick you. Always verify unusual requests through a separate, trusted communication channel.",
+            "title": "💸 Serangan BEC Berhasil — Akhir yang Buruk",
+            "message": "Ph1sh menggunakan Business Email Compromise untuk mengelabui Anda. Selalu verifikasi permintaan yang tidak biasa melalui saluran komunikasi terpisah yang tepercaya.",
             "lesson_recap": [
-                "Verify financial/sensitive requests via phone or in person",
-                "Even emails from the CEO can be spoofed",
-                "Never process unusual requests from email alone",
-                "Report suspicious emails before acting on them"
+                "Verifikasi permintaan finansial atau sensitif melalui telepon atau secara langsung",
+                "Bahkan email dari CEO pun dapat dipalsukan (spoofing)",
+                "Jangan pernah memproses permintaan yang tidak biasa hanya berdasarkan email",
+                "Laporkan email mencurigakan sebelum menindaklanjutinya"
             ],
             "xpBonus": 100
         }

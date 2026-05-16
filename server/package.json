@@ -4,7 +4,7 @@
   "description": "Akebono Brake Astra Cyber Academy Backend",
   "main": "index.js",
   "scripts": {
-    "dev": "node --watch index.js",
+    "dev": "node --watch --watch-path=index.js --watch-path=routes --watch-path=db --watch-path=middleware --watch-path=services index.js",
     "start": "node index.js",
     "seed": "node db/seed.js"
   },

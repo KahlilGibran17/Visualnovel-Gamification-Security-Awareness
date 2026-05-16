@@ -10,7 +10,7 @@ router.get('/overview', requireAuth, requireRole('admin', 'manager'), async (req
             pool.query(`
                 WITH chapter_total AS (
                     SELECT COUNT(*)::int AS total_chapters
-                    FROM chapters
+                    FROM game_chapters
                 ),
                 user_completion AS (
                     SELECT
@@ -267,7 +267,7 @@ router.put('/deleteLesson', requireAuth, requireRole('admin'), async (req, res) 
 router.put('/deleteChapter', requireAuth, requireRole('admin'), async (req, res) => {
     const { chapterId } = req.body
     try {
-        await pool.query('UPDATE chapters SET is_active = FALSE WHERE id = $1', [chapterId])
+        await pool.query('UPDATE game_chapters SET is_active = FALSE WHERE id = $1', [chapterId])
         res.json({ message: 'Chapter deleted successfully.' })
     } catch (err) {
         res.status(500).json({ message: 'Server error' })
