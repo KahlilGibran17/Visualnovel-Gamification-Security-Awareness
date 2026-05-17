@@ -23,7 +23,9 @@ import AdminContentPage from './pages/admin/AdminContentPage.jsx'
 import GuidePage from './pages/GuidePage.jsx'
 import AdminCMSPage from './pages/admin/AdminCMSPage.jsx'
 import AdminReportsPage from './pages/admin/AdminReportsPage.jsx'
-import AdminELearningPage from './pages/admin/AdminELearningPage.jsx'
+import AdminElearningPage from './pages/admin/AdminElearningPage.jsx'
+import AdminPretestPage from './pages/admin/AdminPretestPage.jsx'
+import PretestPage from './pages/PretestPage.jsx'
 import SuperAdminDashboardPage from './pages/super-admin/SuperAdminDashboardPage.jsx'
 import SuperAdminAdminManagePage from './pages/super-admin/SuperAdmin-AdminManagePage.jsx'
 import StoryFlowEditor from './pages/admin/cms/StoryFlowEditor.jsx'
@@ -64,6 +66,11 @@ export default function App() {
                                     <Route path="/elearning/:id" element={
                                         <ProtectedRoute roles={['employee', 'manager', 'admin']}>
                                             <ElearningPlayerPage />
+                                        </ProtectedRoute>
+                                    } />
+                                    <Route path="/pretest/:chapterId" element={
+                                        <ProtectedRoute roles={['employee', 'manager', 'admin']}>
+                                            <PretestPage />
                                         </ProtectedRoute>
                                     } />
                                     <Route path="/play/:chapterId" element={
@@ -110,7 +117,12 @@ export default function App() {
                                     } />
                                     <Route path="/admin/elearning" element={
                                         <ProtectedRoute roles={['admin', 'manager']}>
-                                            <AdminELearningPage />
+                                            <AdminElearningPage />
+                                        </ProtectedRoute>
+                                    } />
+                                    <Route path="/admin/pretest" element={
+                                        <ProtectedRoute roles={['admin']}>
+                                            <AdminPretestPage />
                                         </ProtectedRoute>
                                     } />
                                      <Route path="/admin/reports" element={
