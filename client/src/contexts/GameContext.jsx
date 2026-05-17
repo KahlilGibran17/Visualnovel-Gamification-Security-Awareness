@@ -87,7 +87,7 @@ export function useLevels(){
                 if (isMounted) {
                     setLevels(normalizedLevels)
                 }
-                console.log('Fetched levels:', normalizedLevels);
+
             } catch (err) {
                 console.error('Error fetching levels:', err);
                 if (isMounted) {
@@ -147,7 +147,7 @@ export function GameProvider({ children }) {
                 if (Array.isArray(cRes.data) && cRes.data.length > 0) {
                     setChapters(cRes.data)
                 }
-                console.log('badgeRes.data:', badgeRes?.data)
+
                 if (Array.isArray(badgeRes?.data?.badges)) {
                     setBadges(badgeRes.data.badges)
                 } else {

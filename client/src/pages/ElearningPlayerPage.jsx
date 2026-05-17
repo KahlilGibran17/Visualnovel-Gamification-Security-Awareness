@@ -617,12 +617,12 @@ export default function ElearningPlayerPage() {
             )
 
             if (nextQ) {
-                console.log('Trigger soal:', nextQ.id, 'di detik:', currentTime)
+
                 triggeredRef.current.add(nextQ.id)
                 pausingForQuestionRef.current = true
                 v.pause()
                 setActiveQuestion(nextQ)
-                console.log('activeQuestion set:', nextQ.id)
+
             }
         }, 500)
 

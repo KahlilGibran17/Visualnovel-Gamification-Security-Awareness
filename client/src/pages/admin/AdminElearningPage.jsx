@@ -1045,7 +1045,7 @@ export default function AdminElearningPage() {
             const chaptersRaw = Array.isArray(chaptersRes.data)
                 ? chaptersRes.data
                 : (chaptersRes.data?.chapters || chaptersRes.data?.data || [])
-            console.log('chaptersRaw:', chaptersRaw)
+
             setLessons(lessonsRaw.map(l => ({
                 ...l,
                 id: l.id ?? l.lesson_id ?? l.le_id,
