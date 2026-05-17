@@ -11,14 +11,14 @@ import axios from 'axios'
 function XPBar({ xp, level, nextLevel }) {
     const safeXp = Math.max(0, Number(xp) || 0)
     const nextLevelXp = nextLevel?.xpRequired ?? safeXp
-    const xpForNextLevel = Math.max(1, nextLevelXp)
-    const pct = nextLevel ? Math.min(100, (safeXp / xpForNextLevel) * 100) : 100
+    const xpForNext = Math.max(1, nextLevelXp)
+    const pct = nextLevel ? Math.min(100, (safeXp / xpForNext) * 100) : 100
 
     return (
         <div>
-            <div className="flex justify-between text-xs mb-1">
-                <span className="text-white/50">{level?.title || 'Loading'}</span>
-                {nextLevel && <span className="text-white/50">{nextLevel.title}</span>}
+            <div className="flex justify-between text-xs mb-1 text-muted">
+                <span>{safeXp.toLocaleString()} XP</span>
+                {nextLevel && <span>{nextLevelXp.toLocaleString()} XP untuk {nextLevel.title}</span>}
             </div>
             <div className="xp-bar">
                 <motion.div
@@ -27,16 +27,6 @@ function XPBar({ xp, level, nextLevel }) {
                     animate={{ width: `${pct}%` }}
                     transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
                 />
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-                <span className="text-accent font-semibold">
-                    {safeXp.toLocaleString()} XP
-                </span>
-                {nextLevel && (
-                    <span className="text-white/30">
-                        {Math.max(0, nextLevelXp - safeXp).toLocaleString()} to next
-                    </span>
-                )}
             </div>
         </div>
     )
@@ -61,7 +51,7 @@ function StatWidget({ icon: Icon, label, value, color = '#E63946', delay = 0 }) 
     )
 }
 
-function ChapterMapNode({ chapter, progress, locked, onPlay, index }) {
+function ChapterMapNode({ chapter, progress, locked, onPlay, index, isNoXpRole }) {
     const isComplete = progress?.completed
     const isUnlocked = !locked
 
@@ -102,7 +92,7 @@ function ChapterMapNode({ chapter, progress, locked, onPlay, index }) {
             <div className="text-center max-w-[80px]">
                 <p className="text-xs font-semibold text-main leading-tight">{chapter.title}</p>
                 <p className="text-xs text-dim">{chapter.subtitle}</p>
-                {isComplete && (
+                {isComplete && !isNoXpRole && (
                     <p className="text-xs text-accent font-bold mt-0.5">+{progress.xpEarned} XP</p>
                 )}
             </div>
@@ -162,9 +152,9 @@ function StreakSummary({ streak = 1, monthLabel = '' }) {
             </div>
 
             <div className="leading-tight">
-                <p className="text-4xl font-extrabold text-white">{streak}</p>
+                <p className="text-4xl font-extrabold text-main">{streak}</p>
                 <p className="text-orange-300 text-2xl font-semibold">Hari Berturut-turut</p>
-                <p className="text-white/70 text-xl mt-0.5">di bulan {monthLabel}</p>
+                <p className="text-main/70 text-xl mt-0.5">di bulan {monthLabel}</p>
             </div>
         </div>
     )
@@ -172,22 +162,35 @@ function StreakSummary({ streak = 1, monthLabel = '' }) {
 
 export default function DashboardPage() {
     const { user, refreshUser } = useAuth()
-    const { chapterProgress, getLevelFromXP, getNextLevel, CHAPTERS, badges,loadBadges,levels,loading,error ,leaderboard, getUserRank, getNextRankGap, elearningCompleted } = useGame()
+    const isNoXpRole = user?.role === 'admin' || user?.role === 'super-admin'
+    const { chapterProgress, getLevelFromXP, getNextLevel, CHAPTERS, BADGES, LEVELS, loading, error, leaderboard, getUserRank, getNextRankGap, elearningCompleted, loadBadges } = useGame()
     const navigate = useNavigate()
     const [showWelcome, setShowWelcome] = useState(true)
-    const [userBadges, setUserBadges] = useState([]) 
+    const [allBadges, setAllBadges] = useState([])
 
     const level = getLevelFromXP(user?.xp || 0)
     const nextLevel = getNextLevel(user?.xp || 0)
-    const loadUserBadges = async () => {
+
+    const loadAllBadges = async () => {
         try {
-            const data = await axios.get('/api/badges/getUserBadges')
-            setUserBadges(data.data.badges)
+            const res = await axios.get('/api/badges/getBadgesByCategory')
+            setAllBadges(res.data.badges || [])
         } catch (error) {
-            console.error('Error loading user badges:', error)
+            console.error('Error loading all badges:', error)
         }
     }
+    
+    useEffect(() => {
+        refreshUser()
+        loadAllBadges()
+        loadBadges()
+    }, [])
 
+    useEffect(() => {
+        const timer = setTimeout(() => setShowWelcome(false), 4000)
+        return () => clearTimeout(timer)
+    }, [])
+    
     if (!level) {
         return (
             <Layout>
@@ -205,7 +208,7 @@ export default function DashboardPage() {
             return String(value).trim().toLowerCase()
         }
         if (!value || typeof value !== 'object') return ''
-        return String(value.id ?? value.badge_key ?? value.badgeId ?? value.badge_id ?? '').trim().toLowerCase()
+        return String(value.id ?? value.badge_key ?? value.badgeKey ?? value.badge_id ?? value.key ?? '').trim().toLowerCase()
     }
 
     const normalizeBadgeColor = (badge) => {
@@ -222,12 +225,14 @@ export default function DashboardPage() {
         return `#${sixDigit}${alphaHex}`
     }
 
-    const earnedBadges = user?.badges || []
-    const earnedBadgeSet = new Set([...userBadges, ...earnedBadges].map(normalizeBadgeKey).filter(Boolean))
-    const displayedBadges = [...badges]
+    // Badge earned = badge_key ada di user.badges (dari auth context)
+    const earnedBadgeKeys = new Set((user?.badges || []).map(normalizeBadgeKey).filter(Boolean))
+
+    // Ambil semua badge dari DB, sort earned dulu, ambil 6 saja
+    const displayedBadges = [...allBadges]
         .sort((a, b) => {
-            const aEarned = earnedBadgeSet.has(normalizeBadgeKey(a))
-            const bEarned = earnedBadgeSet.has(normalizeBadgeKey(b))
+            const aEarned = earnedBadgeKeys.has(normalizeBadgeKey(a))
+            const bEarned = earnedBadgeKeys.has(normalizeBadgeKey(b))
             if (aEarned === bEarned) return 0
             return aEarned ? -1 : 1
         })
@@ -239,38 +244,11 @@ export default function DashboardPage() {
     const monthRaw = new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(new Date())
     const currentMonthLabel = monthRaw.charAt(0).toUpperCase() + monthRaw.slice(1)
 
-    useEffect(() => {
-        loadBadges()
-        refreshUser()
-        loadUserBadges()
-    }, [])
-
-    useEffect(() => {
-        const timer = setTimeout(() => setShowWelcome(false), 4000)
-        return () => clearTimeout(timer)
-    }, [])
 
 
     return (
         <Layout>
-            {/* Welcome toast */}
-            <AnimatePresence>
-                {showWelcome && (
-                    <motion.div
-                        className="fixed top-4 right-4 z-50 glass-card p-4 flex items-center gap-3 max-w-xs"
-                        initial={{ opacity: 0, x: 50, scale: 0.9 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: 50, scale: 0.9 }}
-                    >
-                        <span className="text-2xl">🤖</span>
-                        <div>
-                            <p className="text-accent font-bold text-sm">AKE-BOT</p>
-                            <p className="text-muted text-xs">Selamat datang kembali, {user?.name?.split(' ')[0]}! Siap naik level hari ini?</p>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
+           
             <div className="p-6 space-y-6 max-w-7xl mx-auto">
                 {/* Profile Header */}
                 <motion.div
@@ -293,32 +271,36 @@ export default function DashboardPage() {
                                 </span>
                             </div>
                             <p className="text-muted text-sm mb-1">NIK: {user?.nik} • {user?.department} • {user?.position}</p>
-                            <div className="max-w-md">
-                                <XPBar xp={totalXP} level={level} nextLevel={nextLevel} />
-                            </div>
+                            {!isNoXpRole && (
+                                <div className="max-w-md">
+                                    <XPBar xp={totalXP} level={level} nextLevel={nextLevel} />
+                                </div>
+                            )}
                             <p className="text-dim text-xs mt-3 italic">Di sini Anda bisa melihat progres Anda</p>
                         </div>
 
                         {/* Rank badge */}
-                        <motion.div
-                            className="glass-card p-4 text-center flex-shrink-0"
-                            animate={{ boxShadow: ['0 0 20px rgba(255,214,10,0.2)', '0 0 40px rgba(255,214,10,0.5)', '0 0 20px rgba(255,214,10,0.2)'] }}
-                            transition={{ duration: 3, repeat: Infinity }}
-                        >
-                            <Trophy className="w-8 h-8 text-accent mx-auto mb-1" />
-                            <p className="text-3xl font-bold text-accent">#{myRank || '—'}</p>
-                            <p className="text-xs text-dim">Peringkat Global</p>
-                            {rankGap && (
-                                <p className="text-xs text-muted mt-1 max-w-[100px] leading-tight">
-                                    Butuh {rankGap.gap} XP ke #{rankGap.rank}
-                                </p>
-                            )}
-                        </motion.div>
+                        {!isNoXpRole && (
+                            <motion.div
+                                className="glass-card p-4 text-center flex-shrink-0"
+                                animate={{ boxShadow: ['0 0 20px rgba(255, 214, 10,0.2)', '0 0 40px rgba(255, 214, 10,0.5)', '0 0 20px rgba(255, 214, 10,0.2)'] }}
+                                transition={{ duration: 3, repeat: Infinity }}
+                            >
+                                <Trophy className="w-8 h-8 text-accent mx-auto mb-1" />
+                                <p className="text-3xl font-bold text-accent">#{myRank || '-'}</p>
+                                <p className="text-xs text-dim">Peringkat Global</p>
+                                {rankGap && (
+                                    <p className="text-xs text-muted mt-1 max-w-[100px] leading-tight">
+                                        Butuh {rankGap.gap} XP ke #{rankGap.rank}
+                                    </p>
+                                )}
+                            </motion.div>
+                        )}
                     </div>
                 </motion.div>
 
                 {/* Rank nudge bar */}
-                {rankGap && (
+                {rankGap && !isNoXpRole && (
                     <motion.div
                         className="bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20 rounded-xl p-4 flex items-center gap-3"
                         initial={{ opacity: 0, x: -20 }}
@@ -337,11 +319,11 @@ export default function DashboardPage() {
                 )}
 
                 {/* Stat Widgets */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatWidget icon={Star} label="Total XP" value={totalXP.toLocaleString()} color="#FFD60A" delay={0.1} />
-                    <StatWidget icon={Trophy} label="Peringkat Global" value={`#${myRank || '—'}`} color="#E63946" delay={0.15} />
+                <div className={`grid grid-cols-2 ${isNoXpRole ? 'lg:grid-cols-2' : 'lg:grid-cols-4'} gap-4`}>
+                    {!isNoXpRole && <StatWidget icon={Star} label="Total XP" value={totalXP.toLocaleString()} color="#FFD60A" delay={0.1} />}
+                    {!isNoXpRole && <StatWidget icon={Trophy} label="Peringkat Global" value={`#${myRank || '-'}`} color="#E63946" delay={0.15} />}
                     <StatWidget icon={BookOpen} label="Modul Selesai" value={`${completedChapters}/6`} color="#60a5fa" delay={0.2} />
-                    <StatWidget icon={Award} label="Lencana" value={`${earnedBadges.length}/${BADGES.length}`} color="#a78bfa" delay={0.25} />
+                    {!isNoXpRole && <StatWidget icon={Award} label="Lencana" value={`${earnedBadgeKeys.size}/${allBadges.length}`} color="#a78bfa" delay={0.25} />}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -403,6 +385,7 @@ export default function DashboardPage() {
                                         locked={locked}
                                         onPlay={(id) => navigate(`/play/${id}`)}
                                         index={idx}
+                                        isNoXpRole={isNoXpRole}
                                     />
                                 )
                             })}
@@ -423,8 +406,8 @@ export default function DashboardPage() {
                                     <Trophy className="w-4 h-4 text-accent" />
                                     Papan Peringkat
                                 </h2>
-                                <button onClick={() => navigate('/leaderboard')} className="text-accent text-xs hover:underline">
-                                    Lihat Penuh →
+                                <button onClick={() => navigate('/leaderboard')} className="flex items-center gap-1 text-accent text-xs hover:underline font-bold">
+                                    Lihat Penuh <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
                             <MiniPodium entries={leaderboard.slice(0, 3)} ownNik={user?.nik} />
@@ -450,24 +433,25 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Badge Showcase */}
-                <motion.div
-                    className="glass-card p-6"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45 }}
-                >
-                    <div className="flex items-center justify-between mb-4">
+                {!isNoXpRole && (
+                    <motion.div
+                        className="glass-card p-6"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.45 }}
+                    >
+                   <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold text-main font-display flex items-center gap-2">
                             🏆 Koleksi Lencana
                         </h2>
                         <button onClick={() => navigate('/profile')} className="text-accent text-sm hover:underline flex items-center gap-1">
-                            Lihat Semua <ChevronRight className="w-4 h-4" />
+                            View All <ChevronRight className="w-4 h-4" />
                         </button>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {displayedBadges.map((badge, i) => {
-                            const earned = earnedBadgeSet.has(normalizeBadgeKey(badge))
+                        {displayedBadges.slice(0, 6).map((badge, i) => {
+                            const earned = earnedBadgeKeys.has(normalizeBadgeKey(badge))
                             const badgeColor = normalizeBadgeColor(badge)
                             const earnedStyle = earned
                                 ? {
@@ -475,26 +459,33 @@ export default function DashboardPage() {
                                     background: `linear-gradient(135deg, ${withAlpha(badgeColor, '30')}, ${withAlpha(badgeColor, '14')})`,
                                     boxShadow: `0 0 18px ${withAlpha(badgeColor, '5A')}`,
                                 }
-                                : undefined
+                                : {
+                                    borderColor: 'var(--card-border)',
+                                    background: 'var(--input-bg)',
+                                    filter: 'grayscale(1)',
+                                    opacity: 0.7,
+                                }
                             return (
-                                <motion.div
-                                    key={badge?.id ?? `${badge?.name ?? 'badge'}-${i}`}
-                                    className={`${earned ? 'badge-earned' : 'badge-locked'} w-full aspect-square p-4`}
-                                    whileHover={earned ? { scale: 1.1 } : {}}
-                                    title={badge.name}
-                                    style={earnedStyle}
-                                >
-                                    <div className="flex flex-col items-center justify-center gap-1 h-full">
-                                        <span className="text-4xl">{badge.icon}</span>
-                                        <span className="text-sm text-center font-medium leading-tight text-white/70">
-                                            {badge.name}
-                                        </span>
-                                    </div>
-                                </motion.div>
+                                        <motion.div
+                                            key={badge.id}
+                                            className={`${earned ? 'badge-earned' : 'badge-locked'} relative p-4 flex flex-col items-center gap-2`}
+                                            whileHover={earned ? { scale: 1.05 } : {}}
+                                            style={earnedStyle}
+                                        >
+                                            {earned && (
+                                                <span className="absolute top-2 right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500/20 border border-green-400/50">
+                                                    <CheckCircle className="w-3 h-3 text-green-300" />
+                                                </span>
+                                            )}
+                                            <span className="text-3xl">{badge.icon}</span>
+                                            <p className="text-xs font-bold text-main text-center">{badge.name}</p>
+                                            <p className="text-xs text-main/40 text-center">{badge.description}</p>
+                                        </motion.div>
                             )
                         })}
-                    </div>
-                </motion.div>
+                        </div>
+                    </motion.div>
+                )}
             </div>
         </Layout>
     )

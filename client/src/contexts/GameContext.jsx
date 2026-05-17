@@ -120,14 +120,13 @@ export function GameProvider({ children }) {
     const [leaderboardError, setLeaderboardError] = useState(null)
     const [deptStats, setDeptStats] = useState([])
     const [xpPopups, setXpPopups] = useState([])
-    // const [badges, setBadges] = useState([])
-    // const { levels,loading,error } = useLevels()
+
     const [isTourActive, setIsTourActive] = useState(false)
     const [currentStep, setCurrentStep] = useState(0)
     const [tourShownThisSession, setTourShownThisSession] = useState(false)
 
     const [chapters, setChapters] = useState([])
-    const [levels, setLevels] = useState([])
+    const { levels } = useLevels()
     const [badges, setBadges] = useState([])
     const [backgrounds, setBackgrounds] = useState([])
     const [characters, setCharacters] = useState([])
@@ -137,10 +136,9 @@ export function GameProvider({ children }) {
     useEffect(() => {
         const fetchContent = async () => {
             try {
-                const [cRes, lRes, bRes, bgRes, charRes, uiRes, rmRes] = await Promise.all([
+                const [cRes, badgeRes, bgRes, charRes, uiRes, rmRes] = await Promise.all([
                     axios.get('/api/content/chapters'),
-                    axios.get('/api/content/levels'),
-                    axios.get('/api/content/badges'),
+                    axios.get('/api/badges/getBadges').catch(() => ({ data: { badges: [] } })),
                     axios.get('/api/cms/backgrounds').catch(() => ({ data: [] })),
                     axios.get('/api/cms/characters').catch(() => ({ data: [] })),
                     axios.get('/api/content/ui-types').catch(() => ({ data: [] })),
@@ -149,11 +147,11 @@ export function GameProvider({ children }) {
                 if (Array.isArray(cRes.data) && cRes.data.length > 0) {
                     setChapters(cRes.data)
                 }
-                if (Array.isArray(lRes.data) && lRes.data.length > 0) {
-                    setLevels(lRes.data.map(l => ({ level: l.level, title: l.title, xpRequired: l.xp_required, color: l.color, icon: l.icon })))
-                }
-                if (Array.isArray(bRes.data) && bRes.data.length > 0) {
-                    setBadges(bRes.data)
+                console.log('badgeRes.data:', badgeRes?.data)
+                if (Array.isArray(badgeRes?.data?.badges)) {
+                    setBadges(badgeRes.data.badges)
+                } else {
+                    setBadges([])
                 }
                 if (bgRes?.data && Array.isArray(bgRes.data)) {
                     setBackgrounds(bgRes.data)
@@ -171,6 +169,7 @@ export function GameProvider({ children }) {
                 console.warn('Using fallback content (auth may not be ready):', err.message)
             }
         }
+        
 
         const fetchLeaderboardData = async () => {
             try {
@@ -198,6 +197,7 @@ export function GameProvider({ children }) {
         } else {
             setChapterProgress({})
             setLeaderboard([])
+            setBadges([])
         }
     }, [user?.id])
 
@@ -299,7 +299,8 @@ export function GameProvider({ children }) {
 
         let lvl = DEFAULT_LEVEL
         for (const l of levelList) {
-            if (safeXp >= l.xpRequired) lvl = l
+            const levelXpRequired = Number(l.xpRequired ?? 0)
+            if (safeXp >= levelXpRequired) lvl = l
             else break
         }
 
@@ -309,7 +310,7 @@ export function GameProvider({ children }) {
     const getNextLevel = (xp) => {
         const safeXp = Math.max(0, Number(xp) || 0)
         const levelList = (levels && levels.length > 0) ? levels : []
-        return levelList.find(l => safeXp < l.xpRequired) || null
+        return levelList.find(l => safeXp < Number(l.xpRequired ?? 0)) || null
     }
 
     const triggerXPPopup = (amount) => {
@@ -335,10 +336,11 @@ export function GameProvider({ children }) {
 
     const loadBadges = async () => {
         try {
-            const data = await axios.get('/api/badges/getBadges')
-            setBadges(data.data.badges)
+            const res = await axios.get('/api/badges/getBadges')
+            setBadges(Array.isArray(res.data?.badges) ? res.data.badges : [])
         } catch (error) {
             console.error('Error loading badges:', error)
+            setBadges([])
         }
     }
 
@@ -414,6 +416,7 @@ export function GameProvider({ children }) {
         }
         setIsTourActive(false)
     }
+      
 
     const setTourStep = (step) => {
         setCurrentStep(step)
@@ -445,7 +448,9 @@ export function GameProvider({ children }) {
             startTour,
             forceStartTour,
             completeTour,
-            setTourStep
+            setTourStep,
+            loadLeaderboard,
+            loadBadges
         }}>
             {children}
         </GameContext.Provider>

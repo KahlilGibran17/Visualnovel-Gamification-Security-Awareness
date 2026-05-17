@@ -86,7 +86,7 @@ function PodiumBlock({ user, place, isOwn }) {
 }
 
 function LevelBadge({ badge }) {
-    if (!badge) return <span className="text-xs text-white/40">-</span>
+    if (!badge) return <span className="text-xs text-main/40">-</span>
 
     return (
         <span
@@ -336,7 +336,7 @@ export default function LeaderboardPage() {
                             id={`filter-${f.replace(' ', '-').toLowerCase()}`}
                             onClick={() => setFilter(f)}
                             className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${filter === f
-                                ? 'bg-primary text-white'
+                                ? 'bg-primary text-main'
                                 : 'bg-card-bg text-muted hover:bg-input-bg hover:text-main'
                                 }`}
                         >
@@ -431,11 +431,11 @@ export default function LeaderboardPage() {
                             {/* Rows */}
                                             <div className="divide-y divide-card-border">
                                 {loadingLeaderboard && (
-                                    <div className="px-5 py-8 text-center text-white/40 text-sm">Loading leaderboard...</div>
+                                    <div className="px-5 py-8 text-center text-main/40 text-sm">Loading leaderboard...</div>
                                 )}
 
                                 {!loadingLeaderboard && filtered.length === 0 && (
-                                    <div className="px-5 py-8 text-center text-white/40 text-sm">No leaderboard data available.</div>
+                                    <div className="px-5 py-8 text-center text-main/40 text-sm">No leaderboard data available.</div>
                                 )}
 
                                 {filtered.map((entry, idx) => {
@@ -490,7 +490,7 @@ export default function LeaderboardPage() {
                                                     total={totalChapters}
                                                     loading={loadingTotalChapters}
                                                 />
-                                                <p className="text-xs text-white/30 mt-1">
+                                                <p className="text-xs text-main/30 mt-1">
                                                     {entry.chaptersCompleted}
                                                     {!loadingTotalChapters ? `/${totalChapters}` : ''} chapters completed
                                                 </p>

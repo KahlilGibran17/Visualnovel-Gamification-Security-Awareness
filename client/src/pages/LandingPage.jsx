@@ -32,7 +32,7 @@ export default function LandingPage() {
             title: 'Simulasi Email Phishing',
             desc: 'Tampilan kotak masuk interaktif untuk berlatih mengenali ancaman siber.',
             ui: (
-                <div className="w-full bg-[#1A1A2E]/80 rounded-lg border border-white/10 p-4 text-left shadow-lg">
+                <div className="w-full glass-card border-white/10 p-4 text-left shadow-lg">
                     <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-3">
                         <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center"><ShieldAlert className="w-4 h-4 text-primary" /></div>
                         <div>

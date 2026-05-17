@@ -2,7 +2,7 @@ import React, {useMemo, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext.jsx'
 import axios from 'axios'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Search, UserPlus } from 'lucide-react'
+import { Upload, Search, UserPlus, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useGame } from '../../contexts/GameContext.jsx'
 import Layout from '../../components/Layout.jsx'
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
@@ -26,7 +26,7 @@ const normalizeLeaderboardRows = (rows) => {
 
 export default function AdminUsersPage() {
     const { user, updateUser, refreshUser } = useAuth()
-    const { getLevelFromXP, getNextLevel, badges,levels,loading,error, getUserRank } = useGame()
+    const { getLevelFromXP, getNextLevel, BADGES,LEVELS,loading,error, getUserRank } = useGame()
     const [search, setSearch] = useState('')
     const [deptFilter, setDeptFilter] = useState('All')
     const [showImport, setShowImport] = useState(false)
@@ -36,7 +36,13 @@ export default function AdminUsersPage() {
     const [totalChapters, setTotalChapters] = useState(0)
     const [loadingUsers, setLoadingUsers] = useState(true)
     const [usersData, setUsersData] = useState([])
+    const [currentPage, setCurrentPage] = useState(1)
+    const ITEMS_PER_PAGE = 10
     const fileRef = useRef()
+
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [search, deptFilter])
     
 
 
@@ -85,11 +91,11 @@ export default function AdminUsersPage() {
 
     const LEVEL_LABELS = useMemo(() => {
         const labels = {}
-        levels.forEach(l => {
+        LEVELS.forEach(l => {
             labels[l.level] = l.title
         })
         return labels
-    }, [levels])
+    }, [LEVELS])
 
     const users = useMemo(
         () => leaderboardRows.filter(u =>
@@ -98,6 +104,12 @@ export default function AdminUsersPage() {
         ),
         [deptFilter, leaderboardRows, search]
     )
+
+    const totalPages = Math.ceil(users.length / ITEMS_PER_PAGE)
+    const paginatedUsers = useMemo(() => {
+        const start = (currentPage - 1) * ITEMS_PER_PAGE
+        return users.slice(start, start + ITEMS_PER_PAGE)
+    }, [users, currentPage])
 
     const effectiveTotalChapters = useMemo(() => {
         if (totalChapters > 0) return totalChapters
@@ -112,41 +124,38 @@ export default function AdminUsersPage() {
         <Layout>
             <div className="p-6 max-w-6xl mx-auto space-y-6">
                 {/* Header */}
-                <motion.div className="flex flex-col items-center gap-0.5"
-                    initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+                <motion.div className="flex flex-row items-center justify-between gap-0.5"
+                    initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }}>
                     <div>
-                        <h1 className="text-3xl font-bold font-display text-white">👥 User Management</h1>
-                        <p className="text-white/50 mt-1">
-                            {loadingUsers ? 'Loading users...' : `${leaderboardRows.length} total employees`}
+                        <h1 className="text-3xl font-bold font-display text-main mt-4">👥 Manajemen Pengguna</h1>
+                        <p className="text-main/50 mt-1">
+                            {loadingUsers ? 'Memuat pengguna...' : `${leaderboardRows.length} total karyawan`}
                         </p>
-                    </div>
-                    <div className="md:ml-auto flex gap-2">
-                        <button className="btn-primary text-sm flex items-center gap-2">
-                            <UserPlus className="w-4 h-4" /> Add Employee
-                        </button>
                     </div>
                 </motion.div>
 
                 {/* Filters */}
-                <div className="flex flex-wrap gap-3 items-center">
-                    <div className="relative flex-1 min-w-[200px]">
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dim" />
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Search by name or NIK..."
-                            className="input-field pl-9"
+                            placeholder="Cari berdasarkan nama atau NIK..."
+                            className="input-field pl-9 w-full"
                         />
                     </div>
-                    <div className="flex gap-2 flex-wrap">
-                        {depts.map(d => (
-                            <button key={d}
-                                onClick={() => setDeptFilter(d)}
-                                className={`px-3 py-2 rounded-full text-sm font-medium transition-all ${deptFilter === d ? 'bg-primary text-white' : 'bg-card-bg text-muted hover:bg-input-bg'
-                                    }`}>
-                                {d}
-                            </button>
-                        ))}
+                    <div className="relative min-w-[200px]">
+                        <select
+                            value={deptFilter}
+                            onChange={e => setDeptFilter(e.target.value)}
+                            className="input-field text-sm w-full appearance-none pr-8"
+                        >
+                            {depts.map(d => (
+                                <option key={d} value={d}>{d === 'All' ? 'Semua Departemen' : d}</option>
+                            ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-main/30 pointer-events-none" />
                     </div>
                 </div>
 
@@ -163,7 +172,6 @@ export default function AdminUsersPage() {
                                     <th>Level</th>
                                     <th>XP</th>
                                     <th>Progress</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -173,27 +181,27 @@ export default function AdminUsersPage() {
                                     </tr>
                                 )}
 
-                                {!loadingUsers && users.length === 0 && (
+                                {!loadingUsers && paginatedUsers.length === 0 && (
                                     <tr>
                                         <td colSpan={7} className="text-center text-white/40 py-8">No users found.</td>
                                     </tr>
                                 )}
 
-                                {!loadingUsers && users.map((user, i) => (
+                                {!loadingUsers && paginatedUsers.map((user, i) => (
                                     <motion.tr key={user.id}
                                         initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
                                         <td>
                                             <div className="flex items-center gap-3">
                                                 <AvatarDisplay avatarId={user.avatarId} size="sm" />
-                                                <span className="font-medium text-white">{user.name}</span>
+                                                <span className="font-medium text-main">{user.name}</span>
                                             </div>
                                         </td>
-                                        <td className="text-white/60 font-mono">{user.nik}</td>
+                                        <td className="text-main/60 font-mono">{user.nik}</td>
                                         <td>{user.department}</td>
                                         <td>
                                             <div className="flex flex-col gap-0.5">
-                                               <span className="text-xs text-white/40">Lv.{user.level}</span>
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/70">
+                                               <span className="text-xs text-main/40">Lv.{user.level}</span>
+                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-main">
                                                         {LEVEL_LABELS[user.level]}
                                                     </span>
                                             </div>
@@ -212,17 +220,7 @@ export default function AdminUsersPage() {
                                                         )
                                                     })}
                                                 </div>
-                                                <span className="text-xs text-white/40">{user.chaptersCompleted}/{effectiveTotalChapters}</span>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className="flex gap-2">
-                                                <button className="text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/15 px-2 py-1 rounded transition-colors">
-                                                    Reset PWD
-                                                </button>
-                                                <button className="text-xs text-primary hover:text-red-300 bg-primary/10 hover:bg-primary/20 px-2 py-1 rounded transition-colors">
-                                                    Details
-                                                </button>
+                                                <span className="text-xs text-main/40">{user.chaptersCompleted}/{effectiveTotalChapters}</span>
                                             </div>
                                         </td>
                                     </motion.tr>
@@ -230,11 +228,29 @@ export default function AdminUsersPage() {
                             </tbody>
                         </table>
                     </div>
-                    <div className="p-4 border-t border-card-border text-xs text-dim flex justify-between items-center">
-                        <div>Showing {filteredUsers.length} of {usersData.length} employees</div>
-                        <button onClick={fetchUsers} className="flex items-center gap-1 hover:text-main transition-colors">
-                            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> Refresh Data
-                        </button>
+                    <div className="p-4 border-t border-card-border flex items-center justify-between">
+                        <div className="text-xs text-main">
+                            Menampilkan {paginatedUsers.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} - {Math.min(currentPage * ITEMS_PER_PAGE, users.length)} dari {users.length} karyawan
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1 || users.length === 0}
+                                className="nav-item p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-xs font-semibold text-main/80">
+                                Halaman {users.length > 0 ? currentPage : 0} / {totalPages || 1}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages || users.length === 0}
+                                className="nav-item p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
                 </motion.div>
             </div>

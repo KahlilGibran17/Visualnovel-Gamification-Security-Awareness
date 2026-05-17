@@ -259,7 +259,6 @@ export default function AdminDashboardPage() {
                         { icon: BookOpen, label: 'Content Management', desc: 'Edit chapters, dialogues, and quiz questions', path: '/admin/content', color: '#a78bfa' },
                         { icon: GraduationCap, label: 'E-Learning', desc: 'Manage module articles and learning materials', path: '/admin/elearning', color: '#ec4899' },
                         { icon: BarChart2, label: 'Reports & Export', desc: 'Compliance reports, export to Excel and PDF', path: '/admin/reports', color: '#22c55e' },
-                        { icon: PlusCircle, label: 'Buat eLearning', desc: 'Buat modul eLearning baru', path: '/admin/elearning', color: '#f97316' },
                     ].map(item => (
                         <motion.button
                             key={item.path}
@@ -304,7 +303,7 @@ export default function AdminDashboardPage() {
                                         />
                                     </div>
                                     <span className="text-xs text-dim w-12 text-right">{d.completed}/{d.total}</span>
-                                    <span className="text-xs font-bold w-20 text-right" style={{ color: getDeptColor(d.dept) }}>
+                                    <span className="text-xs font-bold w-20 text-right">
                                         {d.avgXp.toLocaleString()} XP
                                     </span>
                                 </div>
@@ -335,9 +334,9 @@ export default function AdminDashboardPage() {
                                         <p className="text-main font-medium">{a.userName}</p>
                                         <p className="text-muted text-xs">{a.action}</p>
                                     </div>
-                                    <span className="text-dim text-xs flex-shrink-0 flex items-center gap-1">
+                                    {/* <span className="text-dim text-xs flex-shrink-0 flex items-center gap-1">
                                         <Clock className="w-3 h-3" /> {formatTime(formatRelativeTime(a.createdAt))}
-                                    </span>
+                                    </span> */}
                                 </div>
                             ))}
                             {recentActivity.length === 0 && <p className="text-center text-dim py-8">No recent activity.</p>}

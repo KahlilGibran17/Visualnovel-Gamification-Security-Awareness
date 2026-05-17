@@ -186,7 +186,7 @@ export default function ChapterSelectPage() {
                             else cardClass = i === 0 ? 'top-full mt-6 -translate-x-1/2 left-1/2' : 'bottom-full mb-6 -translate-x-1/2 left-1/2'
 
                             const statusColor = node.isCompleted ? 'border-accent bg-card-bg text-accent' : node.isLocked ? 'border-card-border bg-card-bg text-dim' : 'border-primary bg-primary/20 text-main'
-                            const glow = node.isLocked ? '' : node.isCompleted ? 'shadow-[0_0_30px_rgba(255,214,10,0.4)]' : 'shadow-[0_0_40px_rgba(230,57,70,0.6)] animate-pulse-slow'
+                            const glow = node.isLocked ? '' : node.isCompleted ? 'shadow-[0_0_30px_rgba(255, 214, 10,0.4)]' : 'shadow-[0_0_40px_rgba(230,57,70,0.6)] animate-pulse-slow'
                             
                             return (
                                 <div 
@@ -220,7 +220,7 @@ export default function ChapterSelectPage() {
 
                                     {/* Start Here Tooltip for First Level */}
                                     {i === 0 && !node.isCompleted && (
-                                        <div className="absolute -left-32 top-1/2 -translate-y-1/2 bg-accent text-dark font-black px-4 py-2 rounded-xl text-sm animate-bounce shadow-[0_0_20px_rgba(255,214,10,0.5)] z-50 whitespace-nowrap after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:-right-2 after:border-y-8 after:border-y-transparent after:border-l-8 after:border-l-accent">
+                                        <div className="absolute -left-32 top-1/2 -translate-y-1/2 bg-accent text-dark font-black px-4 py-2 rounded-xl text-sm animate-bounce shadow-[0_0_20px_rgba(255, 214, 10,0.5)] z-50 whitespace-nowrap after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:-right-2 after:border-y-8 after:border-y-transparent after:border-l-8 after:border-l-accent">
                                             Mulai di Sini!
                                         </div>
                                     )}

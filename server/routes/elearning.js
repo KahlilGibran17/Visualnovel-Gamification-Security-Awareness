@@ -97,7 +97,7 @@ router.get('/lessons/:id', requireAuth, async (req, res) => {
         }
 
         const questionsRes = await pool.query(
-            `SELECT id, question_text, timestamp_seconds, xp_reward, order_index
+            `SELECT id, question_text, question_explains, timestamp_seconds, xp_reward, order_index
              FROM elearning_questions
              WHERE lesson_id = $1
              ORDER BY order_index ASC, timestamp_seconds ASC`,
@@ -563,11 +563,11 @@ router.get('/admin/lessons/:id', requireAuth, requireRole('admin'), async (req, 
 
         const qRes = await pool.query(
             `SELECT 
-                id, lesson_id, question_text, 
+                id, lesson_id, question_text, question_explains,
                 timestamp_seconds, xp_reward, order_index
              FROM elearning_questions 
              WHERE lesson_id = $1 
-             ORDER BY order_index ASC, timestamp_seconds ASC`,  // ← tambah secondary sort
+             ORDER BY order_index ASC, timestamp_seconds ASC`,
             [lessonId]
         )
 
@@ -647,10 +647,10 @@ router.post('/admin/lessons', requireAuth, requireRole('admin', 'manager'), asyn
         for (const [i, q] of questions.entries()) {
             const qRes = await pool.query(
                 `INSERT INTO elearning_questions
-                 (lesson_id, question_text, timestamp_seconds, xp_reward, order_index, created_at)
-                 VALUES ($1,$2,$3,$4,$5,NOW())
+                 (lesson_id, question_text, question_explains, timestamp_seconds, xp_reward, order_index, created_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,NOW())
                  RETURNING id`,
-                [lessonId, q.questionText || q.question_text || '', q.timestampSeconds ?? q.timestamp_seconds ?? 0, q.xpReward ?? q.xp_reward ?? 0, q.orderIndex ?? i + 1]
+                [lessonId, q.questionText || q.question_text || '', q.questionExplains || q.question_explains || '', q.timestampSeconds ?? q.timestamp_seconds ?? 0, q.xpReward ?? q.xp_reward ?? 0, q.orderIndex ?? i + 1]
             )
 
             const questionId = qRes.rows[0].id
@@ -776,10 +776,10 @@ router.put('/admin/lessons/:id', requireAuth, requireRole('admin', 'manager'), a
         for (const [i, q] of questions.entries()) {
             const qRes = await client.query(
                 `INSERT INTO elearning_questions
-                 (lesson_id, question_text, timestamp_seconds, xp_reward, order_index, created_at)
-                 VALUES ($1,$2,$3,$4,$5,NOW())
+                 (lesson_id, question_text, question_explains, timestamp_seconds, xp_reward, order_index, created_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,NOW())
                  RETURNING id`,
-                [lessonId, q.questionText || '', q.timestampSeconds ?? q.timestamp_seconds ?? 0, q.xpReward ?? q.xp_reward ?? 0, q.orderIndex ?? i + 1]
+                [lessonId, q.questionText || '', q.questionExplains || '', q.timestampSeconds ?? q.timestamp_seconds ?? 0, q.xpReward ?? q.xp_reward ?? 0, q.orderIndex ?? i + 1]
             )
 
             const questionId = qRes.rows[0].id
@@ -891,10 +891,10 @@ router.post('/admin/lessons/:id/questions', requireAuth, requireRole('admin'), a
 
     try {
         const qRes = await pool.query(
-            `INSERT INTO elearning_questions (lesson_id, question_text, timestamp_seconds, xp_reward, order_index)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO elearning_questions (lesson_id, question_text, question_explains, timestamp_seconds, xp_reward, order_index)
+             VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING *`,
-            [lessonId, questionText, timestampSeconds || 0, xpReward || 0, orderIndex || 0]
+            [lessonId, questionText, req.body.questionExplains || '', timestampSeconds || 0, xpReward || 0, orderIndex || 0]
         )
         const question = qRes.rows[0]
 
@@ -1006,9 +1006,9 @@ router.post('/admin/lessons-with-questions', requireAuth, requireRole('admin'), 
         for (const [i, q] of questions.entries()) {
             await client.query(
                 `INSERT INTO elearning_questions
-                    (lesson_id, question_text, timestamp_seconds, xp_reward, order_index)
-                 VALUES ($1,$2,$3,$4,$5)`,
-                [lessonId, q.questionText, q.timestampSeconds || 0, q.xpReward || 0, q.orderIndex ?? i + 1]
+                    (lesson_id, question_text, question_explains, timestamp_seconds, xp_reward, order_index)
+                 VALUES ($1,$2,$3,$4,$5,$6)`,
+                [lessonId, q.questionText, q.questionExplains || '', q.timestampSeconds || 0, q.xpReward || 0, q.orderIndex ?? i + 1]
             )
         }
 
@@ -1052,9 +1052,9 @@ router.put('/admin/lessons/:id/with-questions', requireAuth, requireRole('admin'
         for (const [i, q] of questions.entries()) {
             await client.query(
                 `INSERT INTO elearning_questions
-                    (lesson_id, question_text, timestamp_seconds, xp_reward, order_index)
-                 VALUES ($1,$2,$3,$4,$5)`,
-                [lessonId, q.questionText, q.timestampSeconds || 0, q.xpReward || 0, q.orderIndex ?? i + 1]
+                    (lesson_id, question_text, question_explains, timestamp_seconds, xp_reward, order_index)
+                 VALUES ($1,$2,$3,$4,$5,$6)`,
+                [lessonId, q.questionText, q.questionExplains || '', q.timestampSeconds || 0, q.xpReward || 0, q.orderIndex ?? i + 1]
             )
         }
 

@@ -6,7 +6,7 @@
   /* Common Colors */
   --primary: #E63946;
   --primary-dark: #C1121F;
-  --accent: #FFD60A;
+  --accent: #ff9500;
   --success: #06D6A0;
   
   /* Dark Mode (Default) */
@@ -17,6 +17,7 @@
   --text-dim: rgba(255, 255, 255, 0.3);
   --card-bg: rgba(255, 255, 255, 0.05);
   --card-bg-dark: rgba(0, 0, 0, 0.3);
+  --card-bg-light: rgba(255, 255, 255, 0.6);
   --card-border: rgba(255, 255, 255, 0.05);
   --input-bg: rgba(255, 255, 255, 0.08);
   --shadow-main: rgba(0, 0, 0, 0.3);
@@ -339,6 +340,12 @@
 }
 
 @layer utilities {
+  .layout-main > * {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100%;
+  }
+
   .text-gradient {
     background: linear-gradient(135deg, #E63946, #FFD60A);
     -webkit-background-clip: text;

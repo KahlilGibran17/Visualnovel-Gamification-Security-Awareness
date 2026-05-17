@@ -16,11 +16,13 @@ import LeaderboardPage from './pages/LeaderboardPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import ElearningPage from './pages/ELearningPage.jsx'
 import ElearningPlayerPage from './pages/ElearningPlayerPage.jsx'
+import PretestPage from './pages/PretestPage.jsx'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminUsersPage from './pages/admin/AdminUsersPage.jsx'
 import AdminContentPage from './pages/admin/AdminContentPage.jsx'
 import AdminReportsPage from './pages/admin/AdminReportsPage.jsx'
 import AdminElearningPage from './pages/admin/AdminElearningPage.jsx'
+import AdminPretestPage from './pages/admin/AdminPretestPage.jsx'
 import SuperAdminDashboardPage from './pages/super-admin/SuperAdminDashboardPage.jsx'
 import SuperAdminAdminManagePage from './pages/super-admin/SuperAdmin-AdminManagePage.jsx'
 
@@ -82,6 +84,11 @@ export default function App() {
                                     <ElearningPlayerPage />
                                 </ProtectedRoute>
                             } />
+                            <Route path="/pretest/:chapterId" element={
+                                <ProtectedRoute roles={['employee', 'manager', 'admin']}>
+                                    <PretestPage />
+                                </ProtectedRoute>
+                            } />
 
                             {/* Admin Routes */}
                             <Route path="/admin" element={
@@ -107,6 +114,11 @@ export default function App() {
                             <Route path="admin/elearning" element={
                                 <ProtectedRoute roles={['admin', 'manager']}>
                                     <AdminElearningPage />
+                                </ProtectedRoute>
+                            } />
+                            <Route path="/admin/pretest" element={
+                                <ProtectedRoute roles={['admin']}>
+                                    <AdminPretestPage />
                                 </ProtectedRoute>
                             } />
 

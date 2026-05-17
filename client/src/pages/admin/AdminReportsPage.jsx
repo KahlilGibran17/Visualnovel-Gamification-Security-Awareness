@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { FileText, Table, CheckCircle, XCircle } from 'lucide-react'
+import { FileText, Table, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import Layout from '../../components/Layout.jsx'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import AvatarDisplay from '../../components/AvatarDisplay.jsx'
@@ -26,6 +26,8 @@ export default function AdminReportsPage() {
     const [totalChapters, setTotalChapters] = useState(0)
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState([])
+    const [currentPage, setCurrentPage] = useState(1)
+    const ITEMS_PER_PAGE = 10
 
     useEffect(() => {
         let isMounted = true
@@ -74,15 +76,13 @@ export default function AdminReportsPage() {
 
     const departmentSummary = useMemo(() => {
         const grouped = complianceRows.reduce((acc, user) => {
-            const dept = user.department || 'Unknown'
+            const dept = user.department || 'Tidak Diketahui'
             if (!acc[dept]) {
-                acc[dept] = { dept, complete: 0, total: 0 }
+                acc[dept] = { dept, completedChapters: 0, totalTargetChapters: 0 }
             }
 
-            acc[dept].total += 1
-            if (user.allDone) {
-                acc[dept].complete += 1
-            }
+            acc[dept].completedChapters += (user.chaptersCompleted || 0)
+            acc[dept].totalTargetChapters += totalChapters
 
             return acc
         }, {})
@@ -90,10 +90,10 @@ export default function AdminReportsPage() {
         return Object.values(grouped)
             .map((dept) => ({
                 ...dept,
-                pct: dept.total > 0 ? Math.round((dept.complete / dept.total) * 100) : 0,
+                pct: dept.totalTargetChapters > 0 ? Math.round((dept.completedChapters / dept.totalTargetChapters) * 100) : 0,
             }))
             .sort((a, b) => b.pct - a.pct)
-    }, [complianceRows])
+    }, [complianceRows, totalChapters])
 
     const totalComplete = complianceRows.filter(u => u.allDone).length
     const pct = complianceRows.length > 0
@@ -113,23 +113,26 @@ export default function AdminReportsPage() {
         }
     }
 
+    const totalPages = Math.ceil(complianceRows.length / ITEMS_PER_PAGE) || 1
+    const paginatedRows = complianceRows.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+
     return (
         <Layout>
             <div className="p-6 max-w-6xl mx-auto space-y-6">
                 <motion.div className="flex flex-col md:flex-row md:items-center gap-4"
                     initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
                     <div>
-                        <h1 className="text-3xl font-bold font-display text-main">📊 Reports & Export</h1>
-                        <p className="text-muted mt-1">Compliance tracking and progress analytics</p>
+                        <h1 className="text-3xl font-bold font-display text-main">📊 Laporan & Ekspor</h1>
+                        <p className="text-muted mt-1">Pelacakan kepatuhan dan analitik progres karyawan</p>
                     </div>
                     <div className="md:ml-auto flex gap-2">
                         <button id="export-excel-btn" onClick={() => handleExport('Excel')}
                             className="btn-secondary text-sm flex items-center gap-2 bg-green-600 text-white hover:bg-green-700">
-                            <Table className="w-4 h-4" /> Export Excel
+                            <Table className="w-4 h-4" /> Ekspor Excel
                         </button>
                         <button id="export-pdf-btn" onClick={() => handleExport('PDF')}
                             className="btn-primary text-sm flex items-center gap-2">
-                            <FileText className="w-4 h-4" /> Export PDF
+                            <FileText className="w-4 h-4" /> Ekspor PDF
                         </button>
                     </div>
                 </motion.div>
@@ -137,10 +140,10 @@ export default function AdminReportsPage() {
                 {/* Summary cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                        { label: 'Completion Rate', value: loading ? '...' : `${pct}%`, color: '#22c55e', icon: '✅' },
-                        { label: 'All Chapters Done', value: loading ? '...' : totalComplete, color: '#60a5fa', icon: '🏆' },
-                        { label: 'In Progress', value: loading ? '...' : inProgressCount, color: '#FFD60A', icon: '📚' },
-                        { label: 'Not Started', value: loading ? '...' : notStartedCount, color: '#E63946', icon: '⚠️' },
+                        { label: 'Tingkat Penyelesaian', value: loading ? '...' : `${pct}%`, color: '#22c55e', icon: '✅' },
+                        { label: 'Selesai Semua Chapter', value: loading ? '...' : totalComplete, color: '#60a5fa', icon: '🏆' },
+                        { label: 'Sedang Berjalan', value: loading ? '...' : inProgressCount, color: '#ff9100', icon: '📚' },
+                        { label: 'Belum Dimulai', value: loading ? '...' : notStartedCount, color: '#E63946', icon: '⚠️' },
                     ].map((s, i) => (
                         <motion.div key={s.label} className="stat-widget text-center"
                             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
@@ -154,20 +157,22 @@ export default function AdminReportsPage() {
                 {/* Department compliance chart */}
                 <motion.div className="glass-card p-5"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                    <h2 className="font-bold text-white mb-4">🏢 Department Completion Rate</h2>
+                    <h2 className="font-bold text-main mb-4">🏢 Tingkat Penyelesaian Departemen</h2>
                     {loading && (
-                        <p className="text-white/40 text-sm mb-3">Loading department chart...</p>
+                        <p className="text-white/40 text-sm mb-3">Memuat grafik departemen...</p>
                     )}
                     {!loading && departmentSummary.length === 0 && (
-                        <p className="text-white/40 text-sm mb-3">No department summary available.</p>
+                        <p className="text-white/40 text-sm mb-3">Data departemen tidak tersedia.</p>
                     )}
                     <ResponsiveContainer width="100%" height={180}>
                         <BarChart data={departmentSummary} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
                             <XAxis dataKey="dept" stroke="var(--text-dim)" tick={{ fontSize: 12 }} />
                             <YAxis stroke="var(--text-dim)" opacity={0.5} tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={v => `${v}%`} />
                             <Tooltip
-                                contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '8px', color: 'var(--text-main)' }}
-                                formatter={(val) => [`${val}%`, 'Completion']}
+                                cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
+                                contentStyle={{ background: '#f97316', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: 'bold' }}
+                                itemStyle={{ color: '#fff' }}
+                                formatter={(val) => [`${val}%`, 'Penyelesaian']}
                             />
                             <Bar dataKey="pct" radius={[4, 4, 0, 0]}>
                                 {departmentSummary.map((entry, i) => (
@@ -182,19 +187,19 @@ export default function AdminReportsPage() {
                 <motion.div className="glass-card overflow-hidden"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                     <div className="p-5 border-b border-card-border">
-                        <h2 className="font-bold text-main text-lg">Compliance Status — All Employees</h2>
+                        <h2 className="font-bold text-main text-lg">Status Kepatuhan — Seluruh Karyawan</h2>
                         <p className="text-muted text-sm mt-1">
-                            Employees who have completed all {loading ? '...' : totalChapters} chapters
+                            Karyawan yang telah menyelesaikan seluruh {loading ? '...' : totalChapters} chapter
                         </p>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="admin-table w-full">
                             <thead>
                                 <tr className="border-b border-card-border">
-                                    <th>Employee</th>
-                                    <th>Department</th>
+                                    <th>Karyawan</th>
+                                    <th>Departemen</th>
                                     <th>XP</th>
-                                    <th>Chapters</th>
+                                    <th>Chapter</th>
                                     {Array.from({ length: totalChapters }).map((_, idx) => {
                                         const chapterNumber = idx + 1
                                         return <th key={chapterNumber} className="text-center">Ch.{chapterNumber}</th>
@@ -205,17 +210,17 @@ export default function AdminReportsPage() {
                             <tbody>
                                 {loading && (
                                     <tr>
-                                        <td colSpan={tableColumnCount} className="text-center text-white/40 py-8">Loading compliance report...</td>
+                                        <td colSpan={tableColumnCount} className="text-center text-white/40 py-8">Memuat laporan kepatuhan...</td>
                                     </tr>
                                 )}
 
                                 {!loading && complianceRows.length === 0 && (
                                     <tr>
-                                        <td colSpan={tableColumnCount} className="text-center text-white/40 py-8">No compliance data available.</td>
+                                        <td colSpan={tableColumnCount} className="text-center text-white/40 py-8">Data kepatuhan tidak tersedia.</td>
                                     </tr>
                                 )}
 
-                                {!loading && complianceRows.map((u, i) => (
+                                {!loading && paginatedRows.map((u, i) => (
                                     <motion.tr key={u.id}
                                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
                                         <td>
@@ -241,7 +246,7 @@ export default function AdminReportsPage() {
                                         <td>
                                             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${u.allDone ? 'bg-green-500/20 text-green-400' : u.chaptersCompleted > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
                                                 }`}>
-                                                {u.allDone ? '✅ Complete' : u.chaptersCompleted > 0 ? '🔄 In Progress' : '❌ Not Started'}
+                                                {u.allDone ? '✅ Selesai' : u.chaptersCompleted > 0 ? '🔄 Berjalan' : '❌ Belum Mulai'}
                                             </span>
                                         </td>
                                     </motion.tr>
@@ -249,6 +254,34 @@ export default function AdminReportsPage() {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination Controls */}
+                    {!loading && complianceRows.length > 0 && (
+                        <div className="p-4 border-t border-card-border flex items-center justify-between">
+                            <span className="text-sm text-muted">
+                                Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, complianceRows.length)} dari {complianceRows.length} data
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-2 rounded-lg bg-card-bg hover:bg-input-bg disabled:opacity-50 disabled:cursor-not-allowed border border-card-border transition-colors text-main"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <span className="text-sm font-medium px-4 text-main">
+                                    Halaman {currentPage} dari {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                    className="p-2 rounded-lg bg-card-bg hover:bg-input-bg disabled:opacity-50 disabled:cursor-not-allowed border border-card-border transition-colors text-main"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </motion.div>
             </div>
         </Layout>

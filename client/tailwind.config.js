@@ -13,9 +13,9 @@ export default {
                     light: '#ff6b6b',
                 },
                 accent: {
-                    DEFAULT: '#FFD60A',
-                    dark: '#e5be00',
-                    light: '#ffe566',
+                    DEFAULT: '#ffaa00ff',
+                    dark: '#ff9500ff',
+                    light: '#ffa600ff',
                 },
                 main: 'var(--bg-main)',
                 secondary: 'var(--bg-secondary)',
@@ -83,3 +83,4 @@ export default {
     },
     plugins: [],
 }
+

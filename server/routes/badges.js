@@ -9,7 +9,7 @@ const { requireAuth, requireRole } = require('../middleware/auth')
 router.get('/getBadges',requireAuth, async (req, res) => {
     try {
         const badgesResult = await pool.query(
-            `SELECT badge_key AS id, name, icon, description AS desc, color FROM badges`,
+            `SELECT * FROM badges`,
         )
         res.json({ badges: badgesResult.rows })
     } catch (err) {
