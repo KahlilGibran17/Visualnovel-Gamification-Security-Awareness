@@ -617,12 +617,12 @@ export default function ElearningPlayerPage() {
             )
 
             if (nextQ) {
-
+                console.log('Trigger soal:', nextQ.id, 'di detik:', currentTime)
                 triggeredRef.current.add(nextQ.id)
                 pausingForQuestionRef.current = true
                 v.pause()
                 setActiveQuestion(nextQ)
-
+                console.log('activeQuestion set:', nextQ.id)
             }
         }, 500)
 
@@ -840,37 +840,33 @@ export default function ElearningPlayerPage() {
     }
     
     // ── Submit answer ──────────────────────────────────────────────────────
-   const submitAnswer = async (selectedOptionId) => {
+    const submitAnswer = async (selectedOptionId) => {
         if (submitting) return null
-        
-        const alreadyAnswered = Boolean(answeredMapRef.current?.[activeQuestion.id])
-        if (alreadyAnswered) {
-            // Jika sudah pernah dijawab, JANGAN tembak API atau ubah riwayat jawaban pertama.
-            // Cukup evaluasi opsi yang baru dipilih secara lokal untuk keperluan respon UI.
-            const isCorrect = activeQuestion.options.find(o => o.id === selectedOptionId)?.is_correct || false
-            playSfx(isCorrect ? 'correct' : 'wrong')
-            return { isCorrect, xpAwarded: 0 }
-        }
-
         setSubmitting(true)
+
         try {
             const res = await axios.post(
                 `/api/elearning/questions/${activeQuestion.id}/answer`,
                 { selectedOptionId }
             )
             const { isCorrect, xpAwarded } = res.data
-            const effectiveXpAwarded = isNoQuizXpRole ? 0 : (xpAwarded || 0)
+            const alreadyAnswered = Boolean(answeredMapRef.current?.[activeQuestion.id])
             
             playSfx(isCorrect ? 'correct' : 'wrong')
 
-            if (isCorrect) answeredRef.current.add(activeQuestion.id)
-
-            setAnsweredMap(prev => ({
-                ...prev,
-                [activeQuestion.id]: { isCorrect, xpAwarded: effectiveXpAwarded }
-            }))
-
-            return { isCorrect, xpAwarded: effectiveXpAwarded }
+            if (!alreadyAnswered) {
+                const effectiveXpAwarded = isNoQuizXpRole ? 0 : (xpAwarded || 0)
+                if (isCorrect) answeredRef.current.add(activeQuestion.id)
+                
+                setAnsweredMap(prev => ({
+                    ...prev,
+                    [activeQuestion.id]: { isCorrect, xpAwarded: effectiveXpAwarded }
+                }))
+                return { isCorrect, xpAwarded: effectiveXpAwarded }
+            } else {
+                // Return local response for visual feedback without overriding original attempt's XP
+                return { isCorrect, xpAwarded: 0 }
+            }
         } catch (err) {
             toast.error('Gagal mengirim jawaban, coba lagi.')
             return null

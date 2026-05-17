@@ -71,7 +71,7 @@ export default function ProfilePage() {
         try {
             const res = await axios.get('/api/badges/getBadgesByCategory')
             const badgeList = res.data.badges
-
+            console.log('Loaded badges by category:', badgeList)
             const grouped = badgeList.reduce((groups, badge) => {
                 const key = getCategoryLabel(badge)
                 if (!groups[key]) groups[key] = []
