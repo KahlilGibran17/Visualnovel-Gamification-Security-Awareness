@@ -165,6 +165,8 @@ async function buildVNJson(chapterId) {
     for (let i = 0; i < vnScenes.length; i++) {
         vnScenes[i].va = scenes[i].va_url || null;
         vnScenes[i].sfx = scenes[i].sfx_url || null;
+        vnScenes[i].x_pos = parseFloat(scenes[i].x_pos) || 0;
+        vnScenes[i].y_pos = parseFloat(scenes[i].y_pos) || 0;
     }
     return vnScenes
 }
@@ -178,6 +180,34 @@ async function syncChapterJson(chapterId) {
             [JSON.stringify(vnJson), chapterId]
         )
         console.log(`[CMS] Auto-synced Chapter ${chapterId} (${vnJson.length} scenes)`)
+
+        // 🌟 AUTOMATIC SYNC TO FILE: Save chapter to JSON file for Git tracking!
+        const filePath = path.join(__dirname, `../../client/src/data/chapters/chapter${chapterId}.json`)
+        const chRes = await pool.query('SELECT title FROM game_chapters WHERE id = $1', [chapterId])
+        const title = chRes.rows.length > 0 ? chRes.rows[0].title : 'Chapter'
+        
+        // 🌟 Fetch flow zones and notes for this chapter
+        const zonesRes = await pool.query('SELECT title, color, x_pos, y_pos, width, height FROM vn_flow_zones WHERE chapter_id = $1', [chapterId])
+        const notesRes = await pool.query('SELECT content, color, x_pos, y_pos FROM vn_flow_notes WHERE chapter_id = $1', [chapterId])
+
+        const fileData = {
+            id: parseInt(chapterId),
+            title: title,
+            scenes: vnJson,
+            flow: {
+                zones: zonesRes.rows,
+                notes: notesRes.rows
+            }
+        }
+
+        // Ensure target directory exists
+        const dir = path.dirname(filePath)
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true })
+        }
+
+        fs.writeFileSync(filePath, JSON.stringify(fileData, null, 4), 'utf8')
+        console.log(`[CMS] 💾 Auto-saved Chapter ${chapterId} to file: ${filePath}`)
     } catch (err) {
         console.error(`[CMS] syncChapterJson failed for Chapter ${chapterId}:`, err.message)
     }
@@ -293,18 +323,147 @@ router.delete('/chapters/:id', requireAuth, requireRole('admin'), async (req, re
     }
 })
 
+// Deep duplicate a chapter (scenes, choices, flow coordinates, zones, sticky notes, and auto-backup JSON file!)
+router.post('/chapters/:id/duplicate', requireAuth, requireRole('admin'), async (req, res) => {
+    const client = await pool.connect()
+    try {
+        await client.query('BEGIN')
+
+        const originalChapterId = parseInt(req.params.id)
+
+        // 1. Get original chapter
+        const chRes = await client.query('SELECT * FROM game_chapters WHERE id = $1', [originalChapterId])
+        if (!chRes.rows.length) {
+            await client.query('ROLLBACK')
+            return res.status(404).json({ error: 'Source chapter not found' })
+        }
+        const ch = chRes.rows[0]
+
+        // 2. Insert new chapter (append ' (Backup)' to title)
+        const newChRes = await client.query(
+            `INSERT INTO game_chapters (title, subtitle, icon, location, music_theme, scenes, status, type, badge_id)
+             VALUES ($1, $2, $3, $4, $5, '[]'::jsonb, 'Draft', $6, $7) RETURNING *`,
+            [ch.title + ' (Backup)', ch.subtitle || '', ch.icon || '📖', ch.location || '', ch.music_theme || null, ch.type || 'Visual Novel', ch.badge_id || null]
+        )
+        const newChapter = newChRes.rows[0]
+        const newChapterId = newChapter.id
+
+        // 3. Fetch all original scenes
+        const scenesRes = await client.query(
+            'SELECT * FROM vn_scenes WHERE chapter_id = $1 ORDER BY scene_order ASC',
+            [originalChapterId]
+        )
+        const originalScenes = scenesRes.rows
+
+        const idMap = {} // originalSceneId -> newSceneId
+        const sceneKeyMap = {} // originalSceneKey -> newSceneKey
+        const duplicatedScenes = []
+
+        // First pass: Insert all scenes without next_scene_id to establish ID mappings
+        for (const s of originalScenes) {
+            const originalSceneId = s.id
+            const newSceneKey = `scene_${Date.now()}_${Math.round(Math.random() * 1000)}`
+
+            const nsRes = await client.query(
+                `INSERT INTO vn_scenes 
+                (chapter_id, scene_key, scene_name, scene_type, background, 
+                 char_left, char_left_expr, char_right, char_right_expr, char_center, char_center_expr,
+                 speaker_name, dialogue_text, xp_reward, trust_impact, question, timer, 
+                 ending_type, ending_title, ending_message, xp_bonus, custom_data, scene_order, va_url, sfx_url, x_pos, y_pos)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22::jsonb, $23, $24, $25, $26, $27)
+                RETURNING *`,
+                [
+                    newChapterId, newSceneKey, s.scene_name, s.scene_type, s.background,
+                    s.char_left, s.char_left_expr, s.char_right, s.char_right_expr, s.char_center, s.char_center_expr,
+                    s.speaker_name, s.dialogue_text, s.xp_reward, s.trust_impact || 0, s.question, s.timer,
+                    s.ending_type, s.ending_title, s.ending_message, s.xp_bonus, JSON.stringify(s.custom_data || {}),
+                    s.scene_order, s.va_url, s.sfx_url, parseFloat(s.x_pos) || 0, parseFloat(s.y_pos) || 0
+                ]
+            )
+            const ns = nsRes.rows[0]
+            idMap[originalSceneId] = ns.id
+            sceneKeyMap[s.scene_key] = ns.scene_key
+            duplicatedScenes.push({ original: s, duplicated: ns })
+        }
+
+        // Second pass: Update next_scene_id & duplicate choices
+        for (const item of duplicatedScenes) {
+            const orig = item.original
+            const dup = item.duplicated
+
+            // A. Update next_scene_id if points to an original scene
+            if (orig.next_scene_id && idMap[orig.next_scene_id]) {
+                const newNextSceneId = idMap[orig.next_scene_id]
+                await client.query('UPDATE vn_scenes SET next_scene_id = $1 WHERE id = $2', [newNextSceneId, dup.id])
+            }
+
+            // B. Clone custom_data if it contains references like failSceneId
+            let updatedCustomData = { ...(orig.custom_data || {}) }
+            if (updatedCustomData.failSceneId && idMap[updatedCustomData.failSceneId]) {
+                updatedCustomData.failSceneId = idMap[updatedCustomData.failSceneId]
+                await client.query('UPDATE vn_scenes SET custom_data = $1::jsonb WHERE id = $2', [JSON.stringify(updatedCustomData), dup.id])
+            }
+
+            // C. Duplicate choices
+            const choicesRes = await client.query(
+                'SELECT * FROM vn_scene_choices WHERE scene_id = $1 ORDER BY choice_order ASC',
+                [orig.id]
+            )
+            for (const c of choicesRes.rows) {
+                const mappedNextSceneId = (c.next_scene_id && idMap[c.next_scene_id]) ? idMap[c.next_scene_id] : null
+                await client.query(
+                    `INSERT INTO vn_scene_choices 
+                    (scene_id, choice_text, is_correct, xp_reward, trust_impact, consequence_text, lesson_text, next_scene_id, choice_order)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                    [dup.id, c.choice_text, c.is_correct, c.xp_reward, c.trust_impact || 0, c.consequence_text, c.lesson_text, mappedNextSceneId, c.choice_order]
+                )
+            }
+        }
+
+        // 4. Duplicate Flow Zones
+        const zonesRes = await client.query('SELECT * FROM vn_flow_zones WHERE chapter_id = $1', [originalChapterId])
+        for (const z of zonesRes.rows) {
+            await client.query(
+                `INSERT INTO vn_flow_zones (chapter_id, title, color, x_pos, y_pos, width, height)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                [newChapterId, z.title, z.color, parseFloat(z.x_pos) || 0, parseFloat(z.y_pos) || 0, parseFloat(z.width) || 400, parseFloat(z.height) || 300]
+            )
+        }
+
+        // 5. Duplicate Flow Notes
+        const notesRes = await client.query('SELECT * FROM vn_flow_notes WHERE chapter_id = $1', [originalChapterId])
+        for (const n of notesRes.rows) {
+            await client.query(
+                `INSERT INTO vn_flow_notes (chapter_id, content, color, x_pos, y_pos)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [newChapterId, n.content, n.color, parseFloat(n.x_pos) || 0, parseFloat(n.y_pos) || 0]
+            )
+        }
+
+        await client.query('COMMIT')
+
+        // 6. Compile scenes and write JSON file automatically!
+        await syncChapterJson(newChapterId)
+
+        res.status(201).json({ message: 'Chapter duplicated successfully!', duplicatedChapterId: newChapterId, duplicatedChapter: newChapter })
+    } catch (err) {
+        await client.query('ROLLBACK')
+        console.error('[CMS] Duplicate chapter error:', err.message, err.stack)
+        res.status(500).json({ error: 'Failed to duplicate chapter', detail: err.message })
+    } finally {
+        client.release()
+    }
+})
+
+
 // Save draft AND return updated scenes — one-shot sync
 router.post('/chapters/:id/save-draft', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const chapterId = req.params.id
-        const vnJson = await buildVNJson(chapterId)
-        await pool.query(
-            "UPDATE game_chapters SET scenes=$1, updated_at=NOW() WHERE id=$2",
-            [JSON.stringify(vnJson), chapterId]
-        )
+        await syncChapterJson(chapterId)
         // Return refreshed scenes as well
         const scenes = await loadScenesWithChoices(chapterId)
-        res.json({ message: 'Draft saved!', sceneCount: vnJson.length, scenes })
+        res.json({ message: 'Draft saved!', sceneCount: scenes.length, scenes })
     } catch (err) {
         console.error('[CMS] save-draft error:', err.message)
         res.status(500).json({ error: 'Failed to save draft', detail: err.message })
@@ -315,13 +474,13 @@ router.post('/chapters/:id/save-draft', requireAuth, requireRole('admin'), async
 router.post('/chapters/:id/publish', requireAuth, requireRole('admin'), async (req, res) => {
     try {
         const chapterId = req.params.id
-        const vnJson = await buildVNJson(chapterId)
+        await syncChapterJson(chapterId)
         await pool.query(
-            "UPDATE game_chapters SET scenes=$1, status='Published', updated_at=NOW() WHERE id=$2",
-            [JSON.stringify(vnJson), chapterId]
+            "UPDATE game_chapters SET status='Published', updated_at=NOW() WHERE id=$1",
+            [chapterId]
         )
         const scenes = await loadScenesWithChoices(chapterId)
-        res.json({ message: 'Chapter published!', sceneCount: vnJson.length, scenes })
+        res.json({ message: 'Chapter published!', sceneCount: scenes.length, scenes })
     } catch (err) {
         console.error('[CMS] publish error:', err.message)
         res.status(500).json({ error: 'Failed to publish', detail: err.message })

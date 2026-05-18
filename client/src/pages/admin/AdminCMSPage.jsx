@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, Users, Image, Film, Plus, Edit3, Trash2, Globe, Clock, Loader2, Search, Upload, ArrowLeft, Home, Monitor, Award } from 'lucide-react'
+import { BookOpen, Users, Image, Film, Plus, Edit3, Trash2, Globe, Clock, Loader2, Search, Upload, ArrowLeft, Home, Monitor, Award, Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
@@ -75,6 +75,17 @@ function ChapterList({ onEdit }) {
         }
     }
 
+    const duplicateChapter = async (id, title) => {
+        const loadingToast = toast.loading(`Duplicating "${title}"...`)
+        try {
+            const res = await axios.post(`/api/cms/chapters/${id}/duplicate`)
+            setChapters(prev => [...prev, res.data.duplicatedChapter])
+            toast.success(`✅ Chapter "${title}" successfully duplicated! Created backup: "${res.data.duplicatedChapter.title}"`, { id: loadingToast })
+        } catch (err) {
+            toast.error('❌ Duplication failed: ' + (err.response?.data?.error || err.message), { id: loadingToast })
+        }
+    }
+
     const filtered = chapters.filter(c =>
         c.title.toLowerCase().includes(search.toLowerCase()) ||
         (c.subtitle || '').toLowerCase().includes(search.toLowerCase())
@@ -131,6 +142,9 @@ function ChapterList({ onEdit }) {
                                 <div className="flex gap-2">
                                     <button onClick={() => onEdit(ch.id)} className="btn-primary flex-1 flex items-center justify-center gap-1.5 text-sm">
                                         <Edit3 className="w-3.5 h-3.5" /> Edit
+                                    </button>
+                                    <button onClick={() => duplicateChapter(ch.id, ch.title)} className="btn-secondary flex items-center gap-1.5 text-sm px-3 hover:text-primary transition-all" title="Duplicate Chapter (Create Backup)">
+                                        <Copy className="w-3.5 h-3.5" />
                                     </button>
                                     <a href={`/play/${ch.id}`} target="_blank" rel="noreferrer"
                                         className="btn-secondary flex items-center gap-1.5 text-sm px-3">

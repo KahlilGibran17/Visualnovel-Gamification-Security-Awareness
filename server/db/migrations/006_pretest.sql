@@ -2,28 +2,18 @@
 -- 006_pretest.sql — Pre-test tables (questions, options, user attempts)
 -- ═══════════════════════════════════════════════════════════════════════════
 
--- ─── Table definitions ───────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS chapters (
-    ch_id          SERIAL PRIMARY KEY,
-    ch_title       VARCHAR(255),
-    ch_description TEXT,
-    created_at     TIMESTAMP DEFAULT NOW()
-);
+-- Table: pretest_questions (already exists from screenshot)
+-- pq_id       SERIAL PRIMARY KEY
+-- ch_id       INT REFERENCES chapters(ch_id)
+-- pq_number   INT
+-- pq_text     VARCHAR
+-- created_at  DATE
 
-CREATE TABLE IF NOT EXISTS pretest_questions (
-    pq_id      SERIAL PRIMARY KEY,
-    ch_id      INT REFERENCES chapters(ch_id) ON DELETE CASCADE,
-    pq_number  INT NOT NULL,
-    pq_text    VARCHAR(500) NOT NULL,
-    created_at DATE NOT NULL DEFAULT CURRENT_DATE
-);
-
-CREATE TABLE IF NOT EXISTS pretest_options (
-    po_id      SERIAL PRIMARY KEY,
-    pq_id      INT REFERENCES pretest_questions(pq_id) ON DELETE CASCADE,
-    po_text    VARCHAR(255) NOT NULL,
-    is_correct BOOLEAN NOT NULL DEFAULT FALSE
-);
+-- Table: pretest_options (already exists from screenshot)
+-- po_id       SERIAL PRIMARY KEY
+-- pq_id       INT REFERENCES pretest_questions(pq_id)
+-- po_text     VARCHAR(255)
+-- is_correct  BOOLEAN
 
 -- ─── New: Track user pre-test attempts ─────────────────────────────────────
 CREATE TABLE IF NOT EXISTS pretest_attempts (

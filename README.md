@@ -22,17 +22,21 @@ CREATE DATABASE akebono_cyber_academy;
 \q
 ```
 
-Then initialize the database schema, run migrations, seed visual novel scenes, and set up test accounts with a single command:
+Then seed the initial database structure and test accounts:
 ```bash
 cd server
-npm run db:init
+node db/seed.js                   # Creates tables + seeds 20 demo employees
+node scripts/create_test_user.js  # Adds 'tester_admin' for testing (No NPK needed)
 ```
 
-This single master command automates the entire database setup:
-- 📦 Runs all SQL migrations sequentially (`001_init.sql` through `006_pretest.sql`).
-- 🎭 Seeds visual novel characters, expressions, backgrounds, and settings.
-- 📖 Compiles and links Chapter 1 & Chapter 2 dialogue scenes, choices, and consequences.
-- 👤 Provisions all default Sunfish demo and test employee/admin accounts.
+#### 📦 Database Migrations
+To support the latest features (such as **Pretests** and **E-Learning Hub**), you should execute the latest migration scripts found under [server/db/migrations/](file:///d:/Akebono%20Cyber%20Academy/Visualnovel-Gamification-Security-Awareness/server/db/migrations) on your database:
+```bash
+# Example running pretest migrations via psql:
+psql -U postgres -d akebono_cyber_academy -f db/migrations/006_pretest.sql
+psql -U postgres -d akebono_cyber_academy -f db/migrations/006_fix_pretest_serial.sql
+```
+*(Alternatively, copy and run the raw SQL scripts from the migration files inside your preferred database GUI like pgAdmin or DBeaver).*
 
 ### 2. Configure Server
 
