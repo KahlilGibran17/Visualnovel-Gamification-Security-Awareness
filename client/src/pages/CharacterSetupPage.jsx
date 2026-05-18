@@ -149,7 +149,7 @@ export default function CharacterSetupPage() {
                         <p className="text-accent font-bold text-sm mb-1">AKE-BOT</p>
                         <p className="text-muted text-sm leading-relaxed">
                             {step === 1
-                                ? "Halo, rekrutan baru! Saya AKE-BOT, pemandu keamanan siber Anda di Akebono Brake Astra. Pertama, beri tahu saya nama Anda!"
+                                ? "Halo, rekrutan baru! Saya AKE-BOT, pemandu keamanan siber Anda di AAIJ. Pertama, beri tahu saya nama Anda!"
                                 : `Senang bertemu dengan Anda, ${displayName}! Sekarang pilih penampilan Anda — Anda akan membutuhkan identitas yang kuat untuk menghadapi peretas Ph1sh! 🔐`
                             }
                         </p>

@@ -86,6 +86,7 @@ async function buildVNJson(chapterId) {
                 title: scene.ending_title || 'Chapter Complete!',
                 message: scene.ending_message || scene.dialogue_text || '',
                 xpBonus: scene.xp_bonus || 200,
+                badgeId: scene.custom_data?.badgeId || null,
                 lesson_recap: scene.lesson_recap || []
             })
         } else if (sType === 'email') {
@@ -202,12 +203,21 @@ async function loadScenesWithChoices(chapterId) {
 // ─── CHAPTERS ──────────────────────────────────────────────────────────────
 router.get('/chapters', requireAuth, async (req, res) => {
     try {
-        const r = await pool.query(`
+        let queryStr = `
             SELECT gc.*, COUNT(vs.id) as scene_count
             FROM game_chapters gc
             LEFT JOIN vn_scenes vs ON vs.chapter_id = gc.id
-            GROUP BY gc.id ORDER BY gc.id ASC
-        `)
+        `
+        if (req.query.type === 'all') {
+            // Return all chapters without type filter
+        } else if (req.query.type === 'E-Learning') {
+            queryStr += ` WHERE gc.type = 'E-Learning'`
+        } else {
+            queryStr += ` WHERE gc.type IS NULL OR gc.type = 'Visual Novel'`
+        }
+        queryStr += ` GROUP BY gc.id ORDER BY gc.id ASC`
+
+        const r = await pool.query(queryStr)
         res.json(r.rows)
     } catch (err) {
         console.error('[CMS] GET chapters error:', err.message)
@@ -219,8 +229,8 @@ router.post('/chapters', requireAuth, requireRole('admin'), async (req, res) => 
     try {
         const { title, subtitle, icon, location, music_theme } = req.body
         const r = await pool.query(
-            `INSERT INTO game_chapters (title, subtitle, icon, location, music_theme, scenes, status)
-             VALUES ($1, $2, $3, $4, $5, '[]'::jsonb, 'Draft') RETURNING *`,
+            `INSERT INTO game_chapters (title, subtitle, icon, location, music_theme, scenes, status, type)
+             VALUES ($1, $2, $3, $4, $5, '[]'::jsonb, 'Draft', 'Visual Novel') RETURNING *`,
             [title || 'New Chapter', subtitle || '', icon || '📖', location || '', music_theme || null]
         )
         res.status(201).json(r.rows[0])
@@ -235,6 +245,9 @@ router.get('/chapters/:id', requireAuth, async (req, res) => {
         const chRes = await pool.query('SELECT * FROM game_chapters WHERE id = $1', [req.params.id])
         if (!chRes.rows.length) return res.status(404).json({ error: 'Chapter not found' })
         const chapter = chRes.rows[0]
+        if (chapter.type === 'E-Learning') {
+            return res.status(403).json({ error: 'E-Learning chapters cannot be loaded in Content Studio' })
+        }
         const scenes = await loadScenesWithChoices(req.params.id)
         res.json({ ...chapter, relationalScenes: scenes })
     } catch (err) {
@@ -246,17 +259,19 @@ router.get('/chapters/:id', requireAuth, async (req, res) => {
 // FIX: Protect against undefined status overwriting existing value
 router.put('/chapters/:id', requireAuth, requireRole('admin'), async (req, res) => {
     try {
-        const { title, subtitle, icon, location, status, music_theme } = req.body
+        const { title, subtitle, icon, location, status, music_theme, badge_id } = req.body
+        const parsedBadgeId = badge_id ? parseInt(badge_id) : null
+        
         // Only update status if explicitly provided
         let query, params
         if (status !== undefined && status !== null) {
-            query = `UPDATE game_chapters SET title=$1, subtitle=$2, icon=$3, location=$4, music_theme=$5, status=$6, updated_at=NOW()
-                     WHERE id=$7 RETURNING *`
-            params = [title || '', subtitle || '', icon || '📖', location || '', music_theme || null, status, req.params.id]
+            query = `UPDATE game_chapters SET title=$1, subtitle=$2, icon=$3, location=$4, music_theme=$5, status=$6, badge_id=$7, updated_at=NOW()
+                     WHERE id=$8 RETURNING *`
+            params = [title || '', subtitle || '', icon || '📖', location || '', music_theme || null, status, parsedBadgeId, req.params.id]
         } else {
-            query = `UPDATE game_chapters SET title=$1, subtitle=$2, icon=$3, location=$4, music_theme=$5, updated_at=NOW()
-                     WHERE id=$6 RETURNING *`
-            params = [title || '', subtitle || '', icon || '📖', location || '', music_theme || null, req.params.id]
+            query = `UPDATE game_chapters SET title=$1, subtitle=$2, icon=$3, location=$4, music_theme=$5, badge_id=$6, updated_at=NOW()
+                     WHERE id=$7 RETURNING *`
+            params = [title || '', subtitle || '', icon || '📖', location || '', music_theme || null, parsedBadgeId, req.params.id]
         }
         const r = await pool.query(query, params)
         if (!r.rows.length) return res.status(404).json({ error: 'Chapter not found' })
@@ -1184,7 +1199,12 @@ router.put('/landing-slides/reorder/batch', requireAuth, requireRole('admin'), a
 // ─── ROADMAP LEVELS CMS ───────────────────────────────────────────────────────
 router.get('/roadmap-levels', requireAuth, async (req, res) => {
     try {
-        const r = await pool.query('SELECT * FROM roadmap_nodes ORDER BY order_index ASC')
+        const r = await pool.query(`
+            SELECT rn.*, gc.title as chapter_title
+            FROM roadmap_nodes rn
+            LEFT JOIN game_chapters gc ON rn.chapter_id = gc.id
+            ORDER BY rn.order_index ASC
+        `)
         res.json(r.rows)
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch roadmap nodes' })
@@ -1369,6 +1389,100 @@ router.get('/chapters/:id/preview-json', requireAuth, async (req, res) => {
         res.json(vnJson)
     } catch (err) {
         res.status(500).json({ error: 'Failed to generate preview JSON' })
+    }
+})
+
+// =========================================================================
+// CMS Badge Studio Endpoints
+// =========================================================================
+
+// GET /api/cms/badges - List all badges with category names
+router.get('/badges', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT b.*, cb.category_name 
+             FROM badges b 
+             LEFT JOIN category_badge cb ON b.category_id = cb.category_id 
+             ORDER BY b.category_id ASC, b.id ASC`
+        )
+        res.json(result.rows)
+    } catch (err) {
+        console.error('[CMS] GET /badges error:', err.message)
+        res.status(500).json({ error: 'Failed to fetch badges' })
+    }
+})
+
+// GET /api/cms/badge-categories - List all categories
+router.get('/badge-categories', requireAuth, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM category_badge ORDER BY category_id ASC')
+        res.json(result.rows)
+    } catch (err) {
+        console.error('[CMS] GET /badge-categories error:', err.message)
+        res.status(500).json({ error: 'Failed to fetch badge categories' })
+    }
+})
+
+// POST /api/cms/badges - Create a badge
+router.post('/badges', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const { badge_key, name, description, icon, color, category_id } = req.body
+        if (!badge_key || !name) {
+            return res.status(400).json({ error: 'badge_key and name are required' })
+        }
+        const result = await pool.query(
+            `INSERT INTO badges (badge_key, name, description, icon, color, category_id)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING *`,
+            [badge_key.trim(), name.trim(), description || '', icon || '🏆', color || '#FFD60A', category_id ? parseInt(category_id) : null]
+        )
+        res.json(result.rows[0])
+    } catch (err) {
+        console.error('[CMS] POST /badges error:', err.message)
+        res.status(500).json({ error: 'Failed to create badge', detail: err.message })
+    }
+})
+
+// PUT /api/cms/badges/:id - Update a badge
+router.put('/badges/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const badgeId = parseInt(req.params.id)
+        const { badge_key, name, description, icon, color, category_id } = req.body
+        if (!badge_key || !name) {
+            return res.status(400).json({ error: 'badge_key and name are required' })
+        }
+        const result = await pool.query(
+            `UPDATE badges 
+             SET badge_key=$1, name=$2, description=$3, icon=$4, color=$5, category_id=$6
+             WHERE id=$7 RETURNING *`,
+            [badge_key.trim(), name.trim(), description || '', icon || '🏆', color || '#FFD60A', category_id ? parseInt(category_id) : null, badgeId]
+        )
+        if (!result.rows.length) return res.status(404).json({ error: 'Badge not found' })
+        res.json(result.rows[0])
+    } catch (err) {
+        console.error('[CMS] PUT /badges/:id error:', err.message)
+        res.status(500).json({ error: 'Failed to update badge', detail: err.message })
+    }
+})
+
+// DELETE /api/cms/badges/:id - Delete a badge
+router.delete('/badges/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    try {
+        const badgeId = parseInt(req.params.id)
+        
+        // Nullify chapters referencing this badge to prevent foreign key errors
+        await pool.query('UPDATE game_chapters SET badge_id = NULL WHERE badge_id = $1', [badgeId])
+        
+        // Delete user badge unlocks
+        await pool.query('DELETE FROM user_badges WHERE badge_id = $1', [badgeId])
+        
+        // Delete the badge itself
+        const result = await pool.query('DELETE FROM badges WHERE id = $1 RETURNING *', [badgeId])
+        if (!result.rows.length) return res.status(404).json({ error: 'Badge not found' })
+        res.json({ message: 'Badge deleted successfully' })
+    } catch (err) {
+        console.error('[CMS] DELETE /badges/:id error:', err.message)
+        res.status(500).json({ error: 'Failed to delete badge', detail: err.message })
     }
 })
 

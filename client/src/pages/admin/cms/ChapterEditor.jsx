@@ -18,6 +18,7 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
     const [characters, setCharacters] = useState([])
     const [backgrounds, setBackgrounds] = useState([])
     const [uiTypes, setUiTypes] = useState([])
+    const [badges, setBadges] = useState([])
     const [loading, setLoading] = useState(true)
     const [headerForm, setHeaderForm] = useState({})
     const [savingHeader, setSavingHeader] = useState(false)
@@ -38,19 +39,29 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
     const loadAll = async () => {
         setLoading(true)
         try {
-            const [chRes, chrRes, bgRes, uiRes] = await Promise.all([
+            const [chRes, chrRes, bgRes, uiRes, badgesRes] = await Promise.all([
                 axios.get(`/api/cms/chapters/${chapterId}`),
                 axios.get('/api/cms/characters'),
                 axios.get('/api/cms/backgrounds'),
-                axios.get('/api/cms/ui-types')
+                axios.get('/api/cms/ui-types'),
+                axios.get('/api/cms/badges')
             ])
             const ch = chRes.data
             setChapter(ch)
-            setHeaderForm({ title: ch.title, subtitle: ch.subtitle, icon: ch.icon, location: ch.location, status: ch.status, music_theme: ch.music_theme })
+            setHeaderForm({ 
+                title: ch.title, 
+                subtitle: ch.subtitle, 
+                icon: ch.icon, 
+                location: ch.location, 
+                status: ch.status, 
+                music_theme: ch.music_theme,
+                badge_id: ch.badge_id ? ch.badge_id.toString() : ''
+            })
             setScenes(ch.relationalScenes || [])
             setCharacters(chrRes.data)
             setBackgrounds(bgRes.data)
             setUiTypes(uiRes.data)
+            setBadges(badgesRes.data)
         } catch (err) {
             toast.error('Failed to load chapter: ' + (err.response?.data?.error || err.message))
         } finally {
@@ -356,11 +367,26 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
                         <label className="label-xs">Icon (Emoji)</label>
                         <input className="input-field w-full mt-1 text-xl" placeholder="📧" value={headerForm.icon || ''} onChange={e => setHeaderForm(p => ({ ...p, icon: e.target.value }))} />
                     </div>
-                    <div>
+                     <div>
                         <label className="label-xs">Status</label>
                         <select className="input-field w-full mt-1" value={headerForm.status || 'Draft'} onChange={e => setHeaderForm(p => ({ ...p, status: e.target.value }))}>
                             <option value="Draft">⚪ Draft</option>
                             <option value="Published">🟢 Published</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="label-xs">Lencana Reward (Badge)</label>
+                        <select 
+                            className="input-field w-full mt-1 text-sm bg-card-bg border-card-border" 
+                            value={headerForm.badge_id || ''} 
+                            onChange={e => setHeaderForm(p => ({ ...p, badge_id: e.target.value || null }))}
+                        >
+                            <option value="">❌ Tanpa Lencana</option>
+                            {badges.map(b => (
+                                <option key={b.id} value={b.id.toString()}>
+                                    {b.icon || '🏆'} {b.name}
+                                </option>
+                            ))}
                         </select>
                     </div>
                     <div className="col-span-2">
@@ -492,6 +518,7 @@ export default function ChapterEditor({ chapterId, onBack, onRefreshList }) {
                                         characters={characters}
                                         backgrounds={backgrounds}
                                         uiTypes={uiTypes}
+                                        badges={badges}
                                         onUpdate={updateScene}
                                         onDelete={deleteScene}
                                         onMoveUp={() => moveScene(idx, idx - 1)}

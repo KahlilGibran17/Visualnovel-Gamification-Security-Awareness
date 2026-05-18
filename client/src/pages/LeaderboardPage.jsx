@@ -225,7 +225,7 @@ export default function LeaderboardPage() {
                         <h1 className="text-3xl font-bold font-display text-main flex items-center gap-3">
                             <Trophy className="w-8 h-8 text-accent" /> Papan Peringkat
                         </h1>
-                        <p className="text-muted mt-1 text-sm">Siapa Pahlawan Siber terbaik di Akebono minggu ini? 🔥</p>
+                        <p className="text-muted mt-1 text-sm">Siapa Pahlawan Siber terbaik di AAIJ minggu ini? 🔥</p>
                     </div>
                     <div className="md:ml-auto flex gap-2">
                         <button onClick={() => setShowDeptChart(!showDeptChart)} className={`btn-secondary text-xs flex items-center gap-2 ${showDeptChart ? 'bg-primary/20' : ''}`}>

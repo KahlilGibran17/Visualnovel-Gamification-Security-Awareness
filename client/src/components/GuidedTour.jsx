@@ -6,7 +6,7 @@ import { ChevronRight, ChevronLeft, X, CheckCircle2, Info } from 'lucide-react'
 const TOUR_STEPS = [
     {
         id: 'welcome',
-        title: "Selamat Datang di Akebono Cyber Academy!",
+        title: "Selamat Datang di AAIJ Cyber Academy!",
         description: "Mari kita berkeliling sejenak untuk memahami fitur-fitur utama platform ini.",
         target: null, // Modal center
         route: '/dashboard'

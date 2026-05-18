@@ -158,7 +158,7 @@ export default function LandingPage() {
                         <ShieldAlert className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                        <h1 className="font-bold text-lg tracking-wide uppercase text-main">Akebono Cyber Academy</h1>
+                        <h1 className="font-bold text-lg tracking-wide uppercase text-main">AAIJ Cyber Academy</h1>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -208,15 +208,6 @@ export default function LandingPage() {
                                 <Play className="w-5 h-5 fill-current" />
                                 Mulai Simulasi
                             </button>
-                            {!user && (
-                                <button
-                                    onClick={handleLogin}
-                                    className="w-full sm:w-auto px-8 py-4 text-lg text-muted hover:text-main font-medium flex items-center justify-center gap-2 transition-colors border-2 border-card-border rounded-lg hover:bg-card-bg"
-                                >
-                                    Panduan Login
-                                    <ChevronRight className="w-5 h-5" />
-                                </button>
-                            )}
                         </div>
                     </motion.div>
                 </section>
@@ -300,7 +291,7 @@ export default function LandingPage() {
                         <div className="w-20 h-20 bg-accent/10 rounded-3xl flex items-center justify-center mx-auto mb-8 border border-accent/20">
                             <ShieldCheck className="w-10 h-10 text-accent" />
                         </div>
-                        <h3 className="text-3xl font-bold mb-6 text-main">Pengenalan Akebono Cyber Academy</h3>
+                        <h3 className="text-3xl font-bold mb-6 text-main">Pengenalan AAIJ Cyber Academy</h3>
                         <p className="text-xl text-muted leading-relaxed">
                             Aplikasi ini dirancang sebagai platform edukasi berkelanjutan untuk melatih kemampuan personel
                             dalam membedakan komunikasi elektronik yang sah dari upaya pencurian kredensial (phishing).
@@ -369,7 +360,7 @@ export default function LandingPage() {
 
             {/* Footer */}
             <footer className="relative z-10 py-8 text-center text-dim text-sm border-t border-card-border bg-card-bg/20">
-                <p className="mb-2">© 2026 Akebono Brake Astra. Hak Cipta Dilindungi Undang-Undang.</p>
+                <p className="mb-2">© 2026 AAIJ. Hak Cipta Dilindungi Undang-Undang.</p>
                 <p className="font-mono text-xs opacity-50 tracking-wider uppercase">Sistem Keamanan Informasi & Teknologi</p>
             </footer>
         </div>

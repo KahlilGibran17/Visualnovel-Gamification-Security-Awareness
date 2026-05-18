@@ -64,8 +64,28 @@ router.get('/chapters/total', requireAuth, async (req, res) => {
 
 // POST /api/progress/xp
 router.post('/xp', requireAuth, async (req, res) => {
-    const { amount, reason } = req.body
+    const { amount, reason, chapterId } = req.body
     try {
+        let checkChapterId = chapterId ? parseInt(chapterId) : null
+        if (!checkChapterId && reason) {
+            const match = reason.match(/Chapter\s+(\d+)/i)
+            if (match) {
+                checkChapterId = parseInt(match[1])
+            }
+        }
+
+        if (checkChapterId) {
+            const prevProgress = await pool.query(
+                `SELECT completed FROM chapter_progress WHERE user_id = $1 AND chapter_id = $2`,
+                [req.user.userId, checkChapterId]
+            )
+            const alreadyCompleted = prevProgress.rows.length > 0 && prevProgress.rows[0].completed
+
+            if (alreadyCompleted) {
+                return res.json({ message: 'XP ignored (chapter already completed)', amount: 0 })
+            }
+        }
+
         await pool.query(
             `UPDATE users
              SET xp = COALESCE(xp, 0) + $1,
@@ -75,6 +95,7 @@ router.post('/xp', requireAuth, async (req, res) => {
         )
         res.json({ message: 'XP awarded', amount })
     } catch (err) {
+        console.error('[progress] POST /xp error:', err)
         res.status(500).json({ message: 'Server error' })
     }
 })
@@ -82,9 +103,16 @@ router.post('/xp', requireAuth, async (req, res) => {
 // POST /api/progress/chapter/:id/complete
 router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
     const chapterId = parseInt(req.params.id)
-    const { ending, xpEarned, perfect, score, wrongChoices = 0 } = req.body
+    const { ending, xpEarned, perfect, score, wrongChoices = 0, badgeId } = req.body
 
     try {
+        // Check if already completed before
+        const prevProgress = await pool.query(
+            `SELECT completed FROM chapter_progress WHERE user_id = $1 AND chapter_id = $2`,
+            [req.user.userId, chapterId]
+        )
+        const alreadyCompleted = prevProgress.rows.length > 0 && prevProgress.rows[0].completed
+
         // Upsert progress
         await pool.query(
             `INSERT INTO chapter_progress (user_id, chapter_id, completed, ending, score, xp_earned, wrong_choices, completed_at)
@@ -95,14 +123,18 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
             [req.user.userId, chapterId, ending, score, xpEarned, wrongChoices]
         )
 
-        // Award XP
-        await pool.query(
-            `UPDATE users
-             SET xp = COALESCE(xp, 0) + $1,
-                 updated_at = NOW()
-             WHERE id = $2`,
-            [xpEarned, req.user.userId]
-        )
+        // Award XP only if this is the FIRST completion
+        let xpToAward = 0
+        if (!alreadyCompleted) {
+            xpToAward = xpEarned
+            await pool.query(
+                `UPDATE users
+                 SET xp = COALESCE(xp, 0) + $1,
+                     updated_at = NOW()
+                 WHERE id = $2`,
+                [xpToAward, req.user.userId]
+            )
+        }
 
         // Check badges
         const badgeRule = BADGE_RULES[chapterId]
@@ -118,6 +150,47 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
                         [req.user.userId, badge.rows[0].id]
                     )
                 }
+            }
+        }
+
+        // Dynamic Ending-Specific Badge Award
+        // Automatically checks if a badge key matching 'ch{chapterId}-{ending}' or '{ending}' exists, and unlocks it
+        if (ending) {
+            const specificBadge = await pool.query(
+                'SELECT id FROM badges WHERE badge_key = $1 OR badge_key = $2',
+                [`ch${chapterId}-${ending}`, ending]
+            )
+            if (specificBadge.rows.length > 0) {
+                await pool.query(
+                    `INSERT INTO user_badges (user_id, badge_id, earned_at)
+                     VALUES ($1, $2, NOW())
+                     ON CONFLICT DO NOTHING`,
+                    [req.user.userId, specificBadge.rows[0].id]
+                )
+            }
+        }
+
+        // Award dynamic dynamic ending-specific badge assigned via CMS ending scene
+        if (badgeId) {
+            await pool.query(
+                `INSERT INTO user_badges (user_id, badge_id, earned_at)
+                 VALUES ($1, $2, NOW())
+                 ON CONFLICT DO NOTHING`,
+                [req.user.userId, badgeId]
+            )
+        }
+
+        // Dynamic DB Badge Award (fallback or custom badge assigned through cms)
+        const chapterRes = await pool.query('SELECT badge_id FROM game_chapters WHERE id = $1', [chapterId])
+        const dbBadgeId = chapterRes.rows[0]?.badge_id
+        if (dbBadgeId) {
+            if (ending === 'good') {
+                await pool.query(
+                    `INSERT INTO user_badges (user_id, badge_id, earned_at)
+                     VALUES ($1, $2, NOW())
+                     ON CONFLICT DO NOTHING`,
+                    [req.user.userId, dbBadgeId]
+                )
             }
         }
 
@@ -157,7 +230,7 @@ router.post('/chapter/:id/complete', requireAuth, async (req, res) => {
             })
         }
 
-        res.json({ message: 'Chapter completed', xpAwarded: xpEarned })
+        res.json({ message: 'Chapter completed', xpAwarded: alreadyCompleted ? 0 : xpEarned })
     } catch (err) {
         console.error(err)
         res.status(500).json({ message: 'Server error' })

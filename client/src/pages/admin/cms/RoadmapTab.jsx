@@ -30,7 +30,7 @@ export default function RoadmapTab() {
         try {
             const [nodesRes, chRes] = await Promise.all([
                 axios.get('/api/cms/roadmap-levels'),
-                axios.get('/api/cms/chapters')
+                axios.get('/api/cms/chapters?type=all')
             ])
             setNodes(nodesRes.data)
             setChapters(chRes.data)
@@ -179,7 +179,7 @@ export default function RoadmapTab() {
                                                 <div className="ml-6 px-3 py-1 rounded-full bg-input-bg text-xs font-semibold text-muted border border-card-border">
                                                     {node.node_type}
                                                 </div>
-                                                {node.node_type === 'Game' && node.chapter_title && (
+                                                {node.chapter_title && (
                                                     <div className="text-xs text-primary/80 bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
                                                         🔗 {node.chapter_title}
                                                     </div>
@@ -227,19 +227,21 @@ export default function RoadmapTab() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-muted text-xs mb-1">Type</label>
-                                        <select className="input-field w-full text-sm" value={formData.node_type} onChange={e => setFormData({ ...formData, node_type: e.target.value })}>
+                                        <select className="input-field w-full text-sm" value={formData.node_type} onChange={e => setFormData({ ...formData, node_type: e.target.value, chapter_id: '' })}>
                                             <option value="E-Learning">E-Learning</option>
                                             <option value="Game">Game</option>
                                             <option value="Final">Final</option>
                                         </select>
                                     </div>
-                                    {formData.node_type === 'Game' && (
+                                    {(formData.node_type === 'Game' || formData.node_type === 'E-Learning') && (
                                         <div>
-                                            <label className="block text-muted text-xs mb-1">Link to Chapter</label>
+                                            <label className="block text-muted text-xs mb-1">Link to {formData.node_type} Chapter</label>
                                             <select className="input-field w-full text-sm" value={formData.chapter_id} onChange={e => setFormData({ ...formData, chapter_id: e.target.value })}>
                                                 <option value="">Select Chapter...</option>
                                                 {chapters.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.title}</option>
+                                                    <option key={c.id} value={c.id}>
+                                                        {c.title} {c.type ? `(${c.type})` : ''}
+                                                    </option>
                                                 ))}
                                             </select>
                                         </div>

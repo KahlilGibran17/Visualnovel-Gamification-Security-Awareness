@@ -352,7 +352,7 @@ function TargetVisualPicker({ uiType, targets, onAddTarget, uiTypesData = [] }) 
 }
 
 // ─── Scene Card ────────────────────────────────────────────────────────────
-export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTypes = [], onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate }) {
+export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTypes = [], badges = [], onUpdate, onDelete, onMoveUp, onMoveDown, onDuplicate }) {
     const [expanded, setExpanded] = useState(false)
     const [local, setLocal] = useState(scene)
     const [saving, setSaving] = useState(false)
@@ -388,6 +388,11 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
         setLocal(updated)
         clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(() => doSave(updated), 900)
+    }
+
+    const customField = (key, val) => {
+        const updatedCustom = { ...local.custom_data, [key]: val }
+        field('custom_data', updatedCustom)
     }
 
     const doSave = useCallback(async (data) => {
@@ -702,8 +707,8 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
 
                             {/* Ending fields */}
                             {local.scene_type === 'ending' && (
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-3 gap-3">
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div>
                                             <label className="label-xs">🏁 Ending Type</label>
                                             <div className="flex gap-2 mt-1">
@@ -723,9 +728,30 @@ export function SceneCard({ scene, index, scenes, characters, backgrounds, uiTyp
                                             <input className="input-field w-full text-sm mt-1" placeholder="e.g. Chapter Complete!" value={local.ending_title || ''} onChange={e => field('ending_title', e.target.value)} />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label className="label-xs">💬 Ending Message</label>
-                                        <textarea className="input-field w-full text-sm resize-none mt-1" rows={3} placeholder="Summary shown at chapter end..." value={local.ending_message || ''} onChange={e => field('ending_message', e.target.value)} />
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-input-bg border border-card-border rounded-xl p-4 space-y-2 flex flex-col justify-center">
+                                            <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">🏅 Reward Badge on Ending</p>
+                                            <select 
+                                                className="input-field w-full text-sm" 
+                                                value={local.custom_data?.badgeId || ''} 
+                                                onChange={e => {
+                                                    const val = e.target.value ? parseInt(e.target.value) : null;
+                                                    customField('badgeId', val);
+                                                }}
+                                            >
+                                                <option value="">❌ No Badge Awarded</option>
+                                                {badges.map(b => (
+                                                    <option key={b.id} value={b.id}>
+                                                        {b.icon} {b.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="flex flex-col justify-center">
+                                            <label className="label-xs">💬 Ending Message</label>
+                                            <textarea className="input-field w-full text-sm resize-none mt-1 flex-1" rows={3} placeholder="Summary shown at chapter end..." value={local.ending_message || ''} onChange={e => field('ending_message', e.target.value)} />
+                                        </div>
                                     </div>
                                 </div>
                             )}

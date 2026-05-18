@@ -210,14 +210,24 @@ export function GameProvider({ children }) {
         }, 2000)
     }
 
-    const awardXP = async (amount, reason) => {
-        triggerXPPopup(amount)
-        const newXp = (user?.xp || 0) + amount
-        const newLevel = getLevelFromXP(newXp)
-        updateUser({ xp: newXp, level: newLevel.level })
+    const awardXP = async (amount, reason, chapterId = null) => {
         try {
-            await axios.post('/api/progress/xp', { amount, reason })
-        } catch { }
+            const res = await axios.post('/api/progress/xp', { amount, reason, chapterId })
+            const actualAwarded = typeof res.data?.amount === 'number' ? res.data.amount : amount
+            
+            if (actualAwarded > 0) {
+                triggerXPPopup(actualAwarded)
+                const newXp = (user?.xp || 0) + actualAwarded
+                const newLevel = getLevelFromXP(newXp)
+                updateUser({ xp: newXp, level: newLevel.level })
+            }
+        } catch {
+            // Fallback in case of server connection failure
+            triggerXPPopup(amount)
+            const newXp = (user?.xp || 0) + amount
+            const newLevel = getLevelFromXP(newXp)
+            updateUser({ xp: newXp, level: newLevel.level })
+        }
     }
 
     const updateSecurityStats = async (stats) => {
@@ -246,14 +256,24 @@ export function GameProvider({ children }) {
 
     const completeChapter = async (chapterId, result) => {
         const totalXp = result.xpEarned + (result.perfect ? 100 : 0)
+        const wasCompleted = chapterProgress[chapterId]?.completed === true
+
         setChapterProgress(prev => ({
             ...prev,
             [chapterId]: { ...result, completed: true, xpEarned: totalXp }
         }))
-        updateUser({
-            xp: (user?.xp || 0) + totalXp,
-            chaptersCompleted: Math.max(user?.chaptersCompleted || 0, chapterId)
-        })
+
+        if (!wasCompleted) {
+            updateUser({
+                xp: (user?.xp || 0) + totalXp,
+                chaptersCompleted: Math.max(user?.chaptersCompleted || 0, chapterId)
+            })
+        } else {
+            updateUser({
+                chaptersCompleted: Math.max(user?.chaptersCompleted || 0, chapterId)
+            })
+        }
+
         try {
             await axios.post(`/api/progress/chapter/${chapterId}/complete`, result)
         } catch { }
@@ -321,6 +341,7 @@ export function GameProvider({ children }) {
             completeTour,
             setTourStep: setCurrentStep,
             loadLeaderboard,
+            loadProgress,
             loading,
             error,
             leaderboardLoading,

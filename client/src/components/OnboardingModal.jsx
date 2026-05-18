@@ -48,7 +48,7 @@ export default function OnboardingModal() {
                         <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(230,57,70,0.5)]">
                             <ShieldAlert className="w-8 h-8 text-white" />
                         </div>
-                        <h2 className="text-2xl font-black font-display text-white">Selamat Datang di Akebono!</h2>
+                        <h2 className="text-2xl font-black font-display text-white">Selamat Datang di AAIJ!</h2>
                         <p className="text-white/70 mt-2 text-sm leading-relaxed">
                             Platform pelatihan keamanan siber interaktif yang akan melatih insting Anda dalam mendeteksi dan menghadapi ancaman digital.
                         </p>

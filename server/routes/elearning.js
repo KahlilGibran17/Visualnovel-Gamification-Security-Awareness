@@ -382,6 +382,21 @@ router.post('/lessons/:id/complete', requireAuth, async (req, res) => {
             [userId, chapterId, chapterXp]
         )
 
+        // Otomatis berikan lencana/badge reward chapter ini jika ada
+        const chapterRes = await client.query(
+            `SELECT badge_id FROM game_chapters WHERE id = $1`,
+            [chapterId]
+        )
+        const badgeId = chapterRes.rows[0]?.badge_id
+        if (badgeId) {
+            await client.query(
+                `INSERT INTO user_badges (user_id, badge_id, earned_at)
+                 VALUES ($1, $2, NOW())
+                 ON CONFLICT (user_id, badge_id) DO NOTHING`,
+                [userId, badgeId]
+            )
+        }
+
         return true
     }
 
@@ -414,12 +429,11 @@ router.post('/lessons/:id/complete', requireAuth, async (req, res) => {
         )
 
         if (existingRes.rows.length > 0) {
-            const existingXpEarned = Number(existingRes.rows[0].xp_earned) || 0
             const chapterCompleted = await syncChapterProgressIfChapterDone(client, chapterId)
             await client.query('COMMIT')
 
             return res.json({
-                xpAwarded: existingXpEarned,
+                xpAwarded: 0,
                 alreadyCompleted: true,
                 chapterCompleted,
             })
@@ -543,9 +557,9 @@ router.get('/admin/lessons', requireAuth, requireRole('admin', 'manager'), async
 })
 
 // ========================================================
-// ADMIN — GET /api/elearning/admin/chapters
+// GET /api/elearning/admin/chapters (User & Admin shared headers list)
 // ========================================================
-router.get('/admin/chapters', requireAuth, requireRole('admin', 'manager'), async (req, res) => {
+router.get('/admin/chapters', requireAuth, async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 
@@ -647,13 +661,18 @@ router.post('/admin/lessons', requireAuth, requireRole('admin', 'manager'), asyn
             questions = [],
         } = req.body
 
+        const parsedChapterId = parseInt(chapterId || chapter_id, 10)
+        if (isNaN(parsedChapterId)) {
+            return res.status(400).json({ message: 'Chapter ID must be a valid number' })
+        }
+
         const insert = await pool.query(
             `INSERT INTO elearning_lessons
              (chapter_id, title, description, duration, xp_reward, is_active, video_url, created_at, updated_at)
              VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW())
              RETURNING id, chapter_id, title, description, duration, xp_reward, is_active, video_url`,
             [
-                chapterId || chapter_id || null,
+                parsedChapterId,
                 title || '',
                 description || '',
                 duration || 0,
@@ -666,12 +685,23 @@ router.post('/admin/lessons', requireAuth, requireRole('admin', 'manager'), asyn
         const lessonId = insert.rows[0].id
 
         for (const [i, q] of questions.entries()) {
+            const parsedTimestamp = parseInt(q.timestampSeconds ?? q.timestamp_seconds, 10) || 0
+            const parsedQXp = parseInt(q.xpReward ?? q.xp_reward, 10) || 0
+            const parsedQOrder = parseInt(q.orderIndex, 10) || (i + 1)
+
             const qRes = await pool.query(
                 `INSERT INTO elearning_questions
-                 (lesson_id, question_text, timestamp_seconds, xp_reward, order_index, created_at)
-                 VALUES ($1,$2,$3,$4,$5,NOW())
+                 (lesson_id, question_text, question_explains, timestamp_seconds, xp_reward, order_index, created_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,NOW())
                  RETURNING id`,
-                [lessonId, q.questionText || q.question_text || '', q.timestampSeconds ?? q.timestamp_seconds ?? 0, q.xpReward ?? q.xp_reward ?? 0, q.orderIndex ?? i + 1]
+                [
+                    lessonId,
+                    q.questionText || q.question_text || '',
+                    q.questionExplains || q.question_explains || '',
+                    parsedTimestamp,
+                    parsedQXp,
+                    parsedQOrder
+                ]
             )
 
             const questionId = qRes.rows[0].id
@@ -697,36 +727,228 @@ router.post('/admin/chapters', requireAuth, requireRole('admin'), async (req, re
         const { 
             title, description, 
             badge_name, badge_icon, badge_description, badge_color, badge_key, 
-            category_id 
+            category_id, badge_id
         } = req.body
 
-        // 1. Insert Badge
-        const badgeInsert = await pool.query(
-            `INSERT INTO badges (badge_key, name, description, icon, color, category_id)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING id`,
-            [badge_key, badge_name, badge_description || '', badge_icon || '🏆', badge_color || '#FFD60A', category_id || null]
-        )
-        const badgeId = badgeInsert.rows[0].id
+        let finalBadgeId = badge_id ? parseInt(badge_id) : null
+
+        // 1. Jika tidak ada badge_id terpilih, buat badge baru (Quick Create)
+        if (!finalBadgeId && badge_key && badge_name) {
+            const badgeInsert = await pool.query(
+                `INSERT INTO badges (badge_key, name, description, icon, color, category_id)
+                 VALUES ($1, $2, $3, $4, $5, $6)
+                 RETURNING id`,
+                [badge_key, badge_name, badge_description || '', badge_icon || '🏆', badge_color || '#FFD60A', category_id || null]
+            )
+            finalBadgeId = badgeInsert.rows[0].id
+        }
 
         // 2. Insert Chapter (pointing to game_chapters)
         const chapterInsert = await pool.query(
             `INSERT INTO game_chapters (title, description, created_at, badge_id, type)
              VALUES ($1, $2, NOW(), $3, 'E-Learning')
              RETURNING id, title, description, badge_id`,
-            [title || '', description || '', badgeId]
+            [title || '', description || '', finalBadgeId]
         )
 
         return res.json({ 
             chapter: {
                 ...chapterInsert.rows[0],
-                badge_key: badge_key,
-                category_id: category_id
+                badge_key: badge_key || null,
+                category_id: category_id || null
             } 
         })
     } catch (err) {
         console.error('POST /admin/chapters error:', err.message)
         return res.status(500).json({ message: err.message })
+    }
+})
+
+router.put('/admin/lessons/:id', requireAuth, requireRole('admin', 'manager'), async (req, res) => {
+    const lessonId = Number(req.params.id)
+    console.log('📦 req.body:', JSON.stringify(req.body, null, 2))
+    const {
+        chapterId, chapter_id,
+        title, description, duration,
+        xpReward, xp_reward,
+        isActive, is_active,
+        questions = [],
+    } = req.body
+
+    const parsedChapterId = parseInt(chapterId || chapter_id, 10)
+    if (isNaN(parsedChapterId)) {
+        return res.status(400).json({ message: 'Chapter ID must be a valid number' })
+    }
+
+    const client = await pool.connect()
+    try {
+        await client.query('BEGIN')
+
+        await client.query(
+            `UPDATE elearning_lessons
+             SET chapter_id=$1, title=$2, description=$3, duration=$4,
+                 xp_reward=$5, is_active=$6, updated_at=NOW()
+             WHERE id=$7`,
+            [
+                parsedChapterId,
+                title ?? '',
+                description ?? '',
+                duration || 0,
+                xpReward ?? xp_reward ?? 0,
+                isActive ?? is_active ?? true,
+                lessonId
+            ]
+        )
+
+        // Hapus semua questions & options lama
+        const oldQs = await client.query(
+            'SELECT id FROM elearning_questions WHERE lesson_id=$1', [lessonId]
+        )
+        if (oldQs.rows.length) {
+            const oldQIds = oldQs.rows.map(q => q.id)
+            // hapus answers dulu baru options
+            await client.query('DELETE FROM elearning_answers WHERE question_id = ANY($1::int[])', [oldQIds])
+            await client.query('DELETE FROM elearning_options WHERE question_id = ANY($1::int[])', [oldQIds])
+        }
+        await client.query('DELETE FROM elearning_questions WHERE lesson_id=$1', [lessonId])
+
+        for (const [i, q] of questions.entries()) {
+            const parsedTimestamp = parseInt(q.timestampSeconds ?? q.timestamp_seconds, 10) || 0
+            const parsedQXp = parseInt(q.xpReward ?? q.xp_reward, 10) || 0
+            const parsedQOrder = parseInt(q.orderIndex, 10) || (i + 1)
+
+            const qRes = await client.query(
+                `INSERT INTO elearning_questions
+                 (lesson_id, question_text, question_explains, timestamp_seconds, xp_reward, order_index, created_at)
+                 VALUES ($1,$2,$3,$4,$5,$6,NOW())
+                 RETURNING id`,
+                [
+                    lessonId,
+                    q.questionText || '',
+                    q.questionExplains || '',
+                    parsedTimestamp,
+                    parsedQXp,
+                    parsedQOrder
+                ]
+            )
+
+            const questionId = qRes.rows[0].id
+            const options = q.options || []
+            for (const [oi, opt] of options.entries()) {
+                await client.query(
+                    `INSERT INTO elearning_options (question_id, option_text, is_correct, order_index)
+                     VALUES ($1,$2,$3,$4)`,
+                    [questionId, opt.optionText || opt.option_text || '', opt.isCorrect ?? opt.is_correct ?? false, opt.orderIndex ?? oi + 1]
+                )
+            }
+        }
+
+        await client.query('COMMIT')
+        return res.json({ ok: true })
+    } catch (err) {
+        await client.query('ROLLBACK')
+        console.error('PUT error detail:', err.message)
+        console.error('PUT error stack:', err.stack)
+        return res.status(500).json({ message: err.message })
+    } finally {
+        client.release()
+    }
+})
+
+// ADMIN — DELETE /api/elearning/admin/chapters/:id (Permanent Delete)
+router.delete('/admin/chapters/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    const chapterId = Number(req.params.id)
+    if (!Number.isInteger(chapterId) || chapterId <= 0) {
+        return res.status(400).json({ message: 'Invalid chapter ID' })
+    }
+
+    const client = await pool.connect()
+    try {
+        await client.query('BEGIN')
+
+        // 1. Dapatkan semua lessons di chapter ini
+        const lessonsRes = await client.query(
+            'SELECT id FROM elearning_lessons WHERE chapter_id = $1',
+            [chapterId]
+        )
+        const lessonIds = lessonsRes.rows.map(r => r.id)
+
+        if (lessonIds.length > 0) {
+            // Hapus answers untuk seluruh lesson questions
+            const oldQs = await client.query(
+                'SELECT id FROM elearning_questions WHERE lesson_id = ANY($1::int[])',
+                [lessonIds]
+            )
+            if (oldQs.rows.length > 0) {
+                const oldQIds = oldQs.rows.map(q => q.id)
+                await client.query('DELETE FROM elearning_answers WHERE question_id = ANY($1::int[])', [oldQIds])
+                await client.query('DELETE FROM elearning_options WHERE question_id = ANY($1::int[])', [oldQIds])
+            }
+            await client.query('DELETE FROM elearning_questions WHERE lesson_id = ANY($1::int[])', [lessonIds])
+            await client.query('DELETE FROM elearning_progress WHERE lesson_id = ANY($1::int[])', [lessonIds])
+            await client.query('DELETE FROM elearning_lessons WHERE chapter_id = $1', [chapterId])
+        }
+
+        // 2. Hapus pretest answers, options, attempts, questions
+        // Hapus pretest_user_answers
+        await client.query(
+            `DELETE FROM pretest_user_answers 
+             WHERE pq_id IN (SELECT pq_id FROM pretest_questions WHERE ch_id = $1)`,
+            [chapterId]
+        )
+        // Hapus pretest_options
+        await client.query(
+            `DELETE FROM pretest_options 
+             WHERE pq_id IN (SELECT pq_id FROM pretest_questions WHERE ch_id = $1)`,
+            [chapterId]
+        )
+        // Hapus pretest_questions
+        await client.query('DELETE FROM pretest_questions WHERE ch_id = $1', [chapterId])
+        
+        // Hapus pretest_attempts
+        await client.query('DELETE FROM pretest_attempts WHERE ch_id = $1', [chapterId])
+
+        // 3. Hapus roadmap nodes referencing this chapter
+        await client.query('DELETE FROM roadmap_nodes WHERE chapter_id = $1', [chapterId])
+
+        // 4. Hapus chapter_progress referencing this chapter
+        await client.query('DELETE FROM chapter_progress WHERE chapter_id = $1', [chapterId])
+
+        // 5. Terakhir, dapatkan badge_id chapter untuk di-delete agar tidak ada badge sampah
+        const badgeRes = await client.query(
+            'SELECT badge_id FROM game_chapters WHERE id = $1',
+            [chapterId]
+        )
+
+        // Hapus chapter
+        const deleteChRes = await client.query(
+            'DELETE FROM game_chapters WHERE id = $1 RETURNING id',
+            [chapterId]
+        )
+
+        if (deleteChRes.rows.length === 0) {
+            await client.query('ROLLBACK')
+            return res.status(404).json({ message: 'Chapter tidak ditemukan' })
+        }
+
+        // Hapus badge jika ada
+        const badgeId = badgeRes.rows[0]?.badge_id
+        if (badgeId) {
+            await client.query('DELETE FROM user_badges WHERE badge_id = $1', [badgeId])
+            await client.query('DELETE FROM badges WHERE id = $1', [badgeId])
+        }
+
+        await client.query('COMMIT')
+        res.json({
+            message: 'Chapter beserta seluruh modul dan pre-test di dalamnya berhasil dihapus secara permanen',
+            deletedId: chapterId
+        })
+    } catch (err) {
+        await client.query('ROLLBACK')
+        console.error('DELETE /api/elearning/admin/chapters/:id error:', err)
+        res.status(500).json({ message: 'Server error: ' + err.message })
+    } finally {
+        client.release()
     }
 })
 

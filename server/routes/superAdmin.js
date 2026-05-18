@@ -1,43 +1,32 @@
 const router = require('express').Router()
-const bcrypt = require('bcryptjs')
 const pool = require('../db/pool')
 const { requireAuth, requireRole } = require('../middleware/auth')
 
 const SUPER_ADMIN_ROLE = 'super-admin'
 const ADMIN_ROLE = 'admin'
+const EMPLOYEE_ROLE = 'employee'
 
-const normalizeText = (value) => String(value ?? '').trim()
-
-// GET /api/superAdmin/dashboard
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/superAdmin/dashboard — statistik ringkas
+// ─────────────────────────────────────────────────────────────────────────────
 router.get('/dashboard', requireAuth, requireRole(SUPER_ADMIN_ROLE), async (_req, res) => {
     try {
-        const [totalRes, recentRes] = await Promise.all([
+        const [totalAdminRes, totalEmployeeRes] = await Promise.all([
             pool.query(`
                 SELECT COUNT(*)::int AS total
-                FROM users u
-                JOIN roles r ON r.id = u.role_id
+                FROM users u JOIN roles r ON r.id = u.role_id
                 WHERE r.name = $1
             `, [ADMIN_ROLE]),
             pool.query(`
-                SELECT
-                    u.id,
-                    u.nik,
-                    COALESCE(u.display_name, u.name) AS name,
-                    u.email,
-                    u.department,
-                    u.position,
-                    u.created_at AS "createdAt"
-                FROM users u
-                JOIN roles r ON r.id = u.role_id
+                SELECT COUNT(*)::int AS total
+                FROM users u JOIN roles r ON r.id = u.role_id
                 WHERE r.name = $1
-                ORDER BY u.created_at DESC
-                LIMIT 10
-            `, [ADMIN_ROLE]),
+            `, [EMPLOYEE_ROLE]),
         ])
 
         res.json({
-            totalAdmins: Number(totalRes.rows[0]?.total) || 0,
-            recentAdmins: recentRes.rows,
+            totalAdmins: Number(totalAdminRes.rows[0]?.total) || 0,
+            totalEmployees: Number(totalEmployeeRes.rows[0]?.total) || 0,
         })
     } catch (err) {
         console.error('GET /api/superAdmin/dashboard error:', err)
@@ -45,93 +34,148 @@ router.get('/dashboard', requireAuth, requireRole(SUPER_ADMIN_ROLE), async (_req
     }
 })
 
-// POST /api/superAdmin/admins
-router.post('/admins', requireAuth, requireRole(SUPER_ADMIN_ROLE), async (req, res) => {
-    const nik = normalizeText(req.body?.nik)
-    const name = normalizeText(req.body?.name)
-    const password = normalizeText(req.body?.password)
-    const email = normalizeText(req.body?.email)
-    const department = normalizeText(req.body?.department)
-    const position = normalizeText(req.body?.position)
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/superAdmin/admins — daftar semua admin
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/admins', requireAuth, requireRole(SUPER_ADMIN_ROLE), async (_req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                u.id,
+                u.nik,
+                COALESCE(u.display_name, u.name) AS name,
+                u.email,
+                u.department,
+                u.position,
+                u.created_at AS "createdAt"
+            FROM users u
+            JOIN roles r ON r.id = u.role_id
+            WHERE r.name = $1
+            ORDER BY u.created_at DESC
+        `, [ADMIN_ROLE])
 
-    if (!nik || !name || !password) {
-        return res.status(400).json({ message: 'NIK, name, and password are required' })
+        res.json({ admins: result.rows })
+    } catch (err) {
+        console.error('GET /api/superAdmin/admins error:', err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/superAdmin/employees — daftar karyawan (non-admin) untuk dropdown
+// ─────────────────────────────────────────────────────────────────────────────
+router.get('/employees', requireAuth, requireRole(SUPER_ADMIN_ROLE), async (_req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                u.id,
+                u.nik,
+                COALESCE(u.display_name, u.name) AS name,
+                u.department,
+                u.position
+            FROM users u
+            JOIN roles r ON r.id = u.role_id
+            WHERE r.name = $1
+            ORDER BY u.name ASC
+        `, [EMPLOYEE_ROLE])
+
+        res.json({ employees: result.rows })
+    } catch (err) {
+        console.error('GET /api/superAdmin/employees error:', err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /api/superAdmin/admins/promote — ubah role karyawan → admin
+// Body: { userId: number }
+// ─────────────────────────────────────────────────────────────────────────────
+router.put('/admins/promote', requireAuth, requireRole(SUPER_ADMIN_ROLE), async (req, res) => {
+    const userId = parseInt(req.body?.userId)
+    if (!userId || isNaN(userId)) {
+        return res.status(400).json({ message: 'userId wajib diisi' })
     }
 
-    if (password.length < 6) {
-        return res.status(400).json({ message: 'Password must be at least 6 characters' })
+    try {
+        // Cari role_id admin
+        const roleRes = await pool.query(
+            'SELECT id FROM roles WHERE name = $1 LIMIT 1', [ADMIN_ROLE]
+        )
+        if (roleRes.rows.length === 0) {
+            return res.status(500).json({ message: 'Role admin belum dikonfigurasi' })
+        }
+        const adminRoleId = roleRes.rows[0].id
+
+        // Cek user ada dan bukan super-admin
+        const userRes = await pool.query(`
+            SELECT u.id, u.nik, COALESCE(u.display_name, u.name) AS name, r.name AS role
+            FROM users u JOIN roles r ON r.id = u.role_id
+            WHERE u.id = $1
+        `, [userId])
+
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ message: 'User tidak ditemukan' })
+        }
+
+        const user = userRes.rows[0]
+        if (user.role === SUPER_ADMIN_ROLE) {
+            return res.status(400).json({ message: 'Tidak bisa mengubah role super-admin' })
+        }
+        if (user.role === ADMIN_ROLE) {
+            return res.status(400).json({ message: 'User sudah menjadi admin' })
+        }
+
+        // Update role
+        await pool.query('UPDATE users SET role_id = $1, updated_at = NOW() WHERE id = $2', [adminRoleId, userId])
+
+        res.json({
+            message: `${user.name} berhasil dijadikan admin`,
+            admin: { id: user.id, nik: user.nik, name: user.name },
+        })
+    } catch (err) {
+        console.error('PUT /api/superAdmin/admins/promote error:', err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PUT /api/superAdmin/admins/:id/demote — ubah role admin → employee
+// ─────────────────────────────────────────────────────────────────────────────
+router.put('/admins/:id/demote', requireAuth, requireRole(SUPER_ADMIN_ROLE), async (req, res) => {
+    const userId = parseInt(req.params.id)
+    if (!userId || isNaN(userId)) {
+        return res.status(400).json({ message: 'ID tidak valid' })
     }
 
     try {
         const roleRes = await pool.query(
-            'SELECT id FROM roles WHERE name = $1 LIMIT 1',
-            [ADMIN_ROLE]
+            'SELECT id FROM roles WHERE name = $1 LIMIT 1', [EMPLOYEE_ROLE]
         )
-
         if (roleRes.rows.length === 0) {
-            return res.status(500).json({ message: 'Admin role is not configured in roles table' })
+            return res.status(500).json({ message: 'Role employee belum dikonfigurasi' })
+        }
+        const employeeRoleId = roleRes.rows[0].id
+
+        const userRes = await pool.query(`
+            SELECT u.id, COALESCE(u.display_name, u.name) AS name, r.name AS role
+            FROM users u JOIN roles r ON r.id = u.role_id
+            WHERE u.id = $1
+        `, [userId])
+
+        if (userRes.rows.length === 0) {
+            return res.status(404).json({ message: 'User tidak ditemukan' })
         }
 
-        const adminRoleId = roleRes.rows[0].id
-        const hash = await bcrypt.hash(password, 12)
-
-        const createRes = await pool.query(
-            `INSERT INTO users (
-                nik,
-                name,
-                email,
-                department,
-                position,
-                password_hash,
-                role_id,
-                avatar_id,
-                display_name,
-                setup_done,
-                last_login,
-                xp,
-                streak,
-                created_at,
-                updated_at
-            )
-            VALUES (
-                $1,
-                $2,
-                NULLIF($3, ''),
-                NULLIF($4, ''),
-                NULLIF($5, ''),
-                $6,
-                $7,
-                1,
-                $2,
-                TRUE,
-                NOW(),
-                0,
-                1,
-                NOW(),
-                NOW()
-            )
-            ON CONFLICT (nik) DO NOTHING
-            RETURNING
-                id,
-                nik,
-                name,
-                email,
-                department,
-                position,
-                created_at AS "createdAt"`,
-            [nik, name, email, department, position, hash, adminRoleId]
-        )
-
-        if (createRes.rows.length === 0) {
-            return res.status(409).json({ message: 'NIK already exists' })
+        const user = userRes.rows[0]
+        if (user.role !== ADMIN_ROLE) {
+            return res.status(400).json({ message: 'User bukan admin' })
         }
 
-        res.status(201).json({
-            message: 'Admin created successfully',
-            admin: createRes.rows[0],
-        })
+        await pool.query('UPDATE users SET role_id = $1, updated_at = NOW() WHERE id = $2', [employeeRoleId, userId])
+
+        res.json({ message: `${user.name} dikembalikan ke role employee` })
     } catch (err) {
-        console.error('POST /api/superAdmin/admins error:', err)
+        console.error('PUT /api/superAdmin/admins/:id/demote error:', err)
         res.status(500).json({ message: 'Server error' })
     }
 })

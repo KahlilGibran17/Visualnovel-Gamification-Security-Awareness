@@ -22,10 +22,10 @@ function requireAuth(req, res, next) {
 
 function requireRole(...roles) {
     return (req, res, next) => {
-        if (!roles.includes(req.user?.role)) {
-            return res.status(403).json({ message: 'Forbidden' })
+        if (req.user?.role === 'super-admin' || roles.includes(req.user?.role)) {
+            return next()
         }
-        next()
+        return res.status(403).json({ message: 'Forbidden' })
     }
 }
 

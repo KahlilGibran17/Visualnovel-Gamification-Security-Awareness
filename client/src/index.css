@@ -6,7 +6,7 @@
   /* Common Colors */
   --primary: #E63946;
   --primary-dark: #C1121F;
-  --accent: #FFD60A;
+  --accent: #ff9500;
   --success: #06D6A0;
   
   /* Dark Mode (Default) */
@@ -17,6 +17,7 @@
   --text-dim: rgba(255, 255, 255, 0.3);
   --card-bg: rgba(255, 255, 255, 0.05);
   --card-bg-dark: rgba(0, 0, 0, 0.3);
+  --card-bg-light: rgba(255, 255, 255, 0.6);
   --card-border: rgba(255, 255, 255, 0.05);
   --input-bg: rgba(255, 255, 255, 0.08);
   --shadow-main: rgba(0, 0, 0, 0.3);
@@ -286,6 +287,30 @@
     border: 1px solid rgba(230, 57, 70, 0.3);
   }
 
+  /* Compact Sub-Nav for nested sidebar items */
+  .sub-nav-item {
+    color: var(--text-muted);
+    @apply flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 cursor-pointer;
+  }
+
+  .sub-nav-item:hover {
+    color: var(--text-main);
+    background: var(--input-bg);
+  }
+
+  .sub-nav-item-active {
+    @apply flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium;
+    color: var(--primary);
+    background: var(--input-bg);
+    border: 1px solid var(--card-border);
+  }
+
+  [data-theme="dark"] .sub-nav-item-active {
+    color: #ffffff;
+    background: linear-gradient(135deg, rgba(230, 57, 70, 0.25), rgba(230, 57, 70, 0.05));
+    border: 1px solid rgba(230, 57, 70, 0.25);
+  }
+
   /* Chapter Map Node */
   .chapter-node {
     @apply relative flex flex-col items-center gap-2 cursor-pointer transition-all duration-300;
@@ -339,6 +364,12 @@
 }
 
 @layer utilities {
+  .layout-main > * {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100%;
+  }
+
   .text-gradient {
     background: linear-gradient(135deg, #E63946, #FFD60A);
     -webkit-background-clip: text;

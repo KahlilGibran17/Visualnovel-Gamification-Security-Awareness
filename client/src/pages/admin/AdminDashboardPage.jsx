@@ -211,7 +211,7 @@ export default function AdminDashboardPage() {
                 {/* Header */}
                 <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
                     <h1 className="text-3xl font-bold font-display text-main mb-1">⚙️ Admin Dashboard</h1>
-                    <p className="text-muted">Akebono Cyber Academy — Management Overview</p>
+                    <p className="text-muted">AAIJ Cyber Academy — Management Overview</p>
                 </motion.div>
 
                 {/* KPI Cards */}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BookOpen, Users, Image, Film, Plus, Edit3, Trash2, Globe, Clock, Loader2, Search, Upload, ArrowLeft, Home, Monitor } from 'lucide-react'
+import { BookOpen, Users, Image, Film, Plus, Edit3, Trash2, Globe, Clock, Loader2, Search, Upload, ArrowLeft, Home, Monitor, Award } from 'lucide-react'
 import toast from 'react-hot-toast'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
@@ -9,11 +9,13 @@ import { CharactersTab, BackgroundsTab } from './cms/CharsBgsTabs.jsx'
 import { UITypesTab } from './cms/UITypesTab.jsx'
 import LandingSlidesTab from './cms/LandingSlidesTab.jsx'
 import RoadmapTab from './cms/RoadmapTab.jsx'
+import BadgesTab from './cms/BadgesTab.jsx'
 import { Map } from 'lucide-react'
 
 const TABS = [
     { id: 'roadmap', label: 'Roadmap', icon: Map },
     { id: 'chapters', label: 'Chapters', icon: BookOpen },
+    { id: 'badges', label: 'Badge Studio', icon: Award },
     { id: 'characters', label: 'Characters', icon: Users },
     { id: 'backgrounds', label: 'Backgrounds', icon: Image },
     { id: 'ui-types', label: 'UI Types', icon: Monitor },
@@ -308,6 +310,7 @@ export default function AdminCMSPage() {
                                 />
                                 : <ChapterList key={listKey} onEdit={openEditor} />
                         )}
+                        {activeTab === 'badges' && <BadgesTab />}
                         {activeTab === 'characters' && <CharactersTab />}
                         {activeTab === 'backgrounds' && <BackgroundsTab />}
                         {activeTab === 'ui-types' && <UITypesTab />}

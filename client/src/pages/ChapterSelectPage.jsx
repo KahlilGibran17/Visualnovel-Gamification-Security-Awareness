@@ -56,15 +56,30 @@ const generatePath = (nodes, toIdx = nodes.length - 1) => {
 }
 
 export default function ChapterSelectPage() {
-    const { ROADMAP_NODES, chapterProgress } = useGame()
+    const { ROADMAP_NODES, chapterProgress, chapters = [], loadProgress } = useGame()
     const { theme } = Layout.useTheme ? Layout.useTheme() : { theme: 'dark' } // Fallback if context not directly available
     // Actually useTheme is exported from contexts
     const navigate = useNavigate()
     const [activeWorld, setActiveWorld] = useState('bg-[#0f172a]')
     const [hoveredNode, setHoveredNode] = useState(null)
 
+    useEffect(() => {
+        if (loadProgress) {
+            loadProgress()
+        }
+    }, [loadProgress])
+
+    const isElearningCompleted = (chapterId) => {
+        if (chapterId) {
+            return chapterProgress[chapterId]?.completed === true
+        }
+        const elearningChapters = chapters.filter(c => c.type === 'E-Learning')
+        if (elearningChapters.length === 0) return true
+        return elearningChapters.some(c => chapterProgress[c.id]?.completed === true)
+    }
+
     const getProgressId = (node) => {
-        if (node.node_type === 'E-Learning') return 0
+        if (node.node_type === 'E-Learning') return node.chapter_id || 0
         if (node.node_type === 'Final') return 999
         return node.chapter_id
     }
@@ -90,12 +105,21 @@ export default function ChapterSelectPage() {
         return {
             ...node,
             pId,
-            isCompleted: chapterProgress[pId]?.completed === true,
+            isCompleted: node.node_type === 'E-Learning'
+                ? isElearningCompleted(node.chapter_id)
+                : chapterProgress[pId]?.completed === true,
             xpEarned: chapterProgress[pId]?.xpEarned || 0,
             isElearning: node.node_type === 'E-Learning',
             action: () => {
-                if (node.node_type === 'E-Learning') navigate('/elearning')
-                else if (node.node_type === 'Game' && node.chapter_id) navigate(`/play/${node.chapter_id}`)
+                if (node.node_type === 'E-Learning') {
+                    if (node.chapter_id) {
+                        navigate(`/elearning?chapterId=${node.chapter_id}`)
+                    } else {
+                        navigate('/elearning')
+                    }
+                } else if (node.node_type === 'Game' && node.chapter_id) {
+                    navigate(`/play/${node.chapter_id}`)
+                }
             }
         }
     })
@@ -142,7 +166,7 @@ export default function ChapterSelectPage() {
                             <Sparkles className="text-accent w-8 h-8" />
                             Peta Misi Utama
                         </h1>
-                        <p className="text-muted max-w-xl mx-auto text-sm md:text-base mb-2 font-medium">Jadilah Pahlawan Siber Akebono! Temukan semua kejanggalan sebelum terlambat dan amankan aset perusahaan dari serangan siber.</p>
+                        <p className="text-muted max-w-xl mx-auto text-sm md:text-base mb-2 font-medium">Jadilah Pahlawan Siber AAIJ! Temukan semua kejanggalan sebelum terlambat dan amankan aset perusahaan dari serangan siber.</p>
                         <div className="inline-flex items-center gap-2 bg-accent/20 border border-accent/40 text-accent px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4">
                             🏆 Top 3 Mendapatkan Reward Eksklusif
                         </div>
@@ -244,11 +268,58 @@ export default function ChapterSelectPage() {
                                                 animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
                                                 exit={{ opacity: 0, scale: 0.9 }}
                                             >
-                                                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-dim mb-1.5">
-                                                    <MapPin className="w-3 h-3 text-dim/60" /> {node.location}
+                                                 <div className="flex items-center justify-between gap-2 mb-2">
+                                                     <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-dim">
+                                                         <MapPin className="w-3 h-3 text-dim/60" /> {node.location}
+                                                     </div>
+                                                     <span className={`text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded border select-none ${
+                                                         node.isCompleted ? 'text-accent border-accent/25 bg-accent/5' :
+                                                         !node.isLocked ? 'text-primary border-primary/25 bg-primary/5' : 'text-dim border-white/5'
+                                                     }`}>
+                                                         STEP {i + 1}
+                                                     </span>
+                                                 </div>
+                                                 <h3 className={`text-lg font-black font-display leading-tight ${node.isLocked ? 'text-dim' : 'text-main'}`}>{node.title}</h3>
+                                                 <p className="text-xs text-muted leading-relaxed mt-1 mb-2">{node.subtitle}</p>
+                                                
+                                                {/* Visual Flow Steps with Numbers */}
+                                                <div className="flex items-center gap-1 mb-3 select-none flex-wrap">
+                                                    {node.isElearning ? (
+                                                        <>
+                                                            <div className="flex items-center gap-0.5">
+                                                                <span className="w-3 h-3 rounded-full bg-sky-400/20 text-sky-400 border border-sky-400/40 flex items-center justify-center text-[7px] font-extrabold flex-shrink-0">1</span>
+                                                                <span className="text-[8px] text-sky-400 font-bold">Pre-Test</span>
+                                                            </div>
+                                                            <span className="text-white/20 text-[6px]">➔</span>
+                                                            <div className="flex items-center gap-0.5">
+                                                                <span className="w-3 h-3 rounded-full bg-indigo-400/20 text-indigo-400 border border-indigo-400/40 flex items-center justify-center text-[7px] font-extrabold flex-shrink-0">2</span>
+                                                                <span className="text-[8px] text-indigo-400 font-bold">Video</span>
+                                                            </div>
+                                                            <span className="text-white/20 text-[6px]">➔</span>
+                                                            <div className="flex items-center gap-0.5">
+                                                                <span className="w-3 h-3 rounded-full bg-emerald-400/20 text-emerald-400 border border-emerald-400/40 flex items-center justify-center text-[7px] font-extrabold flex-shrink-0">3</span>
+                                                                <span className="text-[8px] text-emerald-400 font-bold">Kuis</span>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center gap-0.5">
+                                                                <span className="w-3 h-3 rounded-full bg-amber-400/20 text-amber-400 border border-amber-400/40 flex items-center justify-center text-[7px] font-extrabold flex-shrink-0">1</span>
+                                                                <span className="text-[8px] text-amber-400 font-bold">Cerita VN</span>
+                                                            </div>
+                                                            <span className="text-white/20 text-[6px]">➔</span>
+                                                            <div className="flex items-center gap-0.5">
+                                                                <span className="w-3 h-3 rounded-full bg-rose-400/20 text-rose-400 border border-rose-400/40 flex items-center justify-center text-[7px] font-extrabold flex-shrink-0">2</span>
+                                                                <span className="text-[8px] text-rose-400 font-bold">Game</span>
+                                                            </div>
+                                                            <span className="text-white/20 text-[6px]">➔</span>
+                                                            <div className="flex items-center gap-0.5">
+                                                                <span className="w-3 h-3 rounded-full bg-emerald-400/20 text-emerald-400 border border-emerald-400/40 flex items-center justify-center text-[7px] font-extrabold flex-shrink-0">3</span>
+                                                                <span className="text-[8px] text-emerald-400 font-bold">Ending</span>
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <h3 className={`text-lg font-black font-display leading-tight ${node.isLocked ? 'text-dim' : 'text-main'}`}>{node.title}</h3>
-                                                <p className="text-xs text-muted leading-relaxed mt-1 mb-3">{node.subtitle}</p>
                                                 
                                                 <div className="flex items-center gap-2">
                                                     {node.isLocked ? (

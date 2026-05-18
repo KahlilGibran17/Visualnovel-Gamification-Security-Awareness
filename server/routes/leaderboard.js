@@ -6,7 +6,7 @@ const { requireAuth } = require('../middleware/auth')
 router.get('/', requireAuth, async (req, res) => {
   const { filter = 'all', dept = 'all' } = req.query
   const includeZeroXp = String(req.query.includeZeroXp).toLowerCase() === 'true'
-  const whereConditions = []
+  const whereConditions = ["r.name NOT IN ('admin', 'super-admin')"]
   const values = []
 
   if (!includeZeroXp) {
@@ -69,7 +69,9 @@ router.get('/departments', requireAuth, async (req, res) => {
         COUNT(*)::int as members,
         COALESCE(ROUND(AVG(COALESCE(u.xp, 0)))::int, 0) as "avgXp"
       FROM users u
+      JOIN roles r ON u.role_id = r.id
       WHERE u.department IS NOT NULL AND u.department != ''
+        AND r.name NOT IN ('admin', 'super-admin')
       GROUP BY u.department
       ORDER BY "avgXp" DESC
     `)

@@ -16,7 +16,7 @@ export default function GuidePage() {
                     </div>
                     <h1 className="text-4xl font-black font-display text-main mb-4 drop-shadow-md">Panduan Pengguna</h1>
                     <p className="text-muted text-lg max-w-2xl mx-auto">
-                        Pelajari cara menggunakan platform Akebono Cyber Academy untuk meningkatkan insting keamanan siber Anda.
+                        Pelajari cara menggunakan platform AAIJ Cyber Academy untuk meningkatkan insting keamanan siber Anda.
                     </p>
                 </motion.div>
 
@@ -32,7 +32,7 @@ export default function GuidePage() {
                             <Target className="w-6 h-6 text-accent" /> Konsep Dasar
                         </h2>
                         <p className="text-muted leading-relaxed">
-                            Akebono Cyber Academy menggunakan metode <strong>Gamifikasi</strong> dan <strong>Simulasi Berbasis Cerita</strong>. Anda tidak hanya membaca materi, tetapi Anda akan dihadapkan pada situasi sehari-hari di kantor (seperti menerima email mencurigakan atau bertemu orang asing) dan harus membuat keputusan untuk menjaga keamanan data perusahaan.
+                            AAIJ Cyber Academy menggunakan metode <strong>Gamifikasi</strong> dan <strong>Simulasi Berbasis Cerita</strong>. Anda tidak hanya membaca materi, tetapi Anda akan dihadapkan pada situasi sehari-hari di kantor (seperti menerima email mencurigakan atau bertemu orang asing) dan harus membuat keputusan untuk menjaga keamanan data perusahaan.
                         </p>
                     </motion.section>
 

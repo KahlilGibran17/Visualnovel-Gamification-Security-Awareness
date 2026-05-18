@@ -32,6 +32,7 @@ app.use('/api/cms', require('./routes/cms'))
 app.use('/api/roadmap', require('./routes/roadmap'))
 app.use('/api/badges', require('./routes/badges'))
 app.use('/api/superAdmin', require('./routes/superAdmin'))
+app.use('/api/preTest', require('./routes/preTest'))
 
 
 // Health

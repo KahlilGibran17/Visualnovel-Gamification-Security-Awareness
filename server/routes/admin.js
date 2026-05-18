@@ -273,4 +273,32 @@ router.put('/deleteChapter', requireAuth, requireRole('admin'), async (req, res)
         res.status(500).json({ message: 'Server error' })
     }
 })
+
+// DELETE /api/admin/lessons/:id (Permanent Delete)
+router.delete('/lessons/:id', requireAuth, requireRole('admin'), async (req, res) => {
+    const lessonId = Number(req.params.id)
+    if (!Number.isInteger(lessonId) || lessonId <= 0) {
+        return res.status(400).json({ message: 'Invalid lesson ID' })
+    }
+
+    try {
+        const result = await pool.query(
+            'DELETE FROM elearning_lessons WHERE id = $1 RETURNING id',
+            [lessonId]
+        )
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ message: 'Lesson tidak ditemukan' })
+        }
+
+        res.json({
+            message: 'Lesson berhasil dihapus secara permanen',
+            deletedId: lessonId
+        })
+    } catch (err) {
+        console.error('DELETE /api/admin/lessons/:id error:', err)
+        res.status(500).json({ message: 'Server error' })
+    }
+})
+
 module.exports = router

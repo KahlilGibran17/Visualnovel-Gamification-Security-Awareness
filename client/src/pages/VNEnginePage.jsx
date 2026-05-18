@@ -450,9 +450,11 @@ export default function VNEnginePage() {
     const [xpTotal, setXpTotal] = useState(0)
     const [wrongChoices, setWrongChoices] = useState(0)
     const [mute, setMute] = useState(false)
+    const [autoPlay, setAutoPlay] = useState(false)
     const [showHud, setShowHud] = useState(true)
     const [gameOver, setGameOver] = useState(false)
     const [trustChange, setTrustChange] = useState(null) // { type: 'up' | 'down' }
+    const [voiceDone, setVoiceDone] = useState(true)
 
     const [loading, setLoading] = useState(true)
     const [debugChapter, setDebugChapter] = useState(null)
@@ -551,7 +553,15 @@ export default function VNEnginePage() {
             vaAudioRef.current = null
         }
 
-        if (!currentScene || mute) return;
+        if (!currentScene) {
+            setVoiceDone(true)
+            return
+        }
+
+        if (mute) {
+            setVoiceDone(true)
+            return
+        }
 
         if (currentScene.sfx) {
             sfxAudioRef.current = new Audio(currentScene.sfx)
@@ -559,8 +569,23 @@ export default function VNEnginePage() {
         }
 
         if (currentScene.va) {
-            vaAudioRef.current = new Audio(currentScene.va)
-            vaAudioRef.current.play().catch(e => console.warn('VA auto-play blocked', e))
+            setVoiceDone(false)
+            const audio = new Audio(currentScene.va)
+            vaAudioRef.current = audio
+
+            const handleEnded = () => setVoiceDone(true)
+            const handleError = () => setVoiceDone(true)
+
+            audio.addEventListener('ended', handleEnded)
+            audio.addEventListener('error', handleError)
+
+            audio.play()
+                .catch(e => {
+                    console.warn('VA auto-play blocked', e)
+                    setVoiceDone(true)
+                })
+        } else {
+            setVoiceDone(true)
         }
 
         return () => {
@@ -640,7 +665,7 @@ export default function VNEnginePage() {
         setTimer(null)
         if (success) {
             if (currentScene.xpReward) {
-                awardXP(currentScene.xpReward, `Chapter ${chapterId} spot the phish`)
+                awardXP(currentScene.xpReward, `Chapter ${chapterId} spot the phish`, parseInt(chapterId))
                 setXpTotal(prev => prev + currentScene.xpReward)
             }
             if (currentScene.trustImpact) handleTrustChange(currentScene.trustImpact)
@@ -651,7 +676,7 @@ export default function VNEnginePage() {
             setChoiceResult({
                 correct: false,
                 consequence: failMsg || (timedOut ? "Waktu habis sebelum Anda dapat menemukan semua ancaman!" : "Investigasi gagal."),
-                lesson: "Selalu periksa URL dengan cermat dan teliti lampiran tak terduga sebelum mengklik.",
+                lesson: "Selalu periksa URL dengan cermat and teliti lampiran tak terduga sebelum mengklik.",
                 xp: 0,
                 next: currentScene.failNext || currentScene.next
             })
@@ -662,7 +687,7 @@ export default function VNEnginePage() {
         setTimer(null)
         if (success) {
             if (currentScene.xpReward) {
-                awardXP(currentScene.xpReward, `Chapter ${chapterId} terminal defense`)
+                awardXP(currentScene.xpReward, `Chapter ${chapterId} terminal defense`, parseInt(chapterId))
                 setXpTotal(prev => prev + currentScene.xpReward)
             }
             if (currentScene.trustImpact) handleTrustChange(currentScene.trustImpact)
@@ -683,7 +708,7 @@ export default function VNEnginePage() {
     const handleChoice = useCallback((choice, timedOut = false) => {
         setTimer(null)
         if (choice.correct) {
-            awardXP(choice.xp, `Chapter ${chapterId} correct choice`)
+            awardXP(choice.xp, `Chapter ${chapterId} correct choice`, parseInt(chapterId))
             setXpTotal(prev => prev + choice.xp)
             if (choice.trustImpact) handleTrustChange(choice.trustImpact)
             setSceneId(choice.next)
@@ -704,7 +729,7 @@ export default function VNEnginePage() {
     const handlePasswordSetup = useCallback((result) => {
         // Result: { category, strength, xp, impactScore }
         if (result.xp) {
-            awardXP(result.xp, `Chapter ${chapterId} password security: ${result.category}`)
+            awardXP(result.xp, `Chapter ${chapterId} password security: ${result.category}`, parseInt(chapterId))
             setXpTotal(prev => prev + result.xp)
         }
         
@@ -739,17 +764,29 @@ export default function VNEnginePage() {
         setSceneId(next)
     }
 
-    const handleNext = () => {
+    const handleNext = useCallback(() => {
         if (!currentScene) return
         if (currentScene.type === 'dialogue') {
             if (!dialogueDone) { skipDialogue(); return }
             if (currentScene.xpReward) {
-                awardXP(currentScene.xpReward, 'dialogue xp')
+                awardXP(currentScene.xpReward, 'dialogue xp', parseInt(chapterId))
                 setXpTotal(prev => prev + currentScene.xpReward)
             }
             if (currentScene.next) setSceneId(currentScene.next)
         }
-    }
+    }, [currentScene, dialogueDone, skipDialogue, awardXP, chapterId])
+
+    // Auto Play Hook - advances dialog when typewriter finishes and Auto Play is ON
+    useEffect(() => {
+        if (!autoPlay || currentScene?.type !== 'dialogue' || !dialogueDone || choiceResult || !voiceDone) return
+
+        const delay = currentScene?.va ? 1000 : 2200
+        const timerId = setTimeout(() => {
+            handleNext()
+        }, delay)
+
+        return () => clearTimeout(timerId)
+    }, [autoPlay, currentScene?.id, currentScene?.va, dialogueDone, choiceResult, voiceDone, handleNext])
 
     const handleEnding = async (scene) => {
         const result = {
@@ -757,9 +794,10 @@ export default function VNEnginePage() {
             xpEarned: xpTotal + scene.xpBonus,
             perfect: wrongChoices === 0,
             score: Math.max(0, 100 - wrongChoices * 25),
+            badgeId: scene.badgeId || null
         }
         await completeChapter(parseInt(chapterId), result)
-        await awardXP(scene.xpBonus, scene.ending === 'good' ? 'good_ending' : 'bad_ending')
+        await awardXP(scene.xpBonus, scene.ending === 'good' ? 'good_ending' : 'bad_ending', parseInt(chapterId))
         navigate(`/result/${chapterId}`, { state: { result, chapterData } })
     }
 
@@ -864,6 +902,18 @@ export default function VNEnginePage() {
                                 </div>
                             </div>
                         </div>
+                        {/* Auto Play */}
+                        <button
+                            onClick={() => setAutoPlay(!autoPlay)}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                autoPlay
+                                    ? 'bg-accent text-dark shadow-[0_0_12px_rgba(255,214,10,0.4)] border border-accent'
+                                    : 'text-dim hover:text-main bg-white/5 hover:bg-white/10 border border-white/10'
+                            }`}
+                        >
+                            <span className={`w-2 h-2 rounded-full ${autoPlay ? 'bg-dark animate-pulse' : 'bg-dim'}`} />
+                            {autoPlay ? 'AUTO ON' : 'AUTO'}
+                        </button>
                         {/* Mute */}
                         <button onClick={() => setMute(!mute)} className="text-dim hover:text-main transition-colors">
                             {mute ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -1104,7 +1154,10 @@ export default function VNEnginePage() {
                         initial={{ y: 50, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                     >
-                        <div className="vn-dialogue-box p-5 md:p-6 mx-2 md:mx-4 mb-2 md:mb-4 rounded-2xl">
+                        <div 
+                            className="vn-dialogue-box p-5 md:p-6 mx-2 md:mx-4 mb-2 md:mb-4 rounded-2xl cursor-pointer"
+                            onClick={handleNext}
+                        >
                             {/* Speaker name */}
                             <div className="mb-3">
                                 <span className="inline-block px-4 py-1 rounded-full text-sm font-bold bg-primary text-white">
@@ -1117,14 +1170,32 @@ export default function VNEnginePage() {
                             </p>
                             {/* Continue hint */}
                             <div className="flex items-center justify-between mt-4">
-                                <div className="flex items-center gap-2 text-dim text-sm">
+                                <div className="flex items-center gap-3 text-dim text-sm">
                                     {currentScene.xpReward && dialogueDone && (
                                         <span className="text-accent text-xs font-bold">+{currentScene.xpReward} XP masuk</span>
                                     )}
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setAutoPlay(!autoPlay)
+                                        }}
+                                        className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all border flex items-center gap-1 ${
+                                            autoPlay 
+                                                ? 'bg-accent/20 text-accent border-accent/40 shadow-[0_0_8px_rgba(255,214,10,0.15)]' 
+                                                : 'text-dim hover:text-main border-white/10 bg-white/5'
+                                        }`}
+                                    >
+                                        <span className={`w-1.5 h-1.5 rounded-full ${autoPlay ? 'bg-accent animate-pulse' : 'bg-dim'}`} />
+                                        {autoPlay ? 'Auto Play ON' : 'Auto Play'}
+                                    </button>
                                 </div>
                                 <button
                                     id="dialogue-next-btn"
-                                    onClick={handleNext}
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleNext()
+                                    }}
                                     className="flex items-center gap-2 text-muted hover:text-main text-sm transition-colors"
                                 >
                                     {dialogueDone ? (

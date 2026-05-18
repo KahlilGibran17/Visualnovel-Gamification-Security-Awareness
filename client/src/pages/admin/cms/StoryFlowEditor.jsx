@@ -242,7 +242,7 @@ function ChoiceRowEditor({ choice, index, scenes, currentSceneId, onUpdate, onDe
 }
 
 
-function UniversalSidebar({ node, scenes, characters, backgrounds, uiTypes, onClose, onUpdate }) {
+function UniversalSidebar({ node, scenes, characters, backgrounds, uiTypes, badges = [], onClose, onUpdate }) {
     // We use the node.data directly as the source of truth to avoid stale state overwrites
     const [form, setForm] = useState(node.data), [saving, setSaving] = useState(false), [uploading, setUploading] = useState(false)
     
@@ -381,7 +381,30 @@ function UniversalSidebar({ node, scenes, characters, backgrounds, uiTypes, onCl
                                 </div>
                             )}
 
-                            {form.scene_type === 'ending' && <div className="space-y-4"><div className="flex gap-2"><button onClick={() => field('ending_type', 'good')} className={`flex-1 h-11 rounded-xl text-[11px] font-black uppercase ${form.ending_type === 'good' ? 'bg-green-600 text-white' : 'bg-[#1f1f33] text-white/40'}`}>Good Ending</button><button onClick={() => field('ending_type', 'bad')} className={`flex-1 h-11 rounded-xl text-[11px] font-black uppercase ${form.ending_type === 'bad' ? 'bg-red-600 text-white' : 'bg-[#1f1f33] text-white/40'}`}>Bad Ending</button></div><DarkInput placeholder="Ending Title" value={form.ending_title || ''} onChange={e => field('ending_title', e.target.value)} /><DarkTextArea rows={4} value={form.ending_message || ''} onChange={e => field('ending_message', e.target.value)} placeholder="Summary message..." /></div>}
+                            {form.scene_type === 'ending' && (
+                                <div className="space-y-4">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => field('ending_type', 'good')} className={`flex-1 h-11 rounded-xl text-[11px] font-black uppercase ${form.ending_type === 'good' ? 'bg-green-600 text-white' : 'bg-[#1f1f33] text-white/40'}`}>Good Ending</button>
+                                        <button onClick={() => field('ending_type', 'bad')} className={`flex-1 h-11 rounded-xl text-[11px] font-black uppercase ${form.ending_type === 'bad' ? 'bg-red-600 text-white' : 'bg-[#1f1f33] text-white/40'}`}>Bad Ending</button>
+                                    </div>
+                                    <div className="bg-[#131325] p-4 rounded-xl border border-white/5 space-y-3">
+                                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest">🏆 Reward Badge on Ending</p>
+                                        <DarkSelect 
+                                            value={form.custom_data?.badgeId || ''} 
+                                            onChange={e => cf('badgeId', e.target.value ? parseInt(e.target.value) : null)}
+                                        >
+                                            <option value="" style={{ background: '#161622' }}>❌ No Badge Awarded</option>
+                                            {badges.map(b => (
+                                                <option key={b.id} value={b.id} style={{ background: '#161622' }}>
+                                                    {b.icon} {b.name}
+                                                </option>
+                                            ))}
+                                        </DarkSelect>
+                                    </div>
+                                    <DarkInput placeholder="Ending Title" value={form.ending_title || ''} onChange={e => field('ending_title', e.target.value)} />
+                                    <DarkTextArea rows={4} value={form.ending_message || ''} onChange={e => field('ending_message', e.target.value)} placeholder="Summary message..." />
+                                </div>
+                            )}
                             {form.scene_type === 'email' && <div className="space-y-4"><div className="grid grid-cols-2 gap-3"><DarkInput placeholder="From" value={form.custom_data?.email?.from || ''} onChange={e => cf('email', { ...form.custom_data?.email, from: e.target.value })} /><DarkInput placeholder="To" value={form.custom_data?.email?.to || ''} onChange={e => cf('email', { ...form.custom_data?.email, to: e.target.value })} /></div><DarkInput placeholder="Subject" value={form.custom_data?.email?.subject || ''} onChange={e => cf('email', { ...form.custom_data?.email, subject: e.target.value })} /><DarkTextArea rows={6} value={form.custom_data?.email?.body || ''} onChange={e => cf('email', { ...form.custom_data?.email, body: e.target.value })} /><DarkInput placeholder="Red Flags (comma separated)" value={(form.custom_data?.email?.redFlags || []).join(', ')} onChange={e => cf('email', { ...form.custom_data?.email, redFlags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} /></div>}
                             {form.scene_type === 'video' && (
                                 <div className="space-y-4">
@@ -477,7 +500,7 @@ function UniversalSidebar({ node, scenes, characters, backgrounds, uiTypes, onCl
 // ─── Flow Editor Inner ───────────────────────────────────────────────────
 
 function FlowEditorInner() {
-    const { chapterId } = useParams(), navigate = useNavigate(), { getViewport, screenToFlowPosition } = useReactFlow(), [uiTypes, setUiTypes] = useState([]), [backgrounds, setBackgrounds] = useState([]), [characters, setCharacters] = useState([])
+    const { chapterId } = useParams(), navigate = useNavigate(), { getViewport, screenToFlowPosition } = useReactFlow(), [uiTypes, setUiTypes] = useState([]), [backgrounds, setBackgrounds] = useState([]), [characters, setCharacters] = useState([]), [badges, setBadges] = useState([])
     const [chapter, setChapter] = useState(null), [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [creating, setCreating] = useState(false), [nodes, setNodes, onNodesChange] = useNodesState([]), [edges, setEdges, onEdgesChange] = useEdgesState([]), [selectedNode, setSelectedNode] = useState(null)
     
     // Undo/Redo & Clipboard
@@ -631,11 +654,13 @@ function FlowEditorInner() {
         Promise.all([
             axios.get('/api/cms/ui-types').catch(() => ({ data: [] })),
             axios.get('/api/cms/backgrounds').catch(() => ({ data: [] })),
-            axios.get('/api/cms/characters').catch(() => ({ data: [] }))
-        ]).then(([ui, bg, char]) => {
+            axios.get('/api/cms/characters').catch(() => ({ data: [] })),
+            axios.get('/api/cms/badges').catch(() => ({ data: [] }))
+        ]).then(([ui, bg, char, bdg]) => {
             setUiTypes(ui.data);
             setBackgrounds(bg.data);
             setCharacters(char.data);
+            setBadges(bdg.data);
         });
     }, [])
 
@@ -746,6 +771,7 @@ function FlowEditorInner() {
                             characters={characters || []} 
                             backgrounds={backgrounds || []} 
                             uiTypes={uiTypes} 
+                            badges={badges}
                             onClose={() => setSelectedNode(null)} 
                             onUpdate={(updatedData) => {
                                 setNodes(nds => nds.map(n => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...updatedData } } : n));

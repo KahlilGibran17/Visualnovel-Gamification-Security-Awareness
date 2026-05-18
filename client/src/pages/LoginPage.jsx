@@ -60,7 +60,6 @@ function HUDCorners() {
 }
 
 export default function LoginPage() {
-    const [tab, setTab]           = useState('login')
     const [nik, setNik]           = useState('')
     const [password, setPassword] = useState('')
     const [showPass, setShowPass] = useState(false)
@@ -68,10 +67,8 @@ export default function LoginPage() {
     const [loading, setLoading]   = useState(false)
     const [loadingStep, setLoadingStep] = useState('')
     const [error, setError]       = useState('')
-    const [forgotNik, setForgotNik]   = useState('')
-    const [forgotSent, setForgotSent] = useState(false)
 
-    const { login, forgotPassword } = useAuth()
+    const { login } = useAuth()
     const { theme, toggleTheme } = useTheme()
     const navigate = useNavigate()
 
@@ -110,18 +107,6 @@ export default function LoginPage() {
         }
     }
 
-    const handleForgot = async (e) => {
-        e.preventDefault()
-        if (!forgotNik.trim()) {
-            setError('Silakan masukkan NPK Anda.')
-            return
-        }
-        setLoading(true)
-        await forgotPassword(forgotNik.trim())
-        setLoading(false)
-        setForgotSent(true)
-    }
-
     return (
         <div className="min-h-screen relative overflow-hidden bg-main flex items-center justify-center p-4 transition-colors duration-300">
             <style>{`
@@ -156,7 +141,7 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    <h1 className="text-4xl font-black text-main tracking-widest mb-1 font-display">AKEBONO</h1>
+                    <h1 className="text-4xl font-black text-main tracking-widest mb-1 font-display">AAIJ</h1>
                     <div className="flex items-center gap-3 justify-center mb-2">
                         <div className="w-10 h-px bg-gradient-to-r from-transparent to-primary/50" />
                         <span className="text-[10px] font-mono text-primary tracking-[0.3em] uppercase">Cyber Academy</span>
@@ -165,63 +150,33 @@ export default function LoginPage() {
                 </motion.div>
 
                 <motion.div className="glass-card p-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                    <div className="flex gap-1 mb-6 p-1 bg-card-bg rounded-lg">
-                        <button onClick={() => { setTab('login'); setError('') }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${tab === 'login' ? 'bg-primary text-white shadow-lg' : 'text-dim hover:text-main'}`}>Masuk</button>
-                        <button onClick={() => { setTab('forgot'); setError(''); setForgotSent(false) }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${tab === 'forgot' ? 'bg-primary text-white shadow-lg' : 'text-dim hover:text-main'}`}>Lupa Password</button>
-                    </div>
-
-                    <AnimatePresence mode="wait">
-                        {tab === 'login' ? (
-                            <motion.form key="login" onSubmit={handleLogin} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] text-dim font-black uppercase tracking-wider mb-1.5 block">NPK Karyawan</label>
-                                    <div className="relative">
-                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dim" />
-                                        <input type="text" value={nik} onChange={e => setNik(e.target.value)} placeholder="Contoh: 10001" className="input-field pl-10 text-sm" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] text-dim font-black uppercase tracking-wider mb-1.5 block">Kata Sandi</label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dim" />
-                                        <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="input-field pl-10 pr-10 text-sm" />
-                                        <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-dim hover:text-main transition-colors"><Eye className="w-4 h-4" /></button>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <button type="button" onClick={() => setRemember(!remember)} className={`w-9 h-5 rounded-full transition-all relative ${remember ? 'bg-primary' : 'bg-card-border'}`}><div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${remember ? 'left-5' : 'left-1'}`} /></button>
-                                    <span className="text-[11px] text-dim font-medium">Ingat Saya</span>
-                                </div>
-                                {error && <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-primary text-[11px] flex items-center gap-2"><AlertCircle className="w-4 h-4" />{error}</div>}
-                                <button type="submit" disabled={loading} className="btn-primary w-full py-3 flex items-center justify-center gap-2 text-sm font-bold tracking-wider">
-                                    {loading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>{loadingStep || 'Processing...'}</span></> : <><ShieldAlert className="w-4 h-4" /> MASUK KE AKADEMI</>}
-                                </button>
-                            </motion.form>
-                        ) : (
-                            <motion.div key="forgot" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                {!forgotSent ? (
-                                    <form onSubmit={handleForgot} className="space-y-4">
-                                        <div className="text-center mb-4"><Mail className="w-12 h-12 text-accent mx-auto mb-2 opacity-50" /><p className="text-dim text-xs">Masukkan NPK Anda untuk menerima tautan reset kata sandi di email perusahaan.</p></div>
-                                        <div>
-                                            <label className="text-[10px] text-dim font-black uppercase tracking-wider mb-1.5 block">NPK Karyawan</label>
-                                            <div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dim" /><input type="text" value={forgotNik} onChange={e => setForgotNik(e.target.value)} placeholder="Contoh: 10001" className="input-field pl-10 text-sm" /></div>
-                                        </div>
-                                        {error && <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-primary text-[11px] flex items-center gap-2"><AlertCircle className="w-4 h-4" />{error}</div>}
-                                        <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-sm font-bold">{loading ? 'MENGIRIM...' : 'KIRIM TAUTAN RESET'}</button>
-                                    </form>
-                                ) : (
-                                    <div className="text-center py-6">
-                                        <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-                                        <h3 className="font-bold text-main mb-2">Email Terkirim!</h3>
-                                        <p className="text-dim text-xs">Silakan periksa kotak masuk email perusahaan Anda.</p>
-                                        <button onClick={() => { setTab('login'); setForgotSent(false) }} className="btn-secondary mt-6 w-full py-2.5 text-xs font-bold">KEMBALI KE LOGIN</button>
-                                    </div>
-                                )}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div>
+                            <label className="text-[10px] text-dim font-black uppercase tracking-wider mb-1.5 block">NPK Karyawan</label>
+                            <div className="relative">
+                                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dim" />
+                                <input type="text" value={nik} onChange={e => setNik(e.target.value)} placeholder="Contoh: 10001" className="input-field pl-10 text-sm" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-dim font-black uppercase tracking-wider mb-1.5 block">Kata Sandi</label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dim" />
+                                <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="input-field pl-10 pr-10 text-sm" />
+                                <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-dim hover:text-main transition-colors"><Eye className="w-4 h-4" /></button>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button type="button" onClick={() => setRemember(!remember)} className={`w-9 h-5 rounded-full transition-all relative ${remember ? 'bg-primary' : 'bg-card-border'}`}><div className={`w-3 h-3 bg-white rounded-full absolute top-1 transition-all ${remember ? 'left-5' : 'left-1'}`} /></button>
+                            <span className="text-[11px] text-dim font-medium">Ingat Saya</span>
+                        </div>
+                        {error && <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-primary text-[11px] flex items-center gap-2"><AlertCircle className="w-4 h-4" />{error}</div>}
+                        <button type="submit" disabled={loading} className="btn-primary w-full py-3 flex items-center justify-center gap-2 text-sm font-bold tracking-wider">
+                            {loading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>{loadingStep || 'Processing...'}</span></> : <><ShieldAlert className="w-4 h-4" /> MASUK KE AKADEMI</>}
+                        </button>
+                    </form>
                 </motion.div>
-                <p className="text-center text-[10px] text-dim/50 mt-6 tracking-[0.2em] font-medium uppercase">© 2026 Akebono Brake Astra • V1.0</p>
+                <p className="text-center text-[10px] text-dim/50 mt-6 tracking-[0.2em] font-medium uppercase">© 2026 AAIJ • V1.0</p>
             </div>
         </div>
     )

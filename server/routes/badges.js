@@ -101,16 +101,6 @@ router.get('/getLevelBadges', requireAuth, async (req, res) => {
         res.status(500).json({ message: 'Server error' })
     }
 })
-router.get('/getLeaderBoard', requireAuth, async (req, res) => {
-    try {
-        const leaderboardResult = await pool.query()
-        
-    }catch(err){
-        console.error(err)
-        res.status(500).json({ message: 'Server error' })
-    }
-    
-})
 
 router.get('/getUserBadges', requireAuth, async (req, res) => {
     try {
@@ -134,16 +124,26 @@ router.get('/getUserBadges', requireAuth, async (req, res) => {
 router.get('/getChapterProgress', requireAuth, async (req, res) => {
     try {
         const userId = req.user.id
-        const completed = await pool.query(
-            `SELECT COUNT(*) FROM chapter_progress WHERE user_id = $1 AND completed = true`,
-            [userId]
+        
+        // Dapatkan semua game chapters (type != 'E-Learning' atau NULL)
+        const gameChaptersRes = await pool.query(
+            `SELECT id FROM game_chapters WHERE type IS NULL OR type != 'E-Learning'`
         )
-        const total = await pool.query(
-            `SELECT COUNT(*) FROM chapters`
+        const gameChapterIds = gameChaptersRes.rows.map(r => r.id)
+
+        if (gameChapterIds.length === 0) {
+            return res.json({ completed: 0, total: 0 })
+        }
+
+        const completedRes = await pool.query(
+            `SELECT COUNT(*) FROM chapter_progress 
+             WHERE user_id = $1 AND completed = true AND chapter_id = ANY($2::int[])`,
+            [userId, gameChapterIds]
         )
+
         res.json({ 
-            completed: parseInt(completed.rows[0].count),
-            total: parseInt(total.rows[0].count)
+            completed: parseInt(completedRes.rows[0].count),
+            total: gameChapterIds.length
         })
     } catch (err) {
         console.error(err)

@@ -40,10 +40,39 @@ function parseDurationToSeconds(value) {
 
 // ── Question Overlay ───────────────────────────────────────────────────────
 
-function QuestionOverlay({ question, onSubmit, onDismiss, submitting, onUiClick }) {
+// Character image paths
+const CHAR_THINKING = '/characters/char_thinking.png'
+const CHAR_HAPPY    = '/characters/char_happy.png'
+const CHAR_SAD      = '/characters/char_sad.png'
+
+// VN dialogue messages
+const VN_ASK_MESSAGES = [
+    'Hei, sebelum lanjut — aku punya pertanyaan untukmu!',
+    'Tunggu dulu, aku penasaran apakah kamu sudah paham...',
+    'Stop sebentar, jawab pertanyaan dariku dulu ya!',
+]
+
+const VN_CORRECT_MESSAGES = [
+    'Wah, benar! Kamu memang luar biasa! 🎉',
+    'Tepat sekali! Aku senang kamu sudah paham!',
+    'Yes! Jawaban kamu 100% benar! Keren!',
+]
+
+const VN_WRONG_MESSAGES = [
+    'Hmm... belum tepat. Jangan menyerah, terus belajar ya...',
+    'Sayang sekali, jawabannya kurang tepat. Tapi tidak apa-apa!',
+    'Belum benar nih. Yuk pahami penjelasannya baik-baik!',
+]
+
+function QuestionOverlay({ question, onSubmit, onDismiss, submitting, onUiClick, isNoQuizXpRole }) {
     const [selected, setSelected] = useState(null)
     const [showResult, setShowResult] = useState(false)
     const [resultData, setResultData] = useState(null)
+
+    // Pick a random message once per mount
+    const [askMsg] = useState(() => VN_ASK_MESSAGES[Math.floor(Math.random() * VN_ASK_MESSAGES.length)])
+    const [correctMsg] = useState(() => VN_CORRECT_MESSAGES[Math.floor(Math.random() * VN_CORRECT_MESSAGES.length)])
+    const [wrongMsg] = useState(() => VN_WRONG_MESSAGES[Math.floor(Math.random() * VN_WRONG_MESSAGES.length)])
 
     const handleSubmit = async () => {
         if (!selected || submitting) return
@@ -57,118 +86,247 @@ function QuestionOverlay({ question, onSubmit, onDismiss, submitting, onUiClick 
 
     const correctOption = question.options.find(o => o.is_correct)
 
+    const charImg    = !showResult ? CHAR_THINKING : (resultData?.isCorrect ? CHAR_HAPPY : CHAR_SAD)
+    const charDialogue = !showResult ? askMsg : (resultData?.isCorrect ? correctMsg : wrongMsg)
+    const charName   = 'Rio'
+
+    // Comic-bubble helper component
+    const ComicBubble = ({ children, color = '#fff', borderColor = '#111', tailSide = 'left', tailTop = 24, shadow = '4px 4px 0px #111' }) => (
+        <div className="relative">
+            {/* Left tail */}
+            {tailSide === 'left' && (<>
+                {/* Outer tail (border) */}
+                <div style={{ position: 'absolute', left: -18, top: tailTop, width: 0, height: 0,
+                    borderTop: '10px solid transparent', borderBottom: '10px solid transparent',
+                    borderRight: `18px solid ${borderColor}`,
+                }} />
+                {/* Inner tail (fill) */}
+                <div style={{ position: 'absolute', left: -13, top: tailTop + 2, width: 0, height: 0,
+                    borderTop: '8px solid transparent', borderBottom: '8px solid transparent',
+                    borderRight: `14px solid ${color}`,
+                }} />
+            </>)}
+            {/* Bubble body */}
+            <div style={{
+                background: color,
+                border: `3px solid ${borderColor}`,
+                borderRadius: '18px',
+                boxShadow: shadow,
+                position: 'relative',
+            }} className="px-5 py-3">
+                {children}
+            </div>
+        </div>
+    )
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center px-5 -mt-20 pt-20"
-            style={{ backdropFilter: 'blur(12px)' }}
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(3px)' }}
         >
-            <motion.div
-                initial={{ scale: 0.85, y: 30 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.85, y: 30 }}
-                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                className="w-full max-w-lg bg-black rounded-2xl pt-8" 
-            >
-                <div className="text-center mb-5">
-                    <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary mx-auto flex items-center justify-center mb-3 shadow-lg shadow-primary/30">
-                        <HelpCircle className="w-8 h-8 text-primary" />
+            <div className="w-full max-w-4xl mx-auto px-4 flex flex-col gap-4">
+
+                {/* ── TOP ROW: Character + Comic Bubbles ── */}
+                <div className="flex items-center gap-6">
+
+                    {/* Character sprite */}
+                    <motion.div
+                        key={charImg}
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 180 }}
+                        className="flex-shrink-0 pointer-events-none select-none"
+                        style={{
+                            width: 'clamp(150px, 20vw, 260px)',
+                            filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.9))',
+                        }}
+                    >
+                        <img src={charImg} alt="Rio" className="w-full h-auto object-contain" />
+                    </motion.div>
+
+                    {/* Bubbles column */}
+                    <div className="flex-1 flex flex-col gap-4">
+
+                        {/* ── Comic Bubble 1: Dialogue ── */}
+                        <motion.div
+                            key={`dialogue-${charDialogue}`}
+                            initial={{ opacity: 0, scale: 0.85, x: 20 }}
+                            animate={{ opacity: 1, scale: 1, x: 0 }}
+                            transition={{ type: 'spring', damping: 20, stiffness: 200, delay: 0.05 }}
+                        >
+                            <ComicBubble color="#fff" borderColor="#1a1a1a" tailSide="left" tailTop={20} shadow="4px 4px 0px #1a1a1a">
+                                <p className="text-[10px] font-black text-gray-500 mb-1 tracking-widest uppercase">{charName}</p>
+                                <p className="text-gray-900 text-sm font-medium leading-relaxed" style={{ fontFamily: "'Georgia', serif" }}>
+                                    {charDialogue}
+                                </p>
+                            </ComicBubble>
+                        </motion.div>
+
+
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">
-                        ⚡ Kuis Interaktif
-                    </p>
-                    <p className="text-xs text-white/40">Video dijeda — jawab pertanyaan ini untuk melanjutkan</p>
                 </div>
 
-                <div className="glass-card p-6">
+                {/* ── BOTTOM: Answer choices + Submit ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    style={{
+                        background: 'rgba(0,0,0,0.75)',
+                        border: '2px solid rgba(255,255,255,0.12)',
+                        borderRadius: '16px',
+                        backdropFilter: 'blur(16px)',
+                    }}
+                    className="p-4"
+                >
                     {!showResult ? (
                         <>
-                            <p className="font-semibold text-white text-center leading-relaxed mb-6">
-                             {question.question_text}
-                            </p>
-                            <div className="space-y-3 mb-6">
-                                {question.options.map((opt) => (
-                                    <button
-                                        key={opt.id}
-                                        onClick={() => {
-                                            onUiClick?.('click')
-                                            setSelected(opt.id)
-                                        }}
-                                        className={`w-full text-left px-4 py-3.5 rounded-xl border transition-all duration-200 text-sm leading-snug ${
-                                            selected === opt.id
-                                                ? 'border-primary bg-primary/20 text-white shadow-lg shadow-primary/20'
-                                                : 'border-white/10 bg-white/5 text-white/70 hover:border-white/30 hover:bg-white/10 hover:text-white'
-                                        }`}
-                                    >
-                                        {opt.option_text}
-                                    </button>
-                                ))}
-                            </div>
-                            <button
-                                onClick={handleSubmit}
-                                disabled={!selected || submitting}
-                                className="btn-primary w-full disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            {/* ── Question box ── */}
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.15 }}
+                                className="mb-3 px-4 py-3 rounded-xl"
+                                style={{
+                                    background: 'rgba(255,255,255,0.92)',
+                                    border: '3px solid #1a1a1a',
+                                    borderRadius: '14px',
+                                    boxShadow: '4px 4px 0px #1a1a1a',
+                                }}
                             >
-                                {submitting ? (
-                                    <><Loader2 className="w-4 h-4 animate-spin" />Memeriksa...</>
-                                ) : 'Kirim Jawaban'}
-                            </button>
-                            <p className="text-center text-xs text-accent mt-3">
-                                +{question.xp_reward} XP jika menjawab benar
-                            </p>
+                                <p className="text-[10px] font-black text-amber-600 mb-1 tracking-widest uppercase flex items-center gap-1.5">
+                                    <HelpCircle className="w-3 h-3" /> Pertanyaan
+                                </p>
+                                <p className="text-gray-900 font-bold text-sm leading-relaxed">
+                                    {question.question_text}
+                                </p>
+                            </motion.div>
+
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                                {question.options.map((opt, oi) => {
+                                    const letter = String.fromCharCode(65 + oi)
+                                    const isSelected = selected === opt.id
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => { onUiClick?.('click'); setSelected(opt.id) }}
+                                            className="flex items-center gap-3 px-4 py-3 text-left transition-all duration-200 text-sm"
+                                            style={{
+                                                background: isSelected ? '#fff' : 'rgba(255,255,255,0.08)',
+                                                border: isSelected ? '2.5px solid #1a1a1a' : '2px solid rgba(255,255,255,0.2)',
+                                                borderRadius: '12px',
+                                                color: isSelected ? '#111' : '#fff',
+                                                boxShadow: isSelected ? '3px 3px 0px #1a1a1a' : 'none',
+                                                transform: isSelected ? 'translate(-1px,-1px)' : 'none',
+                                            }}
+                                        >
+                                            <span className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-black"
+                                                style={{
+                                                    background: isSelected ? '#1a1a1a' : 'rgba(255,255,255,0.15)',
+                                                    color: isSelected ? '#fff' : 'rgba(255,255,255,0.7)',
+                                                    border: '2px solid rgba(255,255,255,0.3)',
+                                                }}
+                                            >{letter}</span>
+                                            <span className="leading-snug font-medium">{opt.option_text}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={!selected || submitting}
+                                    className="flex-1 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 py-2.5 font-black text-sm"
+                                    style={{
+                                        background: '#E63946',
+                                        border: '3px solid #1a1a1a',
+                                        borderRadius: '12px',
+                                        color: '#fff',
+                                        boxShadow: '4px 4px 0px #1a1a1a',
+                                        transition: 'all 0.15s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = '6px 6px 0px #1a1a1a' }}
+                                    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '4px 4px 0px #1a1a1a' }}
+                                >
+                                    {submitting ? <><Loader2 className="w-4 h-4 animate-spin" />Memeriksa...</> : 'Kirim Jawaban'}
+                                </button>
+                                {!isNoQuizXpRole && (
+                                    <span className="text-amber-400 text-xs font-bold flex items-center gap-1 flex-shrink-0">
+                                        <Star className="w-3.5 h-3.5" />+{question.xp_reward} XP
+                                    </span>
+                                )}
+                            </div>
                         </>
                     ) : (
-                        <div className="text-center py-2">
-                            {resultData?.isCorrect ? (
-                                <>
-                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 15 }}>
-                                        <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-3" />
-                                    </motion.div>
-                                    <p className="text-2xl font-bold text-green-400 mb-1">Benar! 🎉</p>
-                                    <p className="text-white/60 text-sm mb-4">Jawaban kamu tepat sasaran.</p>
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.3 }}
-                                        className="inline-flex items-center gap-2 bg-accent/20 border border-accent/40 text-accent px-5 py-2.5 rounded-xl font-bold text-lg mb-5"
-                                    >
-                                        <Star className="w-5 h-5" />
-                                        +{resultData.xpAwarded} XP
-                                    </motion.div>
-                                </>
-                            ) : (
-                                <>
-                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 15 }}>
-                                        <XCircle className="w-16 h-16 text-red-400 mx-auto mb-3" />
-                                    </motion.div>
-                                    <p className="text-2xl font-bold text-red-400 mb-1">Kurang tepat</p>
-                                    <p className="text-white/60 text-sm mb-2">Jawaban yang benar:</p>
-                                    <p className="text-white font-semibold text-sm bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-2 mb-5">
-                                        {correctOption?.option_text}
-                                    </p>
-                                </>
-                            )}
-                            <button
-                                onClick={() => {
-                                    onUiClick?.('click')
-                                    onDismiss()
+                        <>
+                            {/* Result status badge */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ type: 'spring', damping: 14, delay: 0.1 }}
+                                className="mb-3 px-4 py-3"
+                                style={{
+                                    background: resultData?.isCorrect ? 'rgba(240,255,244,0.95)' : 'rgba(255,245,245,0.95)',
+                                    border: `3px solid ${resultData?.isCorrect ? '#16a34a' : '#dc2626'}`,
+                                    borderRadius: '14px',
+                                    boxShadow: resultData?.isCorrect ? '4px 4px 0px #16a34a' : '4px 4px 0px #dc2626',
                                 }}
-                                className="btn-primary w-full flex items-center justify-center gap-2"
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    {resultData?.isCorrect
+                                        ? <CheckCircle className="w-5 h-5 text-green-600" />
+                                        : <XCircle className="w-5 h-5 text-red-600" />
+                                    }
+                                    <p className={`font-black text-sm tracking-wide ${resultData?.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                                        {resultData?.isCorrect ? 'Jawaban Benar! 🎉' : 'Jawaban Salah'}
+                                    </p>
+                                    {!isNoQuizXpRole && resultData?.isCorrect && (
+                                        <span className="ml-auto text-amber-600 font-black text-sm flex items-center gap-1">
+                                            <Star className="w-4 h-4" />+{resultData.xpAwarded} XP
+                                        </span>
+                                    )}
+                                </div>
+                                {!resultData?.isCorrect && (
+                                    <p className="text-gray-700 text-sm">
+                                        Jawaban benar: <span className="text-green-700 font-bold">{correctOption?.option_text}</span>
+                                    </p>
+                                )}
+                                {question.question_explains && (
+                                    <p className="text-gray-500 text-xs mt-2 pt-2 leading-relaxed border-t border-gray-300">
+                                        {question.question_explains}
+                                    </p>
+                                )}
+                            </motion.div>
+
+                            {/* Continue button */}
+                            <button
+                                onClick={() => { onUiClick?.('click'); onDismiss() }}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 font-black text-sm text-white"
+                                style={{
+                                    background: '#E63946',
+                                    border: '3px solid #1a1a1a',
+                                    borderRadius: '12px',
+                                    boxShadow: '4px 4px 0px #1a1a1a',
+                                }}
                             >
                                 <Play className="w-4 h-4" />
                                 Lanjutkan Video
                             </button>
-                        </div>
+                        </>
                     )}
-                </div>
-            </motion.div>
+                </motion.div>
+            </div>
         </motion.div>
     )
 }
 
 // ── Custom Video Controls ──────────────────────────────────────────────────
+
+
 
 function VideoControls({
     videoRef,
@@ -338,15 +496,17 @@ function VideoControls({
                         </span>
                     </div>
 
-                    <button
-                        onClick={() => {
-                            onUiClick?.('click')
-                            onFullscreen()
-                        }}
-                        className="text-white hover:text-primary transition-colors"
-                    >
-                        <Maximize className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => {
+                                onUiClick?.('click')
+                                onFullscreen()
+                            }}
+                            className="text-white hover:text-primary transition-colors"
+                        >
+                            <Maximize className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -361,6 +521,7 @@ export default function ElearningPlayerPage() {
     const { user, updateUser } = useAuth()
     const { getLevelFromXP } = useGame()
     const { playSfx, unlockAudio, suppressBgm, unsuppressBgm } = useAudio()
+    const isNoQuizXpRole = user?.role === 'admin' || user?.role === 'super-admin'
 
     const [lesson, setLesson] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -379,6 +540,7 @@ export default function ElearningPlayerPage() {
         lesson?.progress?.completed === true
     )   
     const [totalXpEarned, setTotalXpEarned] = useState(0)
+    const [chapterIndex, setChapterIndex] = useState(null)
 
     // Refs
     const videoRef = useRef(null)
@@ -443,13 +605,9 @@ export default function ElearningPlayerPage() {
 
         pollRef.current = setInterval(() => {
             const v = videoRef.current
-            if (!v) return
+            if (!v || v.paused) return
 
             const currentTime = v.currentTime
-            if (currentTime > 0 && videoLoading) {
-                setVideoLoading(false)
-            }
-            setCurrentTime(currentTime)
             const questions = lessonRef.current?.questions || []
 
             const nextQ = questions.find(q =>
@@ -503,23 +661,29 @@ export default function ElearningPlayerPage() {
 
     const fetchLesson = async () => {
         try {
-            const res = await axios.get(`/api/elearning/lessons/${id}`)
+            const [res, allLessonsRes] = await Promise.all([
+                axios.get(`/api/elearning/lessons/${id}`),
+                axios.get('/api/elearning/lessons'),
+            ])
             const data = res.data
             setLesson(data)
 
+            // Compute chapter order index (same logic as ELearningPage)
+            const allLessons = Array.isArray(allLessonsRes.data) ? allLessonsRes.data : []
+            const uniqueChapterIds = [...new Set(allLessons.map(l => l.chapter_id))]
+                .sort((a, b) => Number(a) - Number(b))
+            const idx = uniqueChapterIds.indexOf(Number(data.chapter_id))
+            setChapterIndex(idx >= 0 ? idx + 1 : data.chapter_id)
+
             const answered = {}
-                data.questions.forEach(q => {
-                    if (q.answered) {
-                        answered[q.id] = { 
-                            isCorrect: q.answered_correctly, 
-                            xpAwarded: q.answered_correctly ? (q.xp_reward || 0) : 0  // ← ambil dari soal
-                        }
-                        if (q.answered_correctly) {
-                            answeredRef.current.add(q.id)
-                            triggeredRef.current.add(q.id)
-                        }
+            data.questions.forEach(q => {
+                if (q.answered) {
+                    answered[q.id] = {
+                        isCorrect: q.answered_correctly,
+                        xpAwarded: 0,
                     }
-                })
+                }
+            })
             setAnsweredMap(answered)
 
             if (data.progress?.completed) {
@@ -539,11 +703,15 @@ export default function ElearningPlayerPage() {
         const v = videoRef.current
         if (!v || !lesson) return
 
-        const onCanPlay = () => {
+       const onCanPlay = () => {
             setVideoLoading(false)
-            if (v.paused && !pausingForQuestionRef.current && !activeQuestionRef.current) {
-                v.play().catch(() => setPaused(true))
-            }
+            // requestFullscreen()
+            v.play()
+                .then(() => {
+                    setPaused(false)
+                    requestFullscreen()
+                })
+                .catch(() => setPaused(true))
         }
 
         const onPlaying = () => {
@@ -557,7 +725,7 @@ export default function ElearningPlayerPage() {
             setVideoLoading(true)
             stopPolling()
         }
-
+        //const onPlaying  = () => { setVideoLoading(false); setPaused(false); startPolling() }
         const onPause    = () => {
             setPaused(true)
             const pausedForQuestion = pausingForQuestionRef.current || Boolean(activeQuestionRef.current)
@@ -567,22 +735,18 @@ export default function ElearningPlayerPage() {
                 restoreBgmAfterVideo()
             }
         }
-
         const onEnded    = () => {
-            setVideoLoading(false)
             restoreBgmAfterVideo()
             handleVideoEnd()
         }
-
         const onError    = () => {
-            setVideoLoading(false)
             restoreBgmAfterVideo()
-            // toast.error('Gagal memuat file video')
+            toast.error('Gagal memuat file video')
         }
 
         v.addEventListener('canplay', onCanPlay)
-        v.addEventListener('playing', onPlaying)
         v.addEventListener('waiting', onWaiting)
+        v.addEventListener('playing', onPlaying)
         v.addEventListener('pause', onPause)
         v.addEventListener('ended', onEnded)
         v.addEventListener('error', onError)
@@ -605,28 +769,8 @@ export default function ElearningPlayerPage() {
                 return
             }
 
-            if (allowFullscreenExitRef.current || videoCompletedRef.current) {
-                allowFullscreenExitRef.current = false
-                setFallbackFullscreen(false)
-                return
-            }
-
-            const el = containerRef.current
-            if (!el) return
-
-            const req = el.requestFullscreen
-                || el.webkitRequestFullscreen
-                || el.mozRequestFullScreen
-                || el.msRequestFullscreen
-
-            if (!req) {
-                setFallbackFullscreen(true)
-                return
-            }
-
-            Promise.resolve(req.call(el))
-                .then(() => setFallbackFullscreen(false))
-                .catch(() => setFallbackFullscreen(true))
+            allowFullscreenExitRef.current = false
+            setFallbackFullscreen(false)
         }
 
         document.addEventListener('fullscreenchange', onFullscreenChange)
@@ -635,19 +779,22 @@ export default function ElearningPlayerPage() {
 
     useEffect(() => {
         const onKeyDown = (e) => {
-            if (e.key !== 'Escape' || videoCompletedRef.current) return
-
-            e.preventDefault()
-            e.stopPropagation()
-            if (typeof e.stopImmediatePropagation === 'function') {
-                e.stopImmediatePropagation()
+            if (e.key === 'f' || e.key === 'F') {
+                if (document.fullscreenElement) {
+                    allowFullscreenExitRef.current = true
+                    document.exitFullscreen()
+                } else {
+                    requestFullscreen()
+                }
             }
         }
 
-        window.addEventListener('keydown', onKeyDown, true)
-        return () => window.removeEventListener('keydown', onKeyDown, true)
+        document.addEventListener('keydown', onKeyDown)
+        return () => document.removeEventListener('keydown', onKeyDown)
     }, [])
 
+
+    
     // ── Video ended ────────────────────────────────────────────────────────
    const handleVideoEnd = async () => {
         if (videoCompletedRef.current) return
@@ -655,15 +802,20 @@ export default function ElearningPlayerPage() {
 
        exitFullscreen()
 
-        const quizXpEarned = Object.values(answeredMapRef.current)
-            .reduce((sum, a) => sum + (a.isCorrect ? (a.xpAwarded || 0) : 0), 0)
+        const quizXpEarned = isNoQuizXpRole
+            ? 0
+            : Object.values(answeredMapRef.current)
+                .reduce((sum, a) => sum + (a.isCorrect ? (a.xpAwarded || 0) : 0), 0)
 
         try {
             const res = await axios.post(`/api/elearning/lessons/${id}/complete`, {
                 quizXpEarned
             })
-            const totalXp = res.data.xpAwarded || 0
-
+            let totalXp = res.data.xpAwarded || 0
+            if (isNoQuizXpRole) {
+                totalXp = 0
+            }
+            
             setVideoCompleted(true)
             videoCompletedRef.current = true
             setTotalXpEarned(totalXp)
@@ -674,7 +826,7 @@ export default function ElearningPlayerPage() {
                     xp: (user.xp || 0) + totalXp
                 })
             }
-
+            
             if (totalXp > 0) {
                 playSfx('success')
                 toast.success(`🎉 Video selesai! +${totalXp} XP Total!`, { duration: 5000 })
@@ -686,31 +838,35 @@ export default function ElearningPlayerPage() {
             videoCompletedRef.current = true
         }
     }
-
+    
     // ── Submit answer ──────────────────────────────────────────────────────
-   const submitAnswer = async (selectedOptionId) => {
+    const submitAnswer = async (selectedOptionId) => {
         if (submitting) return null
-        if (answeredMap[activeQuestion.id]?.isCorrect) {
-            return { isCorrect: true, xpAwarded: 0 }
-        }
         setSubmitting(true)
+
         try {
             const res = await axios.post(
                 `/api/elearning/questions/${activeQuestion.id}/answer`,
                 { selectedOptionId }
             )
             const { isCorrect, xpAwarded } = res.data
-
+            const alreadyAnswered = Boolean(answeredMapRef.current?.[activeQuestion.id])
+            
             playSfx(isCorrect ? 'correct' : 'wrong')
 
-            if (isCorrect) answeredRef.current.add(activeQuestion.id)
-
-            setAnsweredMap(prev => ({
-                ...prev,
-                [activeQuestion.id]: { isCorrect, xpAwarded: xpAwarded || 0 }
-            }))
-
-            return { isCorrect, xpAwarded: xpAwarded || 0 }
+            if (!alreadyAnswered) {
+                const effectiveXpAwarded = isNoQuizXpRole ? 0 : (xpAwarded || 0)
+                if (isCorrect) answeredRef.current.add(activeQuestion.id)
+                
+                setAnsweredMap(prev => ({
+                    ...prev,
+                    [activeQuestion.id]: { isCorrect, xpAwarded: effectiveXpAwarded }
+                }))
+                return { isCorrect, xpAwarded: effectiveXpAwarded }
+            } else {
+                // Return local response for visual feedback without overriding original attempt's XP
+                return { isCorrect, xpAwarded: 0 }
+            }
         } catch (err) {
             toast.error('Gagal mengirim jawaban, coba lagi.')
             return null
@@ -731,7 +887,7 @@ export default function ElearningPlayerPage() {
             }
         }, 150)
     }
-
+    
     // ── Fullscreen helper ──────────────────────────────────────────────────
     const requestFullscreen = useCallback(async () => {
         if (document.fullscreenElement) return
@@ -746,7 +902,7 @@ export default function ElearningPlayerPage() {
             setFallbackFullscreen(true)
             return
         }
-
+        
         try {
             const maybePromise = req.call(el)
             if (maybePromise && typeof maybePromise.then === 'function') {
@@ -758,7 +914,7 @@ export default function ElearningPlayerPage() {
             setFallbackFullscreen(true)
         }
     }, [])
-
+    
     const exitFullscreen = useCallback(() => {
         if (document.fullscreenElement) {
             allowFullscreenExitRef.current = true
@@ -773,7 +929,19 @@ export default function ElearningPlayerPage() {
         }
         setFallbackFullscreen(false)
     }, [])
+    useEffect(() => {
+        const onKeyDown = (event) => {
+            if (event.key !== 'Escape') return
+            if (!document.fullscreenElement && !fallbackFullscreen) return
 
+            event.preventDefault()
+            exitFullscreen()
+        }
+
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
+    }, [exitFullscreen, fallbackFullscreen])
+    
     // ── Derived ────────────────────────────────────────────────────────────
     const totalQuestions = lesson?.questions?.length || 0
     const correctCount   = Object.values(answeredMap).filter(a => a.isCorrect).length
@@ -786,7 +954,7 @@ export default function ElearningPlayerPage() {
                 <div className="flex items-center justify-center h-full">
                     <div className="text-center">
                         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                        <p className="text-white/50">Memuat video pembelajaran...</p>
+                        <p className="text-main/50">Memuat video pembelajaran...</p>
                     </div>
                 </div>
             </Layout>
@@ -797,7 +965,7 @@ export default function ElearningPlayerPage() {
         return (
             <Layout>
                 <div className="flex items-center justify-center h-full">
-                    <p className="text-white/50">Video tidak ditemukan.</p>
+                    <p className="text-main/50">Video tidak ditemukan.</p>
                 </div>
             </Layout>
         )
@@ -825,16 +993,18 @@ export default function ElearningPlayerPage() {
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 text-xs text-white/40 mb-0.5">
+                        <div className="flex items-center gap-2 text-xs text-main/40 mb-0.5">
                             <BookOpen className="w-3 h-3" />
-                            <span>Chapter {lesson.chapter_id}</span>
+                            <span>Chapter {chapterIndex ?? lesson.chapter_id}</span>
                         </div>
-                        <h1 className="text-lg font-bold text-white truncate">{lesson.title}</h1>
+                        <h1 className="text-lg font-bold text-main truncate">{lesson.title}</h1>
                     </div>
-                    <div className="glass-card px-4 py-2 flex items-center gap-2 flex-shrink-0">
-                        <Star className="w-4 h-4 text-accent" />
-                        <span className="text-accent font-bold text-sm">+{totalXpEarned} XP</span>
-                    </div>
+                    {!isNoQuizXpRole && (
+                        <div className="glass-card px-4 py-2 flex items-center gap-2 flex-shrink-0">
+                            <Star className="w-4 h-4 text-accent" />
+                            <span className="text-accent font-bold text-sm">+{totalXpEarned} XP</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Two-column layout */}
@@ -877,7 +1047,7 @@ export default function ElearningPlayerPage() {
                                                         <Play className="w-5 h-5 text-primary" />
                                                     </div>
                                                 </div>
-                                                <p className="text-white/50 text-sm">Memuat video...</p>
+                                                <p className="text-main/50 text-sm">Memuat video...</p>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>
@@ -907,14 +1077,15 @@ export default function ElearningPlayerPage() {
                                                 onDismiss={dismissQuestion}
                                                 submitting={submitting}
                                                 onUiClick={playSfx}
+                                                isNoQuizXpRole={isNoQuizXpRole}
                                             />
                                         )}
                                     </AnimatePresence>
                                 </>
                             ) : (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-                                    <Zap className="w-12 h-12 text-white/10" />
-                                    <p className="text-white/40 text-sm">Video belum tersedia untuk lesson ini</p>
+                                    <Zap className="w-12 h-12 text-main/10" />
+                                    <p className="text-main/40 text-sm">Video belum tersedia untuk modul ini</p>
                                 </div>
                             )}
                         </div>
@@ -922,15 +1093,15 @@ export default function ElearningPlayerPage() {
                         {/* Lesson info */}
                         <div className="glass-card p-5">
                             <div className="flex items-start justify-between gap-4 mb-3">
-                                <h2 className="font-bold text-white leading-snug">{lesson.title}</h2>
+                                <h2 className="font-bold text-main leading-snug">{lesson.title}</h2>
                                 {videoCompleted && (
                                     <span className="flex-shrink-0 flex items-center gap-1 bg-green-500/20 text-green-400 border border-green-500/30 px-3 py-1.5 rounded-lg text-xs font-bold">
                                         <CheckCircle className="w-3.5 h-3.5" /> Selesai
                                     </span>
                                 )}
                             </div>
-                            <p className="text-sm text-white/60 leading-relaxed mb-4">{lesson.description}</p>
-                            <div className="flex flex-wrap gap-4 text-sm text-white/40">
+                            <p className="text-sm text-main/60 leading-relaxed mb-4">{lesson.description}</p>
+                            <div className="flex flex-wrap gap-4 text-sm text-main/40">
                                 <span className="flex items-center gap-1.5">
                                     <Clock className="w-4 h-4" />
                                     {formatDuration(lessonDurationSeconds)}
@@ -952,19 +1123,24 @@ export default function ElearningPlayerPage() {
                     <div className="space-y-4">
 
                         {/* Quiz list */}
-                        <div className="glass-card p-4">
+                        <div className="glass-card p-4 border border-gray-200 dark:border-white/10">
                             <div className="flex items-center justify-between mb-1">
-                                <h3 className="font-bold text-white text-sm">Kuis Interaktif</h3>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+                                        <HelpCircle className="w-4 h-4 text-primary" />
+                                    </div>
+                                    <h3 className="font-bold text-main text-sm">Kuis Interaktif</h3>
+                                </div>
                                 {answeredCount > 0 && (
-                                    <span className="text-xs text-white/40">{answeredCount}/{totalQuestions} dijawab</span>
+                                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">{answeredCount}/{totalQuestions} dijawab</span>
                                 )}
                             </div>
-                            <p className="text-xs text-white/40 mb-4 leading-relaxed">
+                            <p className="text-xs text-gray-400 dark:text-main/40 mb-4 leading-relaxed">
                                 Kuis muncul otomatis saat video mencapai timestamp tertentu
                             </p>
 
                             {totalQuestions === 0 ? (
-                                <p className="text-xs text-white/30 italic">Belum ada kuis untuk video ini.</p>
+                                <p className="text-xs text-main/30 italic">Belum ada kuis untuk video ini.</p>
                             ) : (
                                 <div className="space-y-2.5">
                                     {lesson.questions.map((q, i) => {
@@ -977,27 +1153,41 @@ export default function ElearningPlayerPage() {
                                                         ? ans.isCorrect
                                                             ? 'bg-green-500/10 border-green-500/30'
                                                             : 'bg-red-500/10 border-red-500/30'
-                                                        : 'bg-white/5 border-white/10'
+                                                        : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10'
                                                 }`}
                                             >
                                                 <div className="flex items-start gap-2.5">
                                                     <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
                                                         ans
                                                             ? ans.isCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                                                            : 'bg-white/10 text-white/50'
+                                                            : 'bg-primary/15 text-primary border border-primary/30'
                                                     }`}>
                                                         {ans ? (ans.isCorrect ? '✓' : '✗') : i + 1}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-xs text-white/70 leading-snug line-clamp-2">{q.question_text}</p>
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            <span className="text-xs text-white/30">{formatDuration(q.timestamp_seconds)}</span>
-                                                            {ans ? (
-                                                                <span className={`text-xs font-semibold ${ans.isCorrect ? 'text-accent' : 'text-white/30'}`}>
-                                                                    {ans.isCorrect ? `+${ans.xpAwarded} XP` : '0 XP'}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-xs text-white/30">+{q.xp_reward} XP</span>
+                                                        <p className="text-xs text-gray-700 dark:text-main/70 leading-snug line-clamp-2 font-medium">{q.question_text}</p>
+                                                        <div className="flex items-center gap-3 mt-1.5">
+                                                            <span className="text-[11px] text-gray-400 dark:text-main/30 flex items-center gap-1">
+                                                                <Clock className="w-3 h-3" />
+                                                                {formatDuration(q.timestamp_seconds)}
+                                                            </span>
+                                                            {!isNoQuizXpRole && (
+                                                                <>
+                                                                    {ans ? (
+                                                                        <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
+                                                                            ans.isCorrect
+                                                                                ? 'bg-accent/10 text-accent'
+                                                                                : 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-main/30'
+                                                                        }`}>
+                                                                            {ans.isCorrect ? `+${ans.xpAwarded} XP` : '0 XP'}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-[11px] text-gray-400 dark:text-main/30 flex items-center gap-0.5">
+                                                                            <Star className="w-3 h-3 text-accent" />
+                                                                            +{q.xp_reward} XP
+                                                                        </span>
+                                                                    )}
+                                                                </>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1011,8 +1201,8 @@ export default function ElearningPlayerPage() {
                             {answeredCount > 0 && (
                                 <div className="mt-4 pt-4 border-t border-white/10">
                                     <div className="flex justify-between text-xs mb-2">
-                                        <span className="text-white/50">Skor Kuis</span>
-                                        <span className="font-bold text-white">{correctCount}/{totalQuestions} benar</span>
+                                        <span className="text-main/50">Skor Kuis</span>
+                                        <span className="font-bold text-main">{correctCount}/{totalQuestions} benar</span>
                                     </div>
                                     <div className="xp-bar h-2">
                                         <div className="xp-bar-fill" style={{ width: `${totalQuestions ? (correctCount / totalQuestions) * 100 : 0}%` }} />
@@ -1029,16 +1219,20 @@ export default function ElearningPlayerPage() {
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.9 }}
                                     className="glass-card p-5 border-accent/30"
-                                    style={{ background: 'linear-gradient(135deg, rgba(255,214,10,0.1), rgba(230,57,70,0.08))' }}
+                                    style={{ background: 'linear-gradient(135deg, rgba(255, 214, 10,0.1), rgba(230,57,70,0.08))' }}
                                 >
                                     <div className="text-center">
                                         <Trophy className="w-12 h-12 text-accent mx-auto mb-3" />
-                                        <p className="font-bold text-white text-lg">Video Selesai!</p>
-                                        <p className="text-xs text-white/50 mt-1 mb-3">Total XP dari sesi ini:</p>
-                                        <p className="text-3xl font-bold text-accent mb-4">+{totalXpEarned} XP</p>
+                                        <p className="font-bold text-main text-lg">Video Selesai!</p>
+                                        {!isNoQuizXpRole && (
+                                            <>
+                                                <p className="text-xs text-main/50 mt-1 mb-3">Total XP dari sesi ini:</p>
+                                                <p className="text-3xl font-bold text-accent mb-4">+{totalXpEarned} XP</p>
+                                            </>
+                                        )}
                                         {totalQuestions > 0 && (
-                                            <div className="glass-card p-3 mb-4 text-xs text-white/60">
-                                                Kuis: <span className="text-white font-bold">{correctCount}/{totalQuestions}</span> benar
+                                            <div className="glass-card p-3 mb-4 text-xs text-main/60">
+                                                Kuis: <span className="text-main font-bold">{correctCount}/{totalQuestions}</span> benar
                                             </div>
                                         )}
                                         <button
@@ -1059,11 +1253,11 @@ export default function ElearningPlayerPage() {
                         {/* Tips card */}
                         {!videoCompleted && (
                             <div className="glass-card p-4">
-                                <p className="text-xs font-semibold text-white mb-2 flex items-center gap-2">
+                                <p className="text-xs font-semibold text-main mb-2 flex items-center gap-2">
                                     <Zap className="w-4 h-4 text-accent" />
                                     Tips Menonton
                                 </p>
-                                <ul className="text-xs text-white/50 space-y-1.5 leading-relaxed">
+                                <ul className="text-xs text-main/50 space-y-1.5 leading-relaxed">
                                     <li>• Tonton hingga akhir untuk mendapat <span className="text-accent font-semibold">+{lesson.xp_reward} XP bonus</span></li>
                                     <li>• Jawab kuis yang muncul untuk XP tambahan per soal</li>
                                     <li>• Video akan otomatis fullscreen saat dimuat</li>

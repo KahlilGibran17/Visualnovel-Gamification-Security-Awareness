@@ -129,7 +129,7 @@ async function syncRelationalContent() {
                 vnJson.push({
                     id: s.scene_key, type: 'ending', background: s.background,
                     ending: s.ending_type, title: s.ending_title, message: s.ending_message,
-                    xpBonus: s.xp_bonus, lesson_recap: s.lesson_recap
+                    xpBonus: s.xp_bonus, badgeId: s.custom_data?.badgeId || null, lesson_recap: s.lesson_recap
                 });
             } else if (s.scene_type === 'email') {
                 vnJson.push({ id: s.scene_key, type: 'email', background: s.background, email: s.custom_data?.email, next: nextKey });

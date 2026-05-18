@@ -14,7 +14,7 @@ import {
 
 const STEPS = [
     {
-        title: "Selamat Datang di Akebono Cyber Academy!",
+        title: "Selamat Datang di AAIJ Cyber Academy!",
         description: "Platform edukasi interaktif yang dirancang khusus untuk meningkatkan kesadaran keamanan siber Anda dengan cara yang menyenangkan.",
         icon: ShieldAlert,
         color: "#FFD60A",
