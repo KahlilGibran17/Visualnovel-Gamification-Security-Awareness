@@ -12,9 +12,9 @@ CREATE TABLE IF NOT EXISTS elearning_lessons (
   chapter_id       INTEGER      NOT NULL UNIQUE,           -- 1 chapter = 1 video
   title            VARCHAR(255) NOT NULL,
   description      TEXT,
-  video_url        TEXT         NOT NULL,                  -- YouTube URL / direct video URL
+  video_url        TEXT,                                   -- YouTube URL / direct video URL (nullable to allow empty initially)
   thumbnail_url    TEXT,                                   -- URL thumbnail (opsional)
-  duration_seconds INTEGER      DEFAULT 0,                 -- Durasi video dalam detik
+  duration         TEXT         DEFAULT '0',               -- Durasi video (text format)
   xp_reward        INTEGER      DEFAULT 100,               -- XP bonus setelah menonton habis
   is_active        BOOLEAN      DEFAULT TRUE,
   created_at       TIMESTAMP    DEFAULT NOW(),
@@ -104,14 +104,14 @@ DECLARE
 BEGIN
 
   -- Insert lesson Chapter 1
-  INSERT INTO elearning_lessons (chapter_id, title, description, video_url, thumbnail_url, duration_seconds, xp_reward)
+  INSERT INTO elearning_lessons (chapter_id, title, description, video_url, thumbnail_url, duration, xp_reward)
   VALUES (
     1,
     'Mengenal dan Menghindari Phishing',
     'Pelajari cara mengenali email phishing, link berbahaya, dan teknik social engineering yang sering digunakan penyerang untuk mencuri data pribadi dan kredensial organisasi.',
     'https://www.youtube.com/watch?v=XBkzBrXlle0',
     NULL,
-    600,
+    '600',
     150
   )
   ON CONFLICT (chapter_id) DO NOTHING;

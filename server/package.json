@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch --watch-path=index.js --watch-path=routes --watch-path=db --watch-path=middleware --watch-path=services index.js",
     "start": "node index.js",
-    "seed": "node db/seed.js"
+    "seed": "node db/seed.js",
+    "db:init": "node scripts/init_db.js"
   },
   "keywords": [],
   "author": "Akebono Brake Astra",
