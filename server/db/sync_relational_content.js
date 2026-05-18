@@ -205,8 +205,11 @@ async function syncRelationalContent() {
         console.error('❌ Error syncing relational content:', err);
     } finally {
         client.release();
-        pool.end();
+        if (require.main === module) {
+            pool.end();
+        }
     }
+
 }
 
 // 🌟 Execute only if run directly from command line

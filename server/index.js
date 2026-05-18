@@ -64,9 +64,18 @@ io.on('connection', (socket) => {
 app.set('io', io)
 
 const PORT = process.env.PORT || 3001
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     console.log(`🚀 Akebono Cyber Academy Server running on http://localhost:${PORT}`)
     console.log(`📡 Socket.io ready for real-time leaderboard updates`)
+
+    // 🌟 AUTOMATIC STARTUP SYNC: Align local PostgreSQL database with disk JSON
+    try {
+        const syncRelationalContent = require('./db/sync_relational_content')
+        await syncRelationalContent()
+    } catch (err) {
+        console.error('[Startup] ⚠️ Automatic database synchronization failed:', err.message)
+    }
 })
 
 module.exports = { app, io }
+
