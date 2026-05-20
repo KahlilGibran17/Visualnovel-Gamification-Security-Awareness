@@ -71,4 +71,8 @@ server.listen(PORT, () => {
     console.log(`📡 Socket.io ready for real-time leaderboard updates`)
 })
 
+// Fix for Node 18+ keep-alive timeout causing ECONNRESET in Vite proxy
+server.keepAliveTimeout = 61000;
+server.headersTimeout = 65000;
+
 module.exports = { app, io }

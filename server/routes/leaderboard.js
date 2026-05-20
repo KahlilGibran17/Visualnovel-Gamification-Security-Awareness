@@ -13,6 +13,8 @@ router.get('/', requireAuth, async (req, res) => {
     whereConditions.push('COALESCE(u.xp, 0) > 0')
   }
 
+  whereConditions.push("LOWER(r.name) NOT IN ('admin', 'super-admin')")
+
   if (filter === 'weekly') {
     whereConditions.push("u.last_login >= NOW() - INTERVAL '7 days'")
   } else if (filter === 'monthly') {
@@ -69,7 +71,10 @@ router.get('/departments', requireAuth, async (req, res) => {
         COUNT(*)::int as members,
         COALESCE(ROUND(AVG(COALESCE(u.xp, 0)))::int, 0) as "avgXp"
       FROM users u
-      WHERE u.department IS NOT NULL AND u.department != ''
+      JOIN roles r ON u.role_id = r.id
+      WHERE u.department IS NOT NULL
+        AND u.department != ''
+        AND LOWER(r.name) NOT IN ('admin', 'super-admin')
       GROUP BY u.department
       ORDER BY "avgXp" DESC
     `)

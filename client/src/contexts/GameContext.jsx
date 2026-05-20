@@ -44,17 +44,24 @@ const normalizeLevels = (rows) => {
         .sort((a, b) => a.xpRequired - b.xpRequired)
 }
 
+const isPrivilegedRole = (role) => {
+    const normalized = String(role || '').toLowerCase()
+    return normalized === 'admin' || normalized === 'super-admin'
+}
+
 const normalizeLeaderboardRows = (rows) => {
     if (!Array.isArray(rows)) return []
 
-    return rows.map((row, index) => ({
-        ...row,
-        rank: Number(row?.rank) || index + 1,
-        xp: Number(row?.xp) || 0,
-        level: Number(row?.level) || 1,
-        chaptersCompleted: Number(row?.chaptersCompleted) || 0,
-        avatarId: Number(row?.avatarId) || 1,
-    }))
+    return rows
+        .filter(row => !isPrivilegedRole(row?.role))
+        .map((row, index) => ({
+            ...row,
+            rank: Number(row?.rank) || index + 1,
+            xp: Number(row?.xp) || 0,
+            level: Number(row?.level) || 1,
+            chaptersCompleted: Number(row?.chaptersCompleted) || 0,
+            avatarId: Number(row?.avatarId) || 1,
+        }))
 }
 
 export function useLevels(){
@@ -178,7 +185,7 @@ export function GameProvider({ children }) {
                     axios.get('/api/leaderboard/departments')
                 ])
                 if (lbRes.data && Array.isArray(lbRes.data) && lbRes.data.length > 0) {
-                    setLeaderboard(lbRes.data)
+                    setLeaderboard(normalizeLeaderboardRows(lbRes.data))
                 }
                 if (deptRes.data && Array.isArray(deptRes.data) && deptRes.data.length > 0) {
                     setDeptStats(deptRes.data)
@@ -204,6 +211,7 @@ export function GameProvider({ children }) {
     // Synchronize local leaderboard immediately when user changes xp so rank adjusts continuously 
     useEffect(() => {
         if (!user) return
+        if (isPrivilegedRole(user?.role)) return
         setLeaderboard(prev => {
             const index = prev.findIndex(u => u.nik === user.nik || u.id === user.id)
             if (index === -1) {
